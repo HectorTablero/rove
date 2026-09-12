@@ -1,0 +1,433 @@
+import type {
+  AiSuggestionsRequest,
+  AiSuggestionsResponse,
+  EntryCreateInput,
+  EntryUpdateInput,
+  PersonCreateInput,
+  PersonDto,
+  PersonEventInput,
+  PersonUpdateInput,
+  SettingsInput,
+  TagCreateInput,
+  TagUpdateInput,
+  ThreadCreateInput,
+  ThreadUpdateInput,
+} from '@diary/shared';
+import type { ExistingEntryIndex } from '@/lib/backup/conflicts';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import * as mutations from '@/db/mutations';
+import * as repo from '@/db/repo';
+import { apiPost } from '@/lib/apiClient';
+import { hapticWarning } from '@/lib/haptics';
+import { trackTiming } from '@/lib/telemetry';
+
+/* All reads and writes go through the local Dexie store (see src/db); the sync
+   engine reconciles with the server in the background. Query keys are kept from
+   the server-first era so components didn't have to change. */
+
+// --- Tags ---
+
+export const useTags = () =>
+  useQuery({
+    queryKey: ['tags'],
+    queryFn: () => repo.getTags(),
+  });
+
+export function useCreateTag() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: TagCreateInput) => mutations.createTag(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tags'] }),
+  });
+}
+
+export function useUpdateTag() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: TagUpdateInput }) =>
+      mutations.updateTag(id, input),
+    onSuccess: () => qc.invalidateQueries(),
+  });
+}
+
+export function useDeleteTag() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => mutations.deleteTag(id),
+    onSuccess: () => {
+      hapticWarning();
+      qc.invalidateQueries();
+    },
+  });
+}
+
+// --- Threads ---
+
+export const useThreads = () =>
+  useQuery({
+    queryKey: ['threads'],
+    queryFn: () => repo.getThreads(),
+  });
+
+export const useThreadEntries = (threadId: string) =>
+  useQuery({
+    queryKey: ['threads', threadId, 'entries'],
+    queryFn: () => repo.getThreadEntries(threadId),
+  });
+
+export function useCreateThread() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ThreadCreateInput) => mutations.createThread(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['threads'] }),
+  });
+}
+
+export function useUpdateThread() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: ThreadUpdateInput }) =>
+      mutations.updateThread(id, input),
+    // A rename shows up on every entry row and talking-point header, not just the threads page.
+    onSuccess: () => qc.invalidateQueries(),
+  });
+}
+
+export function useDeleteThread() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => mutations.deleteThread(id),
+    onSuccess: () => {
+      hapticWarning();
+      qc.invalidateQueries();
+    },
+  });
+}
+
+// --- People ---
+
+export const usePeople = () =>
+  useQuery({
+    queryKey: ['people'],
+    queryFn: () => repo.getPeople(),
+  });
+
+/**
+ * The talking-point badge numbers, split out of `usePeople` — only the people list shows them.
+ *
+ * `usePeople` is mounted app-wide (AppLayout's nav badge), and computing these means walking the
+ * scoring window once per person. Keeping them here means that work happens on the one screen that
+ * displays it rather than on every route.
+ *
+ * Keyed under the `['people']` prefix on purpose: `useInvalidateEntryData` already invalidates that
+ * prefix after an entry write, which is exactly when these numbers change. Person ids are
+ * ObjectId-shaped, so the literal second segment can't collide with `usePerson`'s `['people', id]`.
+ */
+export const useTalkingPointCounts = () =>
+  useQuery({
+    queryKey: ['people', 'talking-point-counts'],
+    queryFn: () => repo.getTalkingPointCounts(),
+  });
+
+export const usePerson = (id: string) =>
+  useQuery({
+    queryKey: ['people', id],
+    queryFn: () => repo.getPerson(id),
+  });
+
+export function useCreatePerson() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: PersonCreateInput) => mutations.createPerson(input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['people'] }),
+  });
+}
+
+export function useUpdatePerson() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: PersonUpdateInput }) =>
+      mutations.updatePerson(id, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['people'] }),
+  });
+}
+
+export function useDeletePerson() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => mutations.deletePerson(id),
+    onSuccess: () => {
+      hapticWarning();
+      qc.invalidateQueries();
+    },
+  });
+}
+
+export function useMarkCheckup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => mutations.markCheckup(id),
+    onSuccess: (data) => {
+      qc.setQueryData(['people', data.id], data);
+      qc.invalidateQueries({ queryKey: ['people'] });
+    },
+  });
+}
+
+/* Person events. All three seed ['people', id] with the returned person so the profile updates
+   instantly, then invalidate ['people'] — a prefix, so the list and every tab refresh with it. */
+
+function usePersonEventMutation<TArgs>(mutate: (args: TArgs) => Promise<PersonDto>) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: mutate,
+    onSuccess: (data) => {
+      qc.setQueryData(['people', data.id], data);
+      qc.invalidateQueries({ queryKey: ['people'] });
+    },
+  });
+}
+
+export const useSaveEvent = () =>
+  usePersonEventMutation(({ personId, event }: { personId: string; event: PersonEventInput }) =>
+    mutations.saveEvent(personId, event),
+  );
+
+/* Not usePersonEventMutation: this one resolves to the deletion snapshot rather than the person,
+   so the toast can offer an undo. The person still rides along on it, so the cache seeding is
+   the same two lines. */
+export function useDeleteEvent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ personId, eventId }: { personId: string; eventId: string }) => {
+      hapticWarning();
+      return mutations.deleteEvent(personId, eventId);
+    },
+    onSuccess: ({ person }) => {
+      qc.setQueryData(['people', person.id], person);
+      qc.invalidateQueries({ queryKey: ['people'] });
+    },
+  });
+}
+
+export const useMarkEventAsked = () =>
+  usePersonEventMutation(({ personId, eventId }: { personId: string; eventId: string }) =>
+    mutations.markEventAsked(personId, eventId),
+  );
+
+export const useTalkingPoints = (personId: string) =>
+  useQuery({
+    queryKey: ['people', personId, 'talking-points'],
+    queryFn: () => repo.getTalkingPoints(personId),
+  });
+
+export const useMemories = (personId: string) =>
+  useQuery({
+    queryKey: ['people', personId, 'memories'],
+    queryFn: () => repo.getMemories(personId),
+  });
+
+export const usePersonHistory = (personId: string, page: number) =>
+  useQuery({
+    queryKey: ['people', personId, 'history', page],
+    queryFn: () => repo.getHistory(personId, page, 50),
+  });
+
+// --- Entries ---
+
+export const useDayEntries = (dateKey: string) =>
+  useQuery({
+    queryKey: ['entries', 'day', dateKey],
+    queryFn: () => repo.getDayEntries(dateKey),
+    // Arrow-key navigation on the day page changes `dateKey` on every press, which is a new query
+    // key each time — without this, `isLoading` goes true for an instant on every single press and
+    // the page collapses to its skeleton/single-column state only to immediately expand back out.
+    // The read is local IndexedDB and fast; keeping the previous day's entries on screen until the
+    // new day's resolve is strictly better than a guaranteed flash of loading state.
+    placeholderData: keepPreviousData,
+  });
+
+function useInvalidateEntryData() {
+  const qc = useQueryClient();
+  return () => {
+    qc.invalidateQueries({ queryKey: ['entries'] });
+    qc.invalidateQueries({ queryKey: ['calendar'] });
+    qc.invalidateQueries({ queryKey: ['on-this-day'] });
+    qc.invalidateQueries({ queryKey: ['people'] });
+    qc.invalidateQueries({ queryKey: ['search'] });
+    // Thread membership and entry counts both live on entries.
+    qc.invalidateQueries({ queryKey: ['threads'] });
+  };
+}
+
+export function useCreateEntry() {
+  const invalidate = useInvalidateEntryData();
+  return useMutation({
+    mutationFn: (input: EntryCreateInput) => mutations.createEntry(input),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateEntry() {
+  const invalidate = useInvalidateEntryData();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: EntryUpdateInput }) =>
+      mutations.updateEntry(id, input),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteEntry() {
+  const invalidate = useInvalidateEntryData();
+  return useMutation({
+    mutationFn: (id: string) => mutations.deleteEntry(id),
+    onSuccess: () => {
+      hapticWarning();
+      invalidate();
+    },
+  });
+}
+
+/** Drag-and-drop reparent/reorder. Haptics fire from the drag interaction itself (pickup/drop),
+    not here — see the sortable tree provider. */
+export function useMoveEntry() {
+  const invalidate = useInvalidateEntryData();
+  return useMutation({
+    mutationFn: ({
+      id,
+      newParentId,
+      newOrderKey,
+    }: {
+      id: string;
+      newParentId: string | null;
+      newOrderKey: string;
+    }) => mutations.moveEntry(id, newParentId, newOrderKey),
+    onSuccess: invalidate,
+  });
+}
+
+export function useSetSaid() {
+  const invalidate = useInvalidateEntryData();
+  return useMutation({
+    mutationFn: ({
+      entryId,
+      personId,
+      said,
+    }: {
+      entryId: string;
+      personId: string;
+      said: boolean;
+    }) => mutations.setSaid(entryId, personId, said),
+    onSuccess: invalidate,
+  });
+}
+
+/** One click, many entries: the per-thread "mark all as said" on the person profile. `entryIds`
+    must be the group's `markableIds` — see the note on mutations.setSaidBulk. */
+export function useSetSaidBulk() {
+  const invalidate = useInvalidateEntryData();
+  return useMutation({
+    mutationFn: ({
+      entryIds,
+      personId,
+      said,
+    }: {
+      entryIds: string[];
+      personId: string;
+      said: boolean;
+    }) => mutations.setSaidBulk(entryIds, personId, said),
+    onSuccess: invalidate,
+  });
+}
+
+export function useSetEntryThreads() {
+  const invalidate = useInvalidateEntryData();
+  return useMutation({
+    mutationFn: ({ entryId, threadIds }: { entryId: string; threadIds: string[] }) =>
+      mutations.setEntryThreads(entryId, threadIds),
+    onSuccess: invalidate,
+  });
+}
+
+export function useSetHidden() {
+  const invalidate = useInvalidateEntryData();
+  return useMutation({
+    mutationFn: ({
+      entryId,
+      personId,
+      hidden,
+    }: {
+      entryId: string;
+      personId: string;
+      hidden: boolean;
+    }) => mutations.setHidden(entryId, personId, hidden),
+    onSuccess: invalidate,
+  });
+}
+
+// --- Calendar / search ---
+
+export const useCalendarMonth = (year: number, month: number) =>
+  useQuery({
+    queryKey: ['calendar', year, month],
+    queryFn: () => repo.getCalendarMonth(year, month),
+  });
+
+export const useOnThisDay = (dateKey: string) =>
+  useQuery({
+    queryKey: ['on-this-day', dateKey],
+    queryFn: () => repo.getOnThisDay(dateKey),
+  });
+
+export const useSearch = (params: URLSearchParams, enabled: boolean) =>
+  useQuery({
+    queryKey: ['search', params.toString()],
+    queryFn: () => repo.search(params),
+    enabled,
+  });
+
+// --- Settings ---
+
+export const useSettings = () =>
+  useQuery({
+    queryKey: ['settings'],
+    queryFn: () => repo.getSettings(),
+  });
+
+// --- Backup import ---
+
+export const useEntryIndex = () =>
+  useQuery({
+    queryKey: ['entries', 'index'],
+    queryFn: () => repo.getEntryIndex(),
+  });
+
+export function useSaveSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: SettingsInput) => mutations.saveSettings(input),
+    onSuccess: (data) => {
+      qc.setQueryData(['settings'], data);
+      qc.invalidateQueries({ queryKey: ['people'] });
+    },
+  });
+}
+
+// --- AI voice assistant ---
+
+/** The one hook that talks to the network directly instead of the local Dexie store:
+    suggestions are generated live from the transcript, there's nothing local to read. */
+export function useAiSuggestions() {
+  return useMutation({
+    /* The other half of the voice flow, and the half that was unmeasured: lib/transcribe.ts times
+       the recording's round trip, and this is what happens to the transcript afterwards. Both legs
+       run before the user sees anything, so the wait they actually experience is the sum — and
+       until both were timed, a slow one could not be attributed to either.
+
+       trackTiming rather than a hand-rolled timer because this call is exactly its shape: a named
+       promise whose duration and success are the whole story, with no extra fields worth carrying
+       (the transcript is the user's diary and does not leave the device except to be answered). */
+    mutationFn: (input: AiSuggestionsRequest) =>
+      trackTiming('ai_suggestions', () => apiPost<AiSuggestionsResponse>('/ai/suggestions', input)),
+  });
+}

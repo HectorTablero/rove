@@ -1,0 +1,130 @@
+import { BIRTHDAY_REGEX, normalizeBirthday } from '@diary/shared';
+
+/* Birthdays are stored as `YYYY-MM-DD`, or `--MM-DD` when the year is unknown — phone contacts
+   very often omit it, so nothing here may assume a year exists. */
+
+export interface ParsedBirthday {
+  /** `null` when the contact only recorded a day and month. */
+  year: number | null;
+  /** 1-12 */
+  month: number;
+  /** 1-31 */
+  day: number;
+}
+
+/** The year group is optional; `--` stands in for an unknown one. */
+const PARTS = /^(?:(\d{4})-|--)(\d{2})-(\d{2})$/;
+
+export function parseBirthday(value: string | null | undefined): ParsedBirthday | null {
+  if (!value) return null;
+  // Tolerates the legacy `---MM-DD` rows still sitting in Dexie and Mongo. Every read in the
+  // app funnels through here, so nothing downstream has to know the old shape existed.
+  // Droppable at the next Dexie upversion — see the marker in db.ts.
+  const normalized = normalizeBirthday(value);
+  if (!BIRTHDAY_REGEX.test(normalized)) return null;
+  const match = PARTS.exec(normalized);
+  if (!match) return null;
+  const [, year, month, day] = match;
+  return {
+    year: year === undefined ? null : Number(year),
+    month: Number(month),
+    day: Number(day),
+  };
+}
+
+const pad = (n: number) => String(n).padStart(2, '0');
+
+export function formatBirthdayValue(year: number | null, month: number, day: number): string {
+  // The `-` after the year belongs to the year, not to the month: an unknown year is just `--`,
+  // giving `--07-13` rather than `---07-13`.
+  const prefix = year === null ? '--' : `${String(year).padStart(4, '0')}-`;
+  return `${prefix}${pad(month)}-${pad(day)}`;
+}
+
+const isLeapYear = (year: number): boolean =>
+  (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+
+/**
+ * Does this birthday land on `dateKey` (a `YYYY-MM-DD`)? The birthday's own year is ignored —
+ * it's the anniversary we care about. A 29 February birthday is observed on the 28th in
+ * non-leap years, matching how nextOccurrence schedules its reminder.
+ */
+export function birthdayFallsOn(birthday: string | null, dateKey: string): boolean {
+  const parsed = parseBirthday(birthday);
+  if (!parsed) return false;
+  const year = Number(dateKey.slice(0, 4));
+  const month = Number(dateKey.slice(5, 7));
+  const day = Number(dateKey.slice(8, 10));
+  const observedDay =
+    parsed.month === 2 && parsed.day === 29 && !isLeapYear(year) ? 28 : parsed.day;
+  return parsed.month === month && observedDay === day;
+}
+
+/** The people celebrating a birthday on `dateKey`. */
+export function birthdaysOn<T extends { birthday: string | null }>(
+  people: T[],
+  dateKey: string,
+): T[] {
+  return people.filter((person) => birthdayFallsOn(person.birthday, dateKey));
+}
+
+/** Age on `on`, or `null` when the year is unknown. */
+export function ageOn(birthday: string | null, on: Date = new Date()): number | null {
+  const parsed = parseBirthday(birthday);
+  if (!parsed || parsed.year === null) return null;
+  let age = on.getFullYear() - parsed.year;
+  const monthDiff = on.getMonth() + 1 - parsed.month;
+  if (monthDiff < 0 || (monthDiff === 0 && on.getDate() < parsed.day)) age--;
+  return age < 0 ? null : age;
+}
+
+/**
+ * The next date this birthday falls on, at local midnight. **Today counts** — day granularity, not
+ * hour — so a birthday discovered at 10:00 still reports as today rather than jumping a year;
+ * deciding what clock time to fire at, and catching up when that time has passed, is the caller's
+ * problem, exactly as refreshCheckupNotifications does.
+ *
+ * Feb 29 in a non-leap year falls back to Feb 28, so the reminder doesn't silently vanish for
+ * three years at a time.
+ *
+ * Returns a *day*, deliberately carrying no hour: the reminder hour is a user preference now, and
+ * a default here would be a second place for it to live — which is exactly what it used to be, with
+ * daysUntilBirthday silently depending on a 9 that also existed in notifications.ts.
+ */
+export function nextOccurrence(birthday: string | null, from: Date = new Date()): Date | null {
+  const parsed = parseBirthday(birthday);
+  if (!parsed) return null;
+
+  const at = (year: number): Date => {
+    const day = parsed.month === 2 && parsed.day === 29 && !isLeapYear(year) ? 28 : parsed.day;
+    return new Date(year, parsed.month - 1, day, 0, 0, 0, 0);
+  };
+
+  const thisYear = at(from.getFullYear());
+  const startOfToday = new Date(from.getFullYear(), from.getMonth(), from.getDate()).getTime();
+  const isTodayOrLater =
+    new Date(thisYear.getFullYear(), thisYear.getMonth(), thisYear.getDate()).getTime() >=
+    startOfToday;
+  return isTodayOrLater ? thisYear : at(from.getFullYear() + 1);
+}
+
+/** Whole days until the next birthday (0 = today). */
+export function daysUntilBirthday(birthday: string | null, from: Date = new Date()): number | null {
+  const next = nextOccurrence(birthday, from);
+  if (!next) return null;
+  const startOfToday = new Date(from.getFullYear(), from.getMonth(), from.getDate()).getTime();
+  const startOfNext = new Date(next.getFullYear(), next.getMonth(), next.getDate()).getTime();
+  return Math.round((startOfNext - startOfToday) / 86_400_000);
+}
+
+/** e.g. "13 July 1990" — or "13 July" when the year is unknown. */
+export function formatBirthday(birthday: string | null, locale: string): string {
+  const parsed = parseBirthday(birthday);
+  if (!parsed) return '';
+  const date = new Date(parsed.year ?? 2000, parsed.month - 1, parsed.day);
+  return new Intl.DateTimeFormat(locale, {
+    day: 'numeric',
+    month: 'long',
+    ...(parsed.year !== null && { year: 'numeric' }),
+  }).format(date);
+}

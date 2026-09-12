@@ -1,0 +1,140 @@
+import { HttpError } from '../errors';
+
+/* Generic OpenAI-compatible chat-completions client — both Groq and OpenRouter speak this
+   same shape, so the tool-calling loop in aiSuggestionService.ts can point at either. */
+
+export interface ToolCall {
+  id: string;
+  type: 'function';
+  function: { name: string; arguments: string };
+}
+
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content: string | null;
+  tool_calls?: ToolCall[];
+  tool_call_id?: string;
+}
+
+export interface ChatCompletionRequest {
+  model: string;
+  messages: ChatMessage[];
+  tools?: unknown[];
+  tool_choice?: 'auto' | 'none' | 'required';
+  temperature?: number;
+  max_tokens?: number;
+}
+
+export interface ChatCompletionResponse {
+  choices: { message: ChatMessage; finish_reason: string }[];
+}
+
+function mapErrorResponse(res: Response): HttpError {
+  if (res.status === 401 || res.status === 403) return new HttpError(400, 'ai.invalid_key');
+  // The key is fine, the account isn't: Cerebras and OpenRouter both answer 402 once the free
+  // allowance or the prepaid balance is gone. Unlike a 429 this does not clear on its own.
+  if (res.status === 402) return new HttpError(402, 'ai.quota_exhausted');
+  if (res.status === 429) return new HttpError(429, 'ai.rate_limited');
+  return new HttpError(502, 'ai.upstream_error');
+}
+
+/**
+ * Failures that mean "this provider cannot serve the request" rather than "the request is wrong".
+ *
+ * A caller holding more than one key can retry the same conversation on the next provider instead
+ * of surfacing any of these — see the failover in aiSuggestionService.
+ */
+const PROVIDER_FAILURE_CODES: ReadonlySet<string> = new Set([
+  'ai.invalid_key',
+  'ai.quota_exhausted',
+  'ai.rate_limited',
+  'ai.upstream_error',
+  'ai.timeout',
+]);
+
+export function isProviderFailure(err: unknown): err is HttpError {
+  return err instanceof HttpError && PROVIDER_FAILURE_CODES.has(err.code);
+}
+
+/** Providers send this on 429s, usually a fraction of a second to a few seconds for burst limits. */
+function retryDelayMs(res: Response, attempt: number): number {
+  const header = res.headers.get('retry-after');
+  const seconds = header ? Number(header) : NaN;
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1000, 10_000);
+  return attempt * 1000; // no header: back off a bit more each retry
+}
+
+const MAX_ATTEMPTS = 3;
+
+/**
+ * A 200 does not guarantee a completion. Providers occasionally answer OK with an error envelope
+ * instead (OpenRouter does this when its own upstream fails), and a body without a usable
+ * `choices` entry would otherwise be cast straight through and blow up in the caller's tool loop.
+ * Rejecting it here turns it into an ordinary provider failure, so a user with a second key fails
+ * over to it exactly as they would on a 402 or a 429.
+ */
+function asChatCompletion(payload: unknown): ChatCompletionResponse | undefined {
+  if (!payload || typeof payload !== 'object') return undefined;
+  const { choices } = payload as { choices?: unknown };
+  if (!Array.isArray(choices) || !choices.length) return undefined;
+  if (!choices.every((c) => c && typeof c === 'object' && 'message' in c)) return undefined;
+  return payload as ChatCompletionResponse;
+}
+
+/** This is the server's only outbound fetch — Node's global fetch, no new dependency. */
+export async function chatCompletion(
+  baseUrl: string,
+  apiKey: string,
+  body: ChatCompletionRequest,
+  extraHeaders?: Record<string, string>,
+): Promise<ChatCompletionResponse> {
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    let res: Response;
+    try {
+      res = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+          ...extraHeaders,
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(60_000),
+      });
+    } catch (err) {
+      if (err instanceof Error && err.name === 'TimeoutError')
+        throw new HttpError(504, 'ai.timeout');
+      throw new HttpError(502, 'ai.upstream_error');
+    }
+    if (res.ok) {
+      const payload = await res.json().catch(() => undefined);
+      const completion = asChatCompletion(payload);
+      if (completion) return completion;
+      console.warn(
+        `ai chat (${baseUrl}): 200 without usable choices`,
+        JSON.stringify(payload)?.slice(0, 500),
+      );
+      throw new HttpError(502, 'ai.upstream_error');
+    }
+
+    // Free-tier rate limits are commonly short bursts, not real capacity problems — the account
+    // can easily have headroom while a single request still gets a 429. Retry a couple of times
+    // honoring Retry-After before giving up.
+    if (res.status === 429 && attempt < MAX_ATTEMPTS) {
+      const detail = await res.text().catch(() => '');
+      const wait = retryDelayMs(res, attempt);
+      console.warn(
+        `ai chat (${baseUrl}): 429 on attempt ${attempt}/${MAX_ATTEMPTS}, retrying in ${wait}ms`,
+        detail.slice(0, 500),
+      );
+      await new Promise((resolve) => setTimeout(resolve, wait));
+      continue;
+    }
+
+    const detail = await res.text().catch(() => '');
+    if (detail)
+      console.warn(`ai chat (${baseUrl}): request failed (${res.status})`, detail.slice(0, 500));
+    throw mapErrorResponse(res);
+  }
+  throw new HttpError(429, 'ai.rate_limited');
+}

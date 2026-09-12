@@ -1,0 +1,16 @@
+*.env*
+# The template carries no secrets and is what the README tells you to copy.
+!.env.example
+# The Capacitor build's API origin. No secrets, and it MUST be committed: without it a CI build
+# silently produces a bundle with an empty VITE_API_BASE, which makes the app call itself instead
+# of the API — sign-in then hangs on the login screen with no error.
+!web/.env.app
+deploy.bat
+node_modules/
+dist/
+dev-dist/
+# Playwright output: the HTML report and per-run traces/screenshots.
+playwright-report/
+test-results/
+*.ps1
+codebase.md

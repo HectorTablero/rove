@@ -1,0 +1,104 @@
+apply plugin: 'com.android.application'
+
+// Release signing lives in an untracked keystore.properties next to this file:
+//   storeFile=diary-release.keystore
+//   storePassword=...
+//   keyAlias=diary
+//   keyPassword=...
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = file('keystore.properties')
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+}
+
+// Overridden by CI via -PappVersionCode/-PappVersionName; local builds default to 1/"1.0".
+def appVersionCode = project.hasProperty('appVersionCode') ? (project.appVersionCode as Integer) : 1
+def appVersionNameValue = project.hasProperty('appVersionName') ? project.appVersionName : "1.0"
+
+/* The host whose https:// links this app opens (see the App Links intent-filter in
+   AndroidManifest.xml). It must match the origin the app talks to — web/.env.app's VITE_API_BASE —
+   because that is the server answering /.well-known/assetlinks.json, and Android will not verify
+   the link against anything else. Overridable with -PappHost for a fork or a staging build. */
+def appHostValue = project.hasProperty('appHost') ? project.appHost : "diary.tablerus.es"
+
+android {
+    namespace = "es.tablerus.diary"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "es.tablerus.diary"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode appVersionCode
+        versionName appVersionNameValue
+        manifestPlaceholders = [appHost: appHostValue]
+        /* The same host, reachable from code. The habits widget builds the https:// link it opens
+           the app with, and it has to be the host the App Links intent-filter above claims or the
+           link would not route — one property, two consumers, rather than the string appearing
+           twice and drifting. */
+        resValue "string", "app_host", appHostValue
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
+    buildTypes {
+        release {
+            /* R8, on. The web layer is the part of this app that changes; the native shell is
+               mostly other people's libraries, and shrinking it is the difference between an APK
+               that is mostly Play Services and one that is mostly this app.
+
+               proguard-android-optimize.txt rather than proguard-android.txt: the plain variant
+               exists specifically to disable the optimisation passes, and there is nothing here
+               that needs them off. See proguard-rules.pro for what has to be kept — Capacitor
+               resolves its plugins by name at runtime, so most of the native code has no static
+               reference pointing at it. */
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (keystorePropertiesFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

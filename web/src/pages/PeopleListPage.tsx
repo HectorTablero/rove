@@ -1,0 +1,566 @@
+import type { PersonDto, PersonListItem } from '@diary/shared';
+import { ongoingEvents, pendingEventFollowUps } from '@diary/shared';
+import {
+  BellRing,
+  Briefcase,
+  CalendarClock,
+  Check,
+  ContactRound,
+  Hash,
+  MessageCircle,
+  MessageCircleQuestion,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Search,
+  StickyNote,
+  Users,
+} from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
+import { useMarkCheckup, usePeople, useTags, useTalkingPointCounts } from '@/api/hooks';
+import { EmptyState } from '@/components/common/EmptyState';
+import { HintTooltip } from '@/components/common/HintTooltip';
+import { TagChip } from '@/components/entry/chips';
+import { EntityPicker } from '@/components/entry/EntityPicker';
+import { PageContainer, PageHeader } from '@/components/layout/PageHeader';
+import { PersonForm } from '@/components/person/PersonForm';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
+import { notifyError, notifySuccess } from '@/lib/notify';
+import { isCheckupDue } from '@/lib/checkup';
+import { canImportContacts } from '@/lib/contacts';
+import { todayKey } from '@/lib/dates';
+import { isNative } from '@/lib/native';
+import { visibleTags } from '@/lib/tags';
+import { fuzzyIncludes, matchWindows, type MatchWindow } from '@/lib/tokens';
+import { cn } from '@/lib/utils';
+
+type SortOption = 'name' | 'talkingPoints' | 'lastContact';
+
+/** What a person matched the current search on, beyond their plain name — everything a
+    `PersonRow` needs to explain why it's showing up. Computed once per person in a single
+    pass (see `searchMatches` below) rather than one map per field. */
+interface PersonSearchMatch {
+  aliases: string[];
+  job: string | null;
+  notes: MatchWindow[] | null;
+}
+
+const MAX_NOTE_SNIPPETS = 3;
+
+const pendingEventCount = (person: PersonListItem, today: string): number =>
+  pendingEventFollowUps(person.events, today).length;
+
+/**
+ * Tier people by what their events demand of you: something you owe them an answer about, then
+ * something happening to them right now, then everyone else.
+ *
+ * One pass, so each tier keeps the order `sortPeople` gave it — the chosen sort never changes
+ * meaning, it just applies within each tier. And because the checkup grouping downstream is only
+ * a filter, this ordering survives into both of its groups too.
+ */
+function eventsFirst(people: PersonListItem[], today: string): PersonListItem[] {
+  const pending: PersonListItem[] = [];
+  const ongoing: PersonListItem[] = [];
+  const checkup: PersonListItem[] = [];
+  const rest: PersonListItem[] = [];
+
+  for (const person of people) {
+    if (pendingEventCount(person, today) > 0) pending.push(person);
+    else if (ongoingEvents(person.events, today).length > 0) ongoing.push(person);
+    else if (person.checkupIntervalDays !== null) checkup.push(person);
+    else rest.push(person);
+  }
+
+  return [...pending, ...ongoing, ...checkup, ...rest];
+}
+
+function sortPeople(people: PersonListItem[], sort: SortOption): PersonListItem[] {
+  const sorted = [...people];
+  switch (sort) {
+    case 'talkingPoints':
+      return sorted.sort(
+        (a, b) => b.talkingPointCount - a.talkingPointCount || a.name.localeCompare(b.name),
+      );
+    case 'lastContact':
+      return sorted.sort(
+        (a, b) =>
+          Date.parse(a.lastCheckupAt) - Date.parse(b.lastCheckupAt) || a.name.localeCompare(b.name),
+      );
+    case 'name':
+    default:
+      return sorted.sort((a, b) => a.name.localeCompare(b.name));
+  }
+}
+
+function PersonRow({
+  person,
+  onEdit,
+  today,
+  tagFilter,
+  match,
+  checkupPending = false,
+}: {
+  person: PersonListItem;
+  onEdit: (person: PersonListItem) => void;
+  today: string;
+  /** Tag ids currently being filtered on; anything else on the row is faded back. */
+  tagFilter: string[];
+  /** What the current search matched on this person outside their name — shown so a hit on
+      "Mum", a job title, or a note explains why the person is in the results. */
+  match?: PersonSearchMatch;
+  checkupPending?: boolean;
+}) {
+  const { t } = useTranslation();
+  const markCheckup = useMarkCheckup();
+  const ongoing = ongoingEvents(person.events, today);
+  const pending = pendingEventCount(person, today);
+  // Under a tag filter the matching tags claim the visible slots, so a person can't be shown
+  // without the tag that put them there. See lib/tags.ts.
+  const { shown: shownTags, hidden: hiddenTagCount } = visibleTags(person.tags, tagFilter);
+  return (
+    /* The row's link and its ⋯ menu are siblings, not nested. The menu trigger used to sit inside
+       the <Link>, which is invalid HTML — interactive content inside an anchor — and left screen
+       readers to guess what the control was; the `e.preventDefault()` on every menu item patched
+       the mouse behaviour only, never the semantics. Now the anchor stretches over the row via
+       `before:absolute inset-0` and the menu sits above it on the z-axis, so the whole row is
+       still one click target while the button is a genuine sibling with its own accessible name. */
+    <li className="group/row relative flex items-center gap-3 rounded-xl border bg-card p-4 shadow-xs transition-colors hover:bg-accent/40 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring">
+      <Link
+        to={`/people/${person.id}`}
+        className="flex min-w-0 flex-1 items-center gap-3 outline-none before:absolute before:inset-0 before:rounded-xl before:content-['']"
+      >
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary uppercase">
+          {person.name.slice(0, 2)}
+        </div>
+        <div className="min-w-0 flex-1">
+          {/* flex-wrap so the matched nickname sits beside the name when it fits, and only drops
+              to its own line — still above the tags — when it doesn't. */}
+          <div className="flex flex-wrap items-baseline gap-x-1.5">
+            <span className="max-w-full truncate font-medium">{person.name}</span>
+            {match && match.aliases.length > 0 && (
+              <span className="max-w-full truncate text-xs text-muted-foreground">
+                {t('people.alsoKnownAs')}{' '}
+                <span className="font-medium text-foreground">{match.aliases.join(', ')}</span>
+              </span>
+            )}
+            {match?.job && (
+              <span className="flex max-w-full items-center gap-1 truncate text-xs text-muted-foreground">
+                <Briefcase className="size-3 shrink-0" />
+                <span className="truncate font-medium text-foreground">{match.job}</span>
+              </span>
+            )}
+          </div>
+          {ongoing.length > 0 && (
+            /* A bare "3 ongoing events" says nothing useful. On the web the names are a hover
+               away; on the phone there's no hover to be had, so list them inline instead — the
+               count alone would be information the user could never reach. */
+            <HintTooltip
+              content={
+                <ul>
+                  {ongoing.map((event) => (
+                    <li key={event.id}>{event.title}</li>
+                  ))}
+                </ul>
+              }
+            >
+              <p
+                className={cn(
+                  'mt-0.5 flex w-fit max-w-full items-center gap-1 text-xs text-muted-foreground',
+                  ongoing.length > 1 &&
+                    !isNative &&
+                    'underline decoration-dotted underline-offset-2',
+                )}
+              >
+                <CalendarClock className="size-3 shrink-0" />
+                <span className="truncate">
+                  {ongoing.length === 1 || isNative
+                    ? ongoing.map((event) => event.title).join(' · ')
+                    : t('people.eventsOngoing', { count: ongoing.length })}
+                </span>
+              </p>
+            </HintTooltip>
+          )}
+          {person.tags.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-1">
+              {shownTags.map((tag) => (
+                <TagChip
+                  key={tag.id}
+                  tag={tag}
+                  // Fade the tags that aren't what you filtered on, so the ones that are jump out.
+                  className={
+                    tagFilter.length > 0 && !tagFilter.includes(tag.id) ? 'opacity-30' : undefined
+                  }
+                />
+              ))}
+              {hiddenTagCount > 0 && (
+                <span className="text-xs text-muted-foreground">+{hiddenTagCount}</span>
+              )}
+            </div>
+          )}
+          {match?.notes && match.notes.length > 0 && (
+            <div className="mt-1 flex items-start gap-1 text-xs text-muted-foreground">
+              <StickyNote className="mt-0.5 size-3 shrink-0" />
+              <p className="min-w-0 flex-1">
+                {match.notes.slice(0, MAX_NOTE_SNIPPETS).map((window, i) => (
+                  <span key={i}>
+                    {i > 0 && ' '}
+                    {window.segments.map((segment, j) =>
+                      segment.matched ? (
+                        <span key={j} className="font-medium text-foreground">
+                          {segment.text}
+                        </span>
+                      ) : (
+                        <span key={j}>{segment.text}</span>
+                      ),
+                    )}
+                  </span>
+                ))}
+                {match.notes.length > MAX_NOTE_SNIPPETS && (
+                  <span> +{match.notes.length - MAX_NOTE_SNIPPETS}</span>
+                )}
+              </p>
+            </div>
+          )}
+        </div>
+      </Link>
+
+      {/* Outside the link but under its stretched ::before, so these still read as part of the
+          row and clicking one still opens the profile. */}
+      {/* Same destructive tint the row already uses for an overdue checkup — an unanswered
+          "how did it go?" is the same kind of debt. */}
+      {pending > 0 && (
+        <Badge variant="outline" className="shrink-0 gap-1 border-destructive/40 text-destructive">
+          <MessageCircleQuestion className="size-3" />
+          {pending}
+        </Badge>
+      )}
+      {person.checkupIntervalDays != null && (
+        <span
+          className={
+            'hidden shrink-0 items-center gap-1 text-xs sm:flex' +
+            (checkupPending ? ' text-destructive' : ' text-muted-foreground')
+          }
+        >
+          <BellRing className="size-3" />
+          {t('people.checkupEvery')} {person.checkupIntervalDays} {t('settings.memories.days')}
+        </span>
+      )}
+      {person.talkingPointCount > 0 && (
+        <Badge variant="secondary" className="gap-1">
+          <MessageCircle className="size-3" />
+          {person.talkingPointCount}
+        </Badge>
+      )}
+
+      {/* `relative z-10` lifts the menu above the link's overlay — without it the anchor would
+          swallow the click and navigate instead of opening the menu. No preventDefault anywhere
+          now: nothing is inside the anchor to bubble to. */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="relative z-10 size-8 shrink-0 text-muted-foreground"
+            aria-label={t('people.personActions', { name: person.name })}
+          >
+            <MoreHorizontal className="size-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => onEdit(person)}>
+            <Pencil className="size-3.5" /> {t('people.editPerson')}
+          </DropdownMenuItem>
+          {person.checkupIntervalDays != null && (
+            <DropdownMenuItem
+              onClick={() =>
+                markCheckup.mutate(person.id, {
+                  onSuccess: () => notifySuccess(t('people.checkupMarkedDone')),
+                  onError: () => notifyError(t('errors.unknown')),
+                })
+              }
+            >
+              <Check className="size-3.5" /> {t('people.markCheckupNow')}
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </li>
+  );
+}
+
+export default function PeopleListPage() {
+  const { t } = useTranslation();
+  /* The badge counts come from their own query — they're the expensive half, and every other
+     screen that calls usePeople throws them away. Recombined here, where they're the only place
+     they're shown. Both feed the loading gate: 'talking-points' is a sort option, so rendering the
+     list before the counts land would order it by a column that is still all zeroes. */
+  const { data: basePeople, isLoading: peopleLoading } = usePeople();
+  const { data: talkingPointCounts, isLoading: countsLoading } = useTalkingPointCounts();
+  const isLoading = peopleLoading || countsLoading;
+  const people = useMemo(
+    () =>
+      basePeople?.map((person): PersonListItem => ({
+        ...person,
+        talkingPointCount: talkingPointCounts?.[person.id] ?? 0,
+      })),
+    [basePeople, talkingPointCounts],
+  );
+  const { data: tags } = useTags();
+  // The event follow-up maths is date-key based, so it needs today's *local* key.
+  const today = todayKey();
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState<SortOption>('name');
+  const [tagFilter, setTagFilter] = useState<string[]>([]);
+  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<PersonDto | null>(null);
+
+  /* What each person matched the query on, beyond their plain name: aliases, job title/company,
+     and notes all feed into one map in a single pass. This also doubles as the search rule
+     itself — a person is a hit if their name matches *or* any of these fields do, so searching
+     "Mum", a job title, or a phrase from a note all find the right person. Adding another
+     searchable field means adding one more computation here, not another parallel map. */
+  const searchMatches = useMemo(() => {
+    const matches = new Map<string, PersonSearchMatch>();
+    if (!query.trim()) return matches;
+    for (const person of people ?? []) {
+      const aliases = person.aliases.filter((alias) => fuzzyIncludes(alias, query));
+      const organization = [person.jobTitle, person.company].filter(Boolean).join(' · ');
+      const job = organization && fuzzyIncludes(organization, query) ? organization : null;
+      const notes = matchWindows(person.notes, query);
+      if (aliases.length > 0 || job || notes) matches.set(person.id, { aliases, job, notes });
+    }
+    return matches;
+  }, [people, query]);
+
+  const filtered = useMemo(() => {
+    const matching = (people ?? []).filter(
+      (p) =>
+        (!query || fuzzyIncludes(p.name, query) || searchMatches.has(p.id)) &&
+        (tagFilter.length === 0 || p.tags.some((tag) => tagFilter.includes(tag.id))),
+    );
+    return eventsFirst(sortPeople(matching, sort), today);
+  }, [people, query, sort, tagFilter, searchMatches, today]);
+
+  // Pending checkups always float to the top, as their own category; the chosen
+  // sort still applies within each group since it's just a filter over `filtered`.
+  const pendingCheckups = useMemo(() => filtered.filter(isCheckupDue), [filtered]);
+  const rest = useMemo(
+    () => (pendingCheckups.length > 0 ? filtered.filter((p) => !isCheckupDue(p)) : filtered),
+    [filtered, pendingCheckups],
+  );
+
+  const toggleTagFilter = (id: string) =>
+    setTagFilter((prev) => (prev.includes(id) ? prev.filter((v) => v !== id) : [...prev, id]));
+
+  return (
+    <PageContainer>
+      <PageHeader
+        title={
+          <span className="flex items-center gap-2">
+            {t('people.title')}
+            {people && people.length > 0 && (
+              <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-muted text-[12px] font-medium text-muted-foreground">
+                <span className="sr-only">{t('people.count', { count: people.length })}</span>
+                <span className="px-2">{people.length}</span>
+              </span>
+            )}
+          </span>
+        }
+        actions={
+          <Button size="sm" className="gap-1.5" onClick={() => setAdding(true)}>
+            <Plus className="size-4" />
+            {t('people.addPerson')}
+          </Button>
+        }
+      />
+
+      {people && people.length > 0 && (
+        <div className="mb-4 flex flex-col gap-2">
+          <div className="relative">
+            <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t('common.search')}
+              className="pl-9"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={sort} onValueChange={(v) => setSort(v as SortOption)}>
+              {/* The "Sort by:" span is inside the trigger, which makes this look named already.
+                  It is not — a combobox takes no name from its contents, so that span reads as part
+                  of the *value* and the control itself stays anonymous. */}
+              <SelectTrigger size="sm" className="w-fit" aria-label={t('people.sortBy')}>
+                <span className="text-muted-foreground">{t('people.sortBy')}:</span>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name">{t('people.sortName')}</SelectItem>
+                <SelectItem value="talkingPoints">{t('people.sortTalkingPoints')}</SelectItem>
+                <SelectItem value="lastContact">{t('people.sortLastContact')}</SelectItem>
+              </SelectContent>
+            </Select>
+            {tags && tags.length > 0 && (
+              <EntityPicker
+                trigger={
+                  <Button variant="outline" size="sm" className="h-7 gap-1">
+                    <Hash className="size-3.5" />
+                    {t('people.filterByTag')}
+                    {tagFilter.length > 0 && (
+                      <span className="text-primary">({tagFilter.length})</span>
+                    )}
+                  </Button>
+                }
+                items={tags.map((tag) => ({ id: tag.id, label: tag.name, color: tag.color }))}
+                selectedIds={tagFilter}
+                onToggle={toggleTagFilter}
+                placeholder={t('tags.namePlaceholder')}
+              />
+            )}
+          </div>
+          {tagFilter.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {tagFilter.map((id) => {
+                const tag = tags?.find((tg) => tg.id === id);
+                return tag ? (
+                  <TagChip key={id} tag={tag} onRemove={() => toggleTagFilter(id)} />
+                ) : null;
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="flex flex-col gap-3">
+          <Skeleton className="h-16" />
+          <Skeleton className="h-16" />
+          <Skeleton className="h-16" />
+        </div>
+      ) : filtered.length > 0 ? (
+        pendingCheckups.length > 0 ? (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-1.5 px-1 text-xs font-medium text-muted-foreground">
+                <BellRing className="size-3.5 text-destructive" />
+                {t('people.checkupsPending', { count: pendingCheckups.length })}
+              </div>
+              <ul className="flex flex-col gap-2">
+                {pendingCheckups.map((person) => (
+                  <PersonRow
+                    key={person.id}
+                    person={person}
+                    onEdit={setEditing}
+                    today={today}
+                    tagFilter={tagFilter}
+                    match={searchMatches.get(person.id)}
+                    checkupPending
+                  />
+                ))}
+              </ul>
+            </div>
+            {rest.length > 0 && (
+              <ul className="flex flex-col gap-2 border-t pt-4">
+                {rest.map((person) => (
+                  <PersonRow
+                    key={person.id}
+                    person={person}
+                    onEdit={setEditing}
+                    today={today}
+                    tagFilter={tagFilter}
+                    match={searchMatches.get(person.id)}
+                  />
+                ))}
+              </ul>
+            )}
+          </div>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {filtered.map((person) => (
+              <PersonRow
+                key={person.id}
+                person={person}
+                onEdit={setEditing}
+                today={today}
+                tagFilter={tagFilter}
+                match={searchMatches.get(person.id)}
+              />
+            ))}
+          </ul>
+        )
+      ) : people && people.length > 0 ? (
+        <EmptyState icon={Search} title={t('common.noResults')} />
+      ) : (
+        <EmptyState
+          icon={Users}
+          title={t('people.noPeople')}
+          description={t('people.noPeopleDescription')}
+        >
+          <div className="mt-2 flex flex-wrap justify-center gap-2">
+            <Button size="sm" className="gap-1.5" onClick={() => setAdding(true)}>
+              <Plus className="size-4" />
+              {t('people.addPerson')}
+            </Button>
+            {canImportContacts() && (
+              <Button asChild size="sm" variant="outline" className="gap-1.5">
+                <Link to="/people/import">
+                  <ContactRound className="size-4" />
+                  {t('import.title')}
+                </Link>
+              </Button>
+            )}
+          </div>
+        </EmptyState>
+      )}
+
+      {/* Contacts are only readable inside the Android app, so this stays hidden on the web. */}
+      {canImportContacts() && filtered.length > 0 && (
+        <div className="mt-6 flex justify-center border-t pt-6">
+          <Button asChild variant="outline" size="sm" className="gap-1.5">
+            <Link to="/people/import">
+              <ContactRound className="size-4" />
+              {t('import.title')}
+            </Link>
+          </Button>
+        </div>
+      )}
+
+      <Dialog open={adding} onOpenChange={setAdding}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('people.addPerson')}</DialogTitle>
+          </DialogHeader>
+          {adding && <PersonForm onDone={() => setAdding(false)} />}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t('people.editPerson')}</DialogTitle>
+          </DialogHeader>
+          {editing && <PersonForm person={editing} onDone={() => setEditing(null)} />}
+        </DialogContent>
+      </Dialog>
+    </PageContainer>
+  );
+}

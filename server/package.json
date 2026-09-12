@@ -1,0 +1,32 @@
+{
+  "name": "@diary/server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch-path=src --watch-path=../shared/src --import tsx src/index.ts",
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@diary/shared": "*",
+    "@hono/node-server": "^2.1.0",
+    "@hono/node-ws": "^1.3.1",
+    "@hono/zod-validator": "^0.9.0",
+    "@logtail/node": "^0.5.8",
+    "better-auth": "^1.2.0",
+    "dotenv": "^17.4.2",
+    "fractional-indexing": "^4.0.0",
+    "hono": "^4.7.0",
+    "mongodb": "^7.5.0",
+    "mongoose": "^9.9.1",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "tsup": "^8.5.0",
+    "tsx": "^4.19.0",
+    "vitest": "^3.2.7"
+  }
+}

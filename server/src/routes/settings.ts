@@ -1,0 +1,40 @@
+import { settingsSchema } from '@diary/shared';
+import { Hono } from 'hono';
+import type { AppEnv } from '../middleware/session';
+import { jsonValidator } from '../middleware/validate';
+import { Tag } from '../models/tag';
+import { UserSettings } from '../models/userSettings';
+import { getSettings } from '../services/settingsService';
+
+async function ownedTagIds(userId: string, ids: string[]) {
+  if (!ids.length) return [];
+  const tags = await Tag.find({ userId, _id: { $in: ids } }, '_id').lean();
+  return tags.map((t) => t._id);
+}
+
+/* Write only — the client reads settings from its Dexie `meta` row, refreshed by GET /sync. */
+export const settingsRouter = new Hono<AppEnv>().put(
+  '/',
+  jsonValidator(settingsSchema),
+  async (c) => {
+    const userId = c.get('userId');
+    const { groqApiKey, openRouterApiKey, cerebrasApiKey, ...input } = c.req.valid('json');
+    await UserSettings.findOneAndUpdate(
+      { userId },
+      {
+        // Both keys are optional in the schema so replayed offline payloads from older
+        // clients (which never had the fields) can't wipe out the stored keys.
+        $set: {
+          ...input,
+          broadcastTagIds: await ownedTagIds(userId, input.broadcastTagIds),
+          ...(groqApiKey !== undefined ? { groqApiKey } : {}),
+          ...(openRouterApiKey !== undefined ? { openRouterApiKey } : {}),
+          ...(cerebrasApiKey !== undefined ? { cerebrasApiKey } : {}),
+        },
+        $setOnInsert: { userId },
+      },
+      { upsert: true },
+    );
+    return c.json(await getSettings(userId));
+  },
+);

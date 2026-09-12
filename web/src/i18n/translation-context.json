@@ -1,0 +1,320 @@
+{
+  "about": [
+    "Companion to the files in ./locales. Nothing imports this at runtime — it exists so that whoever writes the next language (person or model) knows where a string appears, what it is allowed to say, and which jokes are meant to be replaced rather than translated.",
+    "scripts/checkI18n.ts enforces that it stays honest: every namespace in en.json needs an entry with a non-empty \"where\", every flavour-text list needs its own note, and every shipped locale needs an entry in languageNotes. Adding a namespace without documenting it fails the build."
+  ],
+  "howToAddALanguage": [
+    "1. Copy locales/en.json to locales/<code>.json and translate it. English is the reference: it's where the source strings are authored, and what checkI18n compares against.",
+    "2. Add one line to LANGUAGES in i18n/index.ts, labelled with the language's own endonym (Italiano, 日本語 — not \"Italian\", \"Japanese\"). resources, supportedLngs and the Settings picker are all derived from that array.",
+    "3. Add a languageNotes entry below, covering at least the plural shape and the register you chose.",
+    "4. Drop the circular flag for it into i18n/flags/<code>.svg — see the README there for where they come from. It is picked up by filename; a language with no file just shows without one.",
+    "5. Run `npm run check:i18n -w web`. It verifies key parity, interpolation parity per plural variant, and this file's coverage.",
+    "Plural shape is the one thing that bites. i18next looks up `key_<category>` for the target language and falls back to the bare `key` when that's absent. So: a language with only `other` (Japanese, Chinese) can use bare keys alone; a language with one/other (English, Italian) needs bare + `_other`, because a `_other`-only key resolves to the raw key name at count 1; and `_many` (Spanish, Italian, ≥1,000,000) falls back to the bare *singular* if omitted, which is why sync.offlinePending spells it out."
+  ],
+  "conventions": {
+    "interpolation": "{{name}}, {{count}}, {{days}}, {{age}}, {{months}}, {{version}} etc. are substituted verbatim. Keep every one the reference uses; word order may move freely around them. checkI18n compares the set per key, treating variables English omits from one plural variant as optional.",
+    "markup": "diary.birthdayLine and birthdayLineWithAge contain a <mention> element rendered as a styled @mention chip. Keep the tag and its contents intact; move it within the sentence as the grammar needs.",
+    "sigils": "@ marks a person and # marks a tag; both are typed literally into entry text and parsed by lib/tokens.ts. Never localise or space them away — \"@人物\" is correct, \"@ 人物\" is not.",
+    "brandNames": "Google, WhatsApp, Groq, OpenRouter, Cerebras, Markdown, Android, Tamagotchi and API key placeholders (gsk_…, sk-or-…, csk-…) stay as they are.",
+    "examplePlaceholders": "Example phone numbers are localised to a plausible number for the language's main market, keeping the international format the hint is teaching. Email placeholders stay at example.com (an RFC-reserved domain).",
+    "ellipsis": "Placeholders and in-progress labels use the single character … , not three dots.",
+    "length": "These strings sit in chips, buttons and table cells. Aim at or below the English length; a chip truncates with an ellipsis rather than wrapping."
+  },
+  "tone": {
+    "default": "Plain, warm, second person, no exclamation marks. This is a private diary, not a productivity tool — it should never sound like it is grading the user. Prefer the everyday word over the technical one, except in Settings where precision matters more.",
+    "flavourText": "notifications.dailyReminderBodies, notifications.birthdayBodies and people.checkupBodies are picked at random (see pickTemplate in lib/notifications.ts) and are the only deliberately funny strings in the app. Translate the *joke*, not the words: swap in a reference that lands in the target culture, and keep globally-recognised ones (Tamagotchi, achievement unlocked, breaking news) where they already work.",
+    "flavourTextLimits": "Tease, never scold or guilt-trip. The user has done nothing wrong by not writing for a few days. No streak-shaming, no implication that a friendship is failing, nothing about the user being a bad friend — nudge with affection. Keep them short enough to survive a lock-screen notification, roughly one or two short sentences.",
+    "genderNeutrality": "{{name}} is any person of unknown gender, and the reader's gender is unknown too. In gendered languages, avoid constructions that force agreement on either: prefer verbs and nouns that don't inflect, restructure rather than pick a default, and never ship a slash form (amico/a)."
+  },
+  "namespaces": {
+    "app": {
+      "where": "The name and one-line strapline, on the sign-in screen and in the browser/app title.",
+      "keys": {
+        "name": "The product name. Translated rather than kept as a brand — this is a personal app, not a trademark."
+      }
+    },
+    "nav": {
+      "where": "Sidebar on desktop, bottom tab bar on phones. The tightest space in the app — one or two words, no verbs.",
+      "keys": {
+        "diary": "Labels the entry list; distinct from app.name so the tab can be shorter than the product name.",
+        "threads": "See the threads namespace for the concept and the term chosen per language.",
+        "allPlugins": "Last item in the phone \"More\" menu when more plugins are enabled than fit in it; goes to the Plugins list in Settings."
+      }
+    },
+    "auth": {
+      "where": "Sign-in screen, and the sign-out button at the bottom of Settings.",
+      "keys": {
+        "continueWithoutAccount": "Starts a local-only diary with no server account. Should sound like a real choice, not a downgrade."
+      }
+    },
+    "sync": {
+      "where": "A status pill in the header, and toasts when the connection or session state changes.",
+      "keys": {
+        "offlinePending": "Counted. Very tight — it sits in a pill beside the header. \"Offline\" plus a count of queued changes."
+      }
+    },
+    "update": {
+      "where": "A banner when a new app version is available.",
+      "keys": {
+        "needsInstall": "{{version}} is a semver string; keep the literal \"v\" prefix next to it."
+      }
+    },
+    "notifications": {
+      "where": "System notifications (Android via Capacitor). Titles show on the lock screen, truncated hard; bodies get a little more room.",
+      "keys": {
+        "dailyReminderTitle": "Fires when nothing has been written today. Keep it under about 30 characters.",
+        "dailyReminderBodies": "Flavour text — a random one is picked each day. Ten variants, all on the theme \"today is still blank\". Replace the culture-specific ones freely: the Italian set nods to Nanni Moretti's Caro Diario, the Japanese to 三日坊主 (giving up on day three), the Chinese to 断更/催更 (a serialised story going quiet, and readers demanding the next chapter) and 打卡 (habit check-ins). Never scold — see tone.flavourTextLimits.",
+        "birthdayTitle": "The 🎂 is intentional and worth keeping; notification titles are otherwise plain text.",
+        "birthdayBodies": "Flavour text — seven variants nudging the user to send a message. Warm and celebratory, never guilt-inducing. \"Confetti emojis\" is worth localising to whatever people actually send: the Japanese set uses LINE スタンプ, the Chinese 撒花的表情."
+      }
+    },
+    "common": {
+      "where": "Shared button and control labels across every dialog, form and toast.",
+      "keys": {
+        "cancel": "Dismisses a dialog. In several languages this is the same word as `undo`; that's fine, they never appear together (cancel is in dialogs, undo is in toasts).",
+        "undo": "The action button on a toast, reversing what just happened.",
+        "less": "Collapses an expanded list. Pairs with `more`; both must fit a small ghost button.",
+        "optional": "Lowercase on purpose — it renders inline beside a field label.",
+        "skipToContent": "The first link on the page, visible only while focused: it jumps a keyboard user past the sidebar. Never seen by most people, but read aloud by screen readers, so it must be a plain instruction rather than a clever one."
+      }
+    },
+    "importance": {
+      "where": "The 1–5 importance picker on an entry, the Settings decay table, and the legend of the Markdown export.",
+      "keys": {
+        "levels": "Five ranks from 1 (life-changing) to 5 (routine). Single words or very short phrases; they sit beside a coloured dot in a narrow picker. They also drive how long an entry stays a talking point, so the ordering must read as clearly descending.",
+        "descriptions": "One line each, shown as help text. Concrete examples beat abstractions — localise the examples themselves (\"moving abroad\") if a different one is more relatable."
+      }
+    },
+    "onboarding": {
+      "where": "The first-run tour, shown once per device over the sign-in screen and replayable from Settings > General. Five short screens — language, writing an entry, the five importance levels, people and talking points, one topic across many days — plus a sixth on phones for the daily reminder. Everything on screen is a mock: no real diary is involved, which is why the example strings below are allowed to invent a person and a colleague's job move.",
+      "keys": {
+        "progress": "Screen-reader only, never drawn. {{total}} is 5 on the web and 6 on a phone, so the sentence must not assume a fixed number.",
+        "start": "The last screen's button, which ends the tour and reveals the sign-in screen. Not \"Finish\" — it points forward at the app, not back at the tour.",
+        "exampleLabel": "Screen-reader only, read out before each mock so the example diary is not mistaken for the user's own. One word.",
+        "language": "Screen one, and therefore the first words of the app: a welcome plus the question the picker under it answers. The user may not read the language it is currently in — keep it short and keep the picker's own labels (which are always in their own language) doing the real work.",
+        "writing": "Teaches the @ and # sigils and sub-entries. `person` and `tag` each begin by naming the literal character to type; keep it literal and unspaced from what follows it, exactly as in diary.composerPlaceholder.",
+        "importance": "Introduces the 1–5 scale. The five level names and descriptions themselves come from the `importance` namespace — this is only the framing, and it has to convey that the number decides longevity, not merely category.",
+        "people": "The app's central idea, in two sentences. `decay` refers to levels 1 and 5 by number, so it has to survive alongside whatever those levels are called in the importance namespace. Affectionate and practical, never a productivity pitch.",
+        "threads": "The last web step: a named group of entries about one ongoing topic spanning many days. Uses the term from the `threads` namespace (the same word as threads.title in your language) — say it's the thing tying different days of work together, never a chat thread.",
+        "reminders": "Phone only. Names Settings so the user knows the choice is not final — use the same word as settings.title in your language.",
+        "demo": "The fake diary itself. `person` and `tag` are made-up example names: localise them to something ordinary in your language (a common given name, an everyday tag) rather than transliterating. CRITICAL: in the entry strings, {{person}} and {{tag}} must stay glued to the @ and # with no space between — \"@{{person}}\", never \"@ {{person}}\" — because the app highlights a mention by matching the text immediately after the sigil against the name, and a space silently turns the token into plain text on a screen whose entire subject is that it doesn't. Spaces around the *outside* of the token are fine and are what ja and zh already do.",
+        "demo.otherTags": "Four extra tags for the demo, displaying things users may use the app for. They can be changed if they become too wide for the screen demo (eg. es uses 'buceo' (diving) instead of 'investigación' (research) to save space)."
+      }
+    },
+    "diary": {
+      "where": "The day view: the entry list, the composer, and the entry edit/delete dialogs.",
+      "keys": {
+        "composerPlaceholder": "Teaches the @ and # sigils. Keep both literal characters.",
+        "willBeSaidTo": "Labels checkboxes over the people an entry mentions. Creating an entry marks it as already told to whoever it mentions, and these let the user untick that.",
+        "subEntries": "Counted. Entries nest up to three levels; a sub-entry is a detail hanging off a parent entry.",
+        "birthdayLine": "Contains the <mention> element — see conventions.markup. Shown as a synthetic row in the day view on someone's birthday, not a real entry.",
+        "createTag": "Inline \"create this one\" row in the tag picker, with {{name}} being whatever the user has typed so far.",
+        "suggestions": "Names the @mention/#tag autocomplete list for screen readers only — never drawn on screen. One word.",
+        "entryActions": "Invisible label on the ⋯ menu of an entry row, used on the diary and on a person's talking points. {{text}} is the entry's own first line, cut to 40 characters, so that a screen reader hears which row's menu this is. Quote it the way the language quotes titles (see people.eventDeleteConfirmTitle)."
+      }
+    },
+    "people": {
+      "where": "The people list, and every tab of a person's profile: talking points, events, memories, history. The largest namespace.",
+      "keys": {
+        "talkingPoints": "The core concept: things from the diary worth telling this person, ranked and decaying over time. Needs a term that reads as \"things worth mentioning\", not \"agenda items\" — Italian uses Spunti, Japanese 話のネタ, Chinese 谈资. It must not collide with the word chosen for threads.",
+        "markSaid": "Records that this entry has now been told to this person. The single most-pressed button in the app; keep it short enough for a small outline button.",
+        "unmarkSaid": "Reverses a said-mark, in the \"Already told\" list. Reads as a state (\"not said yet\"), not a command.",
+        "hideForPerson": "Suppresses one entry for one person forever. {{name}} is the person.",
+        "matchMention": "Badge explaining *why* an entry was suggested: it names the person directly. Sits beside matchTag and matchBroadcast in a narrow badge.",
+        "matchTag": "Badge: the entry and the person share a tag.",
+        "matchBroadcast": "Badge: the entry is broadcast to everyone regardless of match.",
+        "checkupReminders": "\"Checkup\" here means getting back in touch with someone after a while, not a medical check. Choose a word for reaching out, not for inspecting.",
+        "checkupDueTitle": "Notification title when someone is overdue. {{name}} is the person.",
+        "checkupDigestTitle": "Counted. Stands in for the whole set when more than three people are overdue at once — importing an address book otherwise means one buzz per person, all in the same second. Only ever seen with a count of four or more, so the singular form exists purely for i18next's lookup.",
+        "checkupDigestBody": "{{names}} is a already-formatted list of at most three names, built with Intl.ListFormat in the target language, so the sentence has to work with \"Ana, Bea and Chris\" dropped into it. Same absolute limit as checkupBodies: affectionate about the silence, never a suggestion that the user is neglecting anyone — and with several people named at once that line is easier to cross.",
+        "checkupBodies": "Flavour text — twelve variants, the funniest set in the app, shown when it's been {{days}} days since the user last told this person anything. Both {{name}} and {{days}} must appear. Localise the references: Tamagotchi is kept everywhere because it's globally understood (and native in Japanese, たまごっち); the read-receipt joke becomes visto e non risposto in Italian, 既読スルー in Japanese, 已读不回 in Chinese; \"radio silence\" becomes 音信不通 / 潜水. Absolute limit: affectionate teasing about the silence, never a suggestion that the user is neglecting a friendship.",
+        "events": "Things that happened *to* this person — a trip, an exam, surgery — which the app later reminds the user to ask about. Not calendar appointments, and not the user's own entries.",
+        "eventFollowUpDescription": "Shown when events have just finished. The tone is \"ask them how it went\".",
+        "aliases": "Extra names one person answers to, widening @mention autocomplete. \"Other names\" rather than \"aliases\" if that sounds less bureaucratic in the language.",
+        "addAlias": "Invisible label on the \"+\" button beside the nickname field. Imperative, matching common.add's register.",
+        "personActions": "Invisible label on the ⋯ menu of a person, in the list and on the profile header. {{name}} is there so twenty rows read as twenty distinct controls.",
+        "alsoKnownAs": "An inline prefix before a nickname list. Very short; a gendered participle (Italian detto/detta) must be avoided here.",
+        "phoneInternationalHint": "Teaches the international format. The example number is localised per language — keep the leading + and the country code.",
+        "birthdayInDays": "Counted, shown as a countdown chip beside a name.",
+        "ageYears": "Counted, used both standalone and inside a birthday line.",
+        "checkupsPending": "Counted badge on the People nav item and the list header."
+      }
+    },
+    "tags": {
+      "where": "The Tags management page, plus tag pickers throughout. Tags attach to both entries and people, and a shared tag is what makes an entry a talking point for someone.",
+      "keys": {
+        "color": "Tags are user-coloured; threads deliberately are not.",
+        "usage": "{{entries}} and {{people}} are counts of each. Rendered as one dense line under the tag name."
+      }
+    },
+    "threads": {
+      "where": "The Threads page, the thread picker in the composer, the \"Add to thread\" dialog, and the grouped headers on a person's talking-points tab.",
+      "keys": {
+        "title": "A thread is a named group of entries about one ongoing topic spanning many days — a project, a house move, a research effort — so the whole topic can be caught up on in one action. Not a discussion thread and not a tag. Pick a word for a continuing storyline: Italian Filoni (as in filone narrativo), Japanese スレッド, Chinese 话题. Beware false friends — Chinese 线程 means a CPU thread. Must not collide with the word chosen for people.talkingPoints.",
+        "toTell": "Counted, in a thread's group header: how many of its entries this person hasn't been told yet. Extremely tight — it shares a row with the thread name and a button.",
+        "markAllSaid": "Marks every currently-suggested entry in this thread as told to this person, in one click. Fits a small button next to toTell.",
+        "markedAllSaid": "Confirmation toast. {{count}} entries in the thread named {{name}}.",
+        "limitReached": "{{count}} is the per-entry thread cap (MAX_THREADS_PER_ENTRY in shared/src/constants.ts).",
+        "deleteConfirmDescription": "Reassures that deleting a thread only ungroups: the entries and every said-mark survive. Worth keeping that reassurance explicit."
+      }
+    },
+    "calendar": {
+      "where": "The month calendar and its day summaries, and the shared date picker that replaced every native date input.",
+      "keys": {
+        "previous": "Screen-reader label on the month arrows, shared by the Calendar page and the date picker. \"Month\", not \"page\".",
+        "onThisDay": "Entries written on this same date in previous years — any year, not specifically last year. Most languages have a set media phrase for this: Italian Accadde oggi, Chinese 那年今日, Japanese 過去の今日.",
+        "entries": "Label on the calendar's default tab, beside a book icon, in a row of tabs that otherwise names one enabled plugin each (\"Habits\", say) — each plugin replaces the calendar's shading with its own per-day data when picked. This is the tab that switches back to it, so it has to read as a peer of those plugin names: a plain noun for \"what's in the diary itself\", matching entriesCount's word for the same thing rather than something like \"Diary\" or \"Default\"."
+      }
+    },
+    "search": {
+      "where": "The search page, its filter panel and result count.",
+      "keys": {
+        "from": "A date-range start. Same word as markdownExport.from and people.eventStart in English, but each may differ per language — they're separate keys on purpose.",
+        "placeholder": "Sits inside the search input."
+      }
+    },
+    "settings": {
+      "where": "The Settings page. The one place where precision beats warmth: several strings explain the scoring model, and a vague translation makes the controls unusable.",
+      "keys": {
+        "general": "The everyday preferences, above the scoring ones: theme, language, first day of the week, and whether routine confirmations are shown. weekStartAuto's {{day}} is a weekday name already translated by date-fns, so it arrives in the target language and in that language's own casing — don't force a capital on it in the string. quietNotifications is about the in-app toasts only, never the system reminders in the notifications namespace; its description has to make clear that errors are still shown, or it reads as a switch for hiding problems. savedOnDevice confirms the settings in this section that stay on the phone or browser instead of following the account — it has to name the device, since \"Saved\" alone is what the synced settings already say. timeFormat24 and timeFormat12 name the two notations rather than showing a sample time, so they must read as a *kind* of clock and not as a time: whatever the language calls the 24-hour and 12-hour clocks, with the language's own AM/PM marks in the parenthesis (a. m./p. m., 午前/午後, 上午/下午). timeFormatAuto nests one of them in {{format}}, so both have to survive being read inside another sentence. replayOnboarding is a button that reopens the first-run tour (see the onboarding namespace); it must read as \"show me that again\" rather than as a reset, because pressing it changes no setting.",
+        "reminders": "The notifications the phone itself sends, and the only settings block that never appears on the web. Device-local: the times are this handset's local time and do not follow the account, which the description has to convey without saying \"localStorage\". Quiet hours are narrower than they sound — they only defer reminders with no time of their own, never the ones the user set, and quietHoursDescription is where that has to land. sendAt is not a sentence but the word immediately before a time control, so it takes whatever form the language uses to introduce a clock time (\"At\", \"A las\", \"Alle\") — or simply the word for the time itself where a preposition would dangle. exactAlarms is Android's own wording for a system permission; keep it recognisable against the phone's settings screen.",
+        "entries": "Defaults for writing a new entry, plus everything about sub-entries behind this block's Advanced disclosure (expanded here, nestingDepth in the advanced namespace). autoSaidDescription must make clear the tick box is always offered and this only decides how it starts — the setting is easy to read as \"stop asking me\", which it is not.",
+        "advanced": "No longer a section of its own: `title` now labels the \"Advanced\" disclosure that each settings block can carry, and the rest are the settings that live behind one — wifiOnly under General, nestingDepth under New entries. So `title` has to work as a one-word button repeated several times down the page, not as a heading. wifiOnlyDescription should undersell the benefit rather than oversell it: the diary is text, and someone turning this on expecting big savings has misunderstood it.",
+        "decay": "Explains half-life decay of talking points. \"Half-life\" is the literal physics term and should use the language's established one (emivita, 半減期, 半衰期) — the mechanic really is exponential decay.",
+        "memories": "Old entries about a person resurfacing as shared memories after a threshold age.",
+        "broadcast": "Suggesting an entry to everyone rather than only to matching people.",
+        "checkups": "Account-wide default for the per-person checkup interval.",
+        "ai": "Optional voice-to-entry assistant. Provider names and key prefixes are literal; apiKeyHint and its siblings end mid-sentence because a link follows in the UI — keep them ending in a way that a URL can follow.",
+        "markdownExport": "Exports part of the diary as Markdown intended to be pasted into an AI agent, not read as a backup.",
+        "data": "Backup, restore and export. \"Backup\" as a noun may stay a loanword where that's what people say.",
+        "deleteAccount": "The one irreversible action in the app: it erases the diary from the server and closes the account. Precision over softness everywhere — a euphemism here costs someone their diary. Say plainly that it cannot be undone, and keep bulletDevices honest: other devices really do keep their copy until they sign out, and the string must not imply this reaches them. confirmWord is TYPED BY THE USER before the button unlocks, so it has to be something the language’s ordinary keyboard produces directly: Latin-script languages use their own word (DELETE, BORRAR, ELIMINA), but Japanese and Chinese deliberately keep the Latin \"DELETE\" rather than 削除/删除, because typing those needs an IME conversion and a confirmation nobody can type is a lockout, not a safeguard. If you change confirmWord, typeToConfirm shows it in {{word}} and the input placeholder repeats it, so they stay in step automatically. biometricsReason is shown by the operating system in its own biometric prompt, so it must stand alone with no app context around it. The deletion asks for the Google account again when the sign-in behind it has gone stale, and that flow owns four keys. signInDescription and signInWhy are the ask: state plainly that nothing has been deleted yet, because this appears *after* the user has already typed the word and passed the device lock, and an unexplained detour to Google at that moment reads as a failure. resumedDescription is what the web comes back to after that detour, so it must sound like an arrival rather than a fresh start — the user did not navigate here and needs to recognise where they are in one line. signInFailed is a dead end and must say, as failed says, that nothing was deleted. lockDescription is the device passcode, which is a different check from the Google one and should not borrow its wording.",
+        "plugins.description": "Under the Plugins heading in Settings. Says the switch follows the account, because the reminder switches inside each plugin do not — that distinction is the one thing about plugins a user has to know.",
+        "plugins.hasData": "Shown instead of the description for a plugin that is switched OFF but already has data on the account — usually because it was enabled on another device. Neutral, not a prompt to enable it."
+      }
+    },
+    "errors": {
+      "where": "Toasts and the crash screen.",
+      "keys": {
+        "reauth_required": "A server error code, rendered as a toast. The account deletion needs a sign-in only minutes old; this is what the user sees when confirming with Google did not produce one. It is an instruction, not a scolding, and the deletion has not happened.",
+        "crash": "The last-resort error boundary. Its job is to reassure that nothing was lost — keep the promise that entries are safe on the device."
+      }
+    },
+    "entry": {
+      "where": "Error codes, not UI labels. The server returns these keys as-is (e.g. 'entry.not_found') and the client renders t(code), so the key names must never change — only the messages.",
+      "keys": {
+        "max_depth": "Raised when nesting an entry deeper than three levels."
+      }
+    },
+    "person": {
+      "where": "Error codes returned by the server for people. See the entry namespace.",
+      "keys": {
+        "duplicate_name": "Two people can't share a name, because @mentions would be ambiguous. Worth hinting at the reason."
+      }
+    },
+    "tag": {
+      "where": "Error codes returned by the server for tags. See the entry namespace.",
+      "keys": {
+        "duplicate_name": "Enforced by a unique index per account."
+      }
+    },
+    "thread": {
+      "where": "Error codes returned by the server for threads. See the entry namespace.",
+      "keys": {
+        "duplicate_name": "Enforced by a unique index per account."
+      }
+    },
+    "ai": {
+      "where": "The voice-entry button, its recording states, and the suggestion review dialog. Also the error codes the AI routes return.",
+      "keys": {
+        "thinking": "Shown while the model turns a transcript into draft entries. Deliberately vague about the model.",
+        "acceptAll": "Counted: adds all reviewed suggestions to the diary.",
+        "invalid_key": "\"LLM\" appears in these messages because the user supplies their own provider key and needs to know which thing failed. Keep it recognisable.",
+        "quota_exhausted": "The provider answered 402: the key is valid but the account is out of credit or free allowance. Unlike rate_limited it will not clear by waiting, so don't word it as \"try again later\". Only shown once every configured provider has failed."
+      }
+    },
+    "import": {
+      "where": "Importing people from the device address book (Android only). Its conflict wording is close to importBackup's but the two are separate flows and separate keys.",
+      "keys": {
+        "conflictContainment": "One name looks like a substring or variant of another, so they may be the same person. A suggestion, not a verdict.",
+        "keepBoth": "Creates a second person rather than merging.",
+        "done": "{{created}} and {{merged}} are counts."
+      }
+    },
+    "importBackup": {
+      "where": "Restoring a JSON backup file, and its conflict-resolution review screen.",
+      "keys": {
+        "exportedAt": "Identifies which backup is being reviewed, at the top of the screen. The file has no name by the time it reaches this page, so the export date is the only handle on it — {{date}} arrives already formatted by date-fns in the target language.",
+        "fileVersion": "The backup file format number, not the app version. A literal \"v\" next to {{version}} is fine to keep or drop, whichever reads as a version in the language.",
+        "needsReview": "Counted. Sits under a large number in a small tile, so it has to stay very short — this is the warning state, and the number beside it is the count of items needing a decision.",
+        "allNew": "The opposite of needsReview, in the same tile: nothing in this category clashes with anything on the device. Two or three words at most.",
+        "sectionRemaining": "Counted. A badge beside a section heading, giving how many conflicts in that section are still undecided. Extremely tight — a word plus the number.",
+        "sectionDone": "Counted. Replaces sectionRemaining once a section is finished, so it reads as completion rather than as a total.",
+        "allClear": "Shown instead of any conflict list when the whole backup is new to this device. Reassurance, not a warning.",
+        "allClearDescription": "Explains why there is nothing to do: nothing will be overwritten or merged. Should sound like good news.",
+        "allResolved": "Replaces resolveFirst in the footer once every conflict has a decision, immediately above the import button.",
+        "resolvedProgress": "A progress readout beside a bar — \"{{resolved}} of {{total}}\". Numerals only, no nouns; the sentence next to it already says what is being counted.",
+        "conflictIdExists": "The row's own id is already in use here. Shown only when nothing else on the card already says so — a plain restore matches by id and by name at once, and conflictDuplicate says both, so this line is suppressed there. {{name}} is what the local copy is called, which is the whole reason this survives: the case it is left for is a row whose local counterpart has since been renamed. For an entry it is the first line of that entry's text instead of a name, so the sentence must not assume a short noun.",
+        "conflictEntryDuplicate": "An entry with the same text, written on the same day, at the same moment — the file is a re-import of an entry already here rather than a new one. No placeholder: quoting the text back would just repeat the entry shown directly above it.",
+        "overwrite": "Replaces the existing entry in place, as opposed to addAsNew.",
+        "setAll": "Label in front of a row of buttons that apply one decision to every conflict in a section at once. The buttons after it are the section's own words (merge/keepBoth/addAsNew/overwrite), so this must read as the start of a phrase they complete — \"Set all → Merge\". Very short; it sits on one line with the buttons.",
+        "entriesSkipped": "Counted. Reported after the import, alongside `orphaned`. These entries were already on the device, so the import deliberately left them untouched rather than adding a second copy — reassurance that nothing was lost, not a warning.",
+        "done": "Eight counts in one sentence. Feel free to restructure into clauses that read naturally; keep every placeholder.",
+        "orphaned": "Counted. An imported sub-entry whose parent wasn't imported gets promoted to the top level.",
+        "saving": "Label on the restore button while the file is being written to the local database. Present continuous.",
+        "syncing": "Label on the same button during the slower second half, uploading to the server. Distinct from `saving` on purpose — this is the phase the user might otherwise interrupt.",
+        "syncingHint": "Under the button during the upload, and read aloud when it appears. Explains why the page is holding them there.",
+        "syncLater": "Toast when the upload could not finish (offline, server unreachable). Reassuring, not an error: nothing was lost and it will retry by itself.",
+        "plugins": "Heading of the plugins section in the backup review.",
+        "pluginRows": "Row count per plugin in that section. Data rows only — settings are counted separately because they are the ones that can clash.",
+        "pluginSettingsDiffer": "Explains a settings clash by describing both sides. Interpolates `pluginOn`/`pluginOff` — keep the sentence short, it sits under a plugin name in a small card.",
+        "pluginOn": "One side of that sentence: the plugin is enabled, with N synced options. Not a sentence on its own.",
+        "pluginOff": "The other side: the plugin is switched off. No count — an off plugin’s options are not in play.",
+        "pluginKeepCurrent": "Button: keep the settings this account already has, discarding the backup’s.",
+        "pluginUseBackup": "Button: replace them with the backup’s. Note this applies to every device, since plugin settings sync."
+      }
+    },
+    "security": {
+      "where": "Settings > Security, and the full-screen lock that replaces the whole app when a passcode is set. \"Passcode\" is the code the user chooses for this app, never the device PIN; \"biometrics\" is the phone fingerprint/face unlock."
+    },
+    "dnd": {
+      "where": "Screen-reader announcements while an entry is being reordered with the keyboard. Never shown visually. \"Position\" is the 1-based row number in the flattened list; \"level\" is the 1-based nesting depth (level 1 = a top-level entry)."
+    }
+  },
+  "languageNotes": {
+    "en": {
+      "role": "Reference language. Source strings are authored here and checkI18n compares every other locale against it.",
+      "plurals": "one/other. Keys use the bare form for the singular plus `_other`.",
+      "register": "Second person, contractions allowed, sentence case throughout — including buttons."
+    },
+    "es": {
+      "plurals": "one/many/other. sync.offlinePending spells out all three; `_many` only matters from 1,000,000 and is omitted elsewhere.",
+      "register": "Tú, never usted. Spain vocabulary (móvil, vale).",
+      "notes": "The original language of the project — several English strings read as translations of these. Flavour text stays close to the English jokes."
+    },
+    "it": {
+      "plurals": "one/many/other, same as Spanish. Bare form for the singular plus `_other`; `_many` given only for sync.offlinePending, matching the Spanish precedent.",
+      "register": "Tu, informal. Sentence case. Guillemets «» for quoted names, matching Italian typographic convention rather than the straight quotes English uses.",
+      "gender": "The hard constraint in this language. Both {{name}} and the reader have unknown gender, so several strings are deliberately restructured to dodge agreement: people.alsoKnownAs is \"alias\" rather than detto/detta; a checkup body says \"al suo posto ci sia un Tamagotchi\" instead of a participle agreeing with the person; \"a {{name}} manchi\" avoids inflecting on them entirely. Preserve that discipline when editing.",
+      "references": "notifications.dailyReminderBodies quotes «Caro diario, oggi…», after Nanni Moretti's film. people.checkupBodies uses \"visto e non risposto\" (the seen-but-unanswered messaging culture), \"colpo di scena\", \"Ultim'ora\" and \"Obiettivo sbloccato\". Tamagotchi is kept.",
+      "terms": "Entry = voce, sub-entry = sotto-voce, thread = filone, talking point = spunto, tag = etichetta, checkup = promemoria di contatto."
+    },
+    "ja": {
+      "plurals": "Only `other` exists, so a single unsuffixed key covers every count and no `_other` variant is needed. Do not add `_one` — i18next will never select it, and a nicer singular wording (昨日終了 for \"ended yesterday\") is simply unreachable; people.eventEndedDaysAgo therefore uses the general 「{{count}}日前に終了」.",
+      "register": "です／ます, friendly but not stiff. Notifications lean casual with ね／よ endings. No 敬語 beyond that — this is the user's own diary talking to them, so humble/honorific forms would be wrong.",
+      "counters": "Counters are baked into the strings around {{count}}: 件 for entries and generic items, 人 for people, 個 for tags, 日 / 日間 for days, 歳 for age. Changing a noun means rechecking its counter.",
+      "honorificOnNames": "{{name}} is followed by さん in notifications and profile prose, which is the natural register. The trade-off is accepted knowingly: if a user stores a name that already ends in an honorific, it will double up. Names in this app are free text, most often given names, so さん is the better default.",
+      "references": "三日坊主 (quitting on day three) for the daily reminder, 実績解除 and 段位 for the achievement joke, 既読スルー for the read-receipt joke, 音信不通 for radio silence, スタンプ (LINE stickers) in place of confetti emojis. たまごっち is kept and is native rather than a loan.",
+      "typography": "No spaces around 「」 or between Japanese and adjacent punctuation. A space goes either side of *literal* Latin runs (API キー) but deliberately not around interpolations: {{name}} may hold either a Latin or a Japanese name, and a hard-coded space would be wrong half the time. document.documentElement.lang is set on language change, which matters here — it tells the browser to pick Japanese rather than Chinese glyph forms for shared Han characters.",
+      "terms": "Entry = 記録, sub-entry = サブ記録, thread = スレッド, talking point = 話のネタ, tag = タグ, event = 出来事, checkup = 連絡リマインダー."
+    },
+    "zh": {
+      "script": "Simplified (zh-Hans), targeting mainland usage. Registered as plain `zh`, so zh-CN/zh-SG resolve to it via nonExplicitSupportedLngs; a zh-Hant locale can be added later without touching anything else.",
+      "plurals": "Only `other` exists — single unsuffixed keys, exactly as in Japanese.",
+      "register": "你, informal and direct. Sentence case is not a concept; keep punctuation full-width (：，。「」) except inside Latin runs.",
+      "measureWords": "Measure words sit around {{count}} in the strings: 条 for entries and talking points, 人 for people, 个 for tags and threads, 天 for days, 岁 for age, 件 for events. Changing a noun means rechecking its measure word.",
+      "references": "断更／催更 (a serialised story going quiet, readers demanding more) and 打卡 (habit check-in) for the daily reminders; 电子宠物 for Tamagotchi; 已读不回 for the read-receipt joke; 潜水 for going silent; 表情包 and 「在吗」 for the send-something nudge; 成就解锁 for the achievement joke; 那年今日 for calendar.onThisDay.",
+      "typography": "A space goes either side of literal Latin runs and of numeric interpolations (Groq API 密钥, {{count}} 条记录) — standard Chinese typesetting, and what keeps an interpolated digit from fusing with a measure word. No space around {{name}}-style interpolations, though, since those may hold Han text and a hard-coded space would then be wrong.",
+      "terms": "Entry = 记录, sub-entry = 子记录, thread = 话题, talking point = 谈资, tag = 标签, event = 经历, checkup = 联系提醒. Note 线程 was rejected for thread: it means a CPU thread."
+    }
+  }
+}

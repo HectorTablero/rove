@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+        <activity
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
+            android:name=".MainActivity"
+            android:label="@string/title_activity_main"
+            android:theme="@style/AppTheme.NoActionBarLaunch"
+            android:launchMode="singleTask"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- App Links: open diary.tablerus.es URLs in the app instead of the browser.
+                 The host comes from a manifest placeholder (see app/build.gradle) so a fork or a
+                 self-hosted deployment changes it in one place.
+
+                 android:autoVerify makes Android fetch /.well-known/assetlinks.json from that host
+                 at install time and check it names this app's package and signing certificate.
+                 Verification is what lets these links open without a chooser dialog; the server
+                 route that answers it is in server/src/app.ts, and it needs the signing
+                 certificate's SHA-256 in ANDROID_CERT_FINGERPRINTS. With that unset the links still
+                 work, they just prompt.
+
+                 Path prefixes rather than the whole host, deliberately. A bare host filter would
+                 also capture /api/*, which is the app's own REST endpoint — including the OAuth
+                 callback path — so an unrelated request could be answered by launching the app.
+                 Every route here is one the router actually has; anything else stays in the
+                 browser, which is the right answer for a URL this app cannot render. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="${appHost}" />
+                <data android:pathPrefix="/diary" />
+                <data android:pathPrefix="/calendar" />
+                <data android:pathPrefix="/people" />
+                <data android:pathPrefix="/search" />
+                <data android:pathPrefix="/tags" />
+                <data android:pathPrefix="/threads" />
+                <data android:pathPrefix="/settings" />
+            </intent-filter>
+        </activity>
+
+        <!-- The habits home-screen widget.
+
+             `exported="true"` is required rather than optional: the launcher is a different app,
+             and it is what sends ACTION_APPWIDGET_UPDATE. The only other action accepted here is
+             DATE_CHANGED, a protected broadcast only the system can send, and the widget's own
+             ± presses arrive through PendingIntents this app created — so nothing a third party
+             can send reaches anything that writes.
+
+             DATE_CHANGED is what stops the widget presenting yesterday's ticks as today's. It
+             cannot refresh the data (only the app can read Dexie), but it lets the provider notice
+             the day has turned over and say so; see HabitsWidgetProvider.build. -->
+        <receiver
+            android:name=".HabitsWidgetProvider"
+            android:label="@string/widget_habits_title"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_habits_info" />
+        </receiver>
+
+        <!-- Serves the widget's habit list to the launcher, which binds it across processes.
+
+             `BIND_REMOTEVIEWS` is a signature-level permission only the system holds, so this is
+             what stops any other installed app binding the service and reading the diary's habit
+             names, values and streaks straight out of it. Not exported beyond that: a
+             RemoteViewsService is reachable only by the launcher that was granted the binding. -->
+        <service
+            android:name=".HabitsWidgetService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
+        </provider>
+    </application>
+
+    <!-- Permissions -->
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Without this, Android's audio subsystem refuses to hand the mic to the WebView even
+         after RECORD_AUDIO is granted — getUserMedia() fails with NotReadableError. -->
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- Exact alarms (Android 12+): without this, AlarmManager.canScheduleExactAlarms() returns
+         false and the local-notifications plugin silently falls back to inexact non-wakeup alarms
+         that Android can defer indefinitely — especially during Doze mode.
+         On Android 14+ (targetSdk 34+) this permission is denied by default; the app prompts the
+         user at runtime via LocalNotifications.changeExactNotificationSetting(). -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- Periodic background sync (lib/backgroundSync.ts): WorkManager needs a wake lock to hold the
+         device awake for the length of a fetch event, and the boot receiver needs this to re-register
+         the periodic task after a reboot (startOnBoot). The background-fetch AAR declares both too,
+         but they're spelled out here so a permission the app requests is visible in the app's own
+         manifest rather than only in a merged dependency. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- The importer only ever reads. WRITE_CONTACTS is declared purely because the contacts
+         plugin bundles both into a single "contacts" permission alias, and Capacitor treats an
+         alias as granted only when *every* permission in it is granted (Bridge.java: "multiple
+         permissions with the same alias must all be true, otherwise all false"). Without this,
+         getPermissionState("contacts") never reaches GRANTED, so getContacts() rejects with
+         "Permission is required to access contacts." no matter what the user taps. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.WRITE_CONTACTS" />
+
+    <!-- Package visibility (Android 11+ / targetSdk 36): without this the WebView can't resolve
+         the wa.me hand-off, and the WhatsApp button silently does nothing. -->
+    <queries>
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="mailto" />
+        </intent>
+    </queries>
+</manifest>

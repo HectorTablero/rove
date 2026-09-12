@@ -1,0 +1,422 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@import '@fontsource-variable/geist';
+/* Web only — vite.config.ts stubs these out in `--mode app`. See the CJK block below. */
+@import '@fontsource-variable/noto-sans-sc';
+@import '@fontsource-variable/noto-sans-jp';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Safe-area insets: env() works on iOS/web; Capacitor injects
+   --safe-area-inset-* on Android (edge-to-edge). Take whichever is set. */
+:root {
+  --inset-top: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
+  --inset-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
+}
+
+/* Add the safe-area inset on top of sonner's own offset (--offset-top/-bottom,
+   24px by default) instead of replacing it — replacing it flattened the gap to
+   0 on desktop, where there's no inset, pinning toasts to the screen edge. */
+[data-sonner-toaster][data-y-position='top'] {
+  top: calc(var(--offset-top, 24px) + var(--inset-top, 0px)) !important;
+}
+
+[data-sonner-toaster][data-y-position='bottom'] {
+  bottom: calc(var(--offset-bottom, 24px) + var(--inset-bottom, 0px)) !important;
+}
+
+/* Sonner switches to its own smaller mobile offset below 600px. */
+@media (max-width: 600px) {
+  [data-sonner-toaster][data-y-position='top'] {
+    top: calc(var(--mobile-offset-top, 16px) + var(--inset-top, 0px)) !important;
+  }
+
+  [data-sonner-toaster][data-y-position='bottom'] {
+    bottom: calc(var(--mobile-offset-bottom, 16px) + var(--inset-bottom, 0px)) !important;
+  }
+}
+
+@theme inline {
+  --font-heading: var(--font-sans);
+
+  /* Geist first, then whatever the current language needs Geist to hand off to.
+       `--font-cjk` is a variable rather than a literal precisely so `@theme inline` cannot flatten
+       it: inline bakes this value into the `font-sans` utility, but a `var()` inside it is still
+       resolved against the element, so the :lang() rules below reach even markup that sets
+       `font-sans` explicitly (the composer's TokenTextarea does). */
+  --font-sans: 'Geist Variable', var(--font-cjk), sans-serif;
+
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-sidebar-border: var(--sidebar-border);
+
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+
+  --color-sidebar-accent: var(--sidebar-accent);
+
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+
+  --color-sidebar-primary: var(--sidebar-primary);
+
+  --color-sidebar-foreground: var(--sidebar-foreground);
+
+  --color-sidebar: var(--sidebar);
+
+  --color-chart-5: var(--chart-5);
+
+  --color-chart-4: var(--chart-4);
+
+  --color-chart-3: var(--chart-3);
+
+  --color-chart-2: var(--chart-2);
+
+  --color-chart-1: var(--chart-1);
+
+  --color-ring: var(--ring);
+
+  --color-input: var(--input);
+
+  --color-border: var(--border);
+
+  --color-destructive: var(--destructive);
+
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-accent: var(--accent);
+
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-muted: var(--muted);
+
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-secondary: var(--secondary);
+
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-primary: var(--primary);
+
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-popover: var(--popover);
+
+  --color-card-foreground: var(--card-foreground);
+
+  --color-card: var(--card);
+
+  --color-foreground: var(--foreground);
+
+  --color-background: var(--background);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+
+  --radius-md: calc(var(--radius) * 0.8);
+
+  --radius-lg: var(--radius);
+
+  --radius-xl: calc(var(--radius) * 1.4);
+
+  --radius-2xl: calc(var(--radius) * 1.8);
+
+  --radius-3xl: calc(var(--radius) * 2.2);
+
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: oklch(1 0 0);
+
+  --foreground: oklch(0.145 0 0);
+
+  --card: oklch(1 0 0);
+
+  --card-foreground: oklch(0.145 0 0);
+
+  --popover: oklch(1 0 0);
+
+  --popover-foreground: oklch(0.145 0 0);
+
+  --primary: oklch(0.205 0 0);
+
+  --primary-foreground: oklch(0.985 0 0);
+
+  --secondary: oklch(0.97 0 0);
+
+  --secondary-foreground: oklch(0.205 0 0);
+
+  --muted: oklch(0.984 0 0);
+
+  --muted-foreground: oklch(0.556 0 0);
+
+  --accent: oklch(0.97 0 0);
+
+  --accent-foreground: oklch(0.205 0 0);
+
+  --destructive: oklch(0.577 0.245 27.325);
+
+  --border: oklch(0.922 0 0);
+
+  --input: oklch(0.922 0 0);
+
+  --ring: oklch(0.708 0 0);
+
+  --chart-1: oklch(0.87 0 0);
+
+  --chart-2: oklch(0.556 0 0);
+
+  --chart-3: oklch(0.439 0 0);
+
+  --chart-4: oklch(0.371 0 0);
+
+  --chart-5: oklch(0.269 0 0);
+
+  --radius: 0.625rem;
+
+  --sidebar: oklch(0.985 0 0);
+
+  --sidebar-foreground: oklch(0.145 0 0);
+
+  --sidebar-primary: oklch(0.205 0 0);
+
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+
+  --sidebar-accent: oklch(0.97 0 0);
+
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+
+  --sidebar-border: oklch(0.922 0 0);
+
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+
+  --foreground: oklch(0.985 0 0);
+
+  --card: oklch(0.205 0 0);
+
+  --card-foreground: oklch(0.985 0 0);
+
+  --popover: oklch(0.205 0 0);
+
+  --popover-foreground: oklch(0.985 0 0);
+
+  --primary: oklch(0.922 0 0);
+
+  --primary-foreground: oklch(0.205 0 0);
+
+  --secondary: oklch(0.269 0 0);
+
+  --secondary-foreground: oklch(0.985 0 0);
+
+  --muted: oklch(0.269 0 0);
+
+  --muted-foreground: oklch(0.708 0 0);
+
+  --accent: oklch(0.269 0 0);
+
+  --accent-foreground: oklch(0.985 0 0);
+
+  --destructive: oklch(0.704 0.191 22.216);
+
+  --border: oklch(1 0 0 / 10%);
+
+  --input: oklch(1 0 0 / 15%);
+
+  --ring: oklch(0.556 0 0);
+
+  --chart-1: oklch(0.87 0 0);
+
+  --chart-2: oklch(0.556 0 0);
+
+  --chart-3: oklch(0.439 0 0);
+
+  --chart-4: oklch(0.371 0 0);
+
+  --chart-5: oklch(0.269 0 0);
+
+  --sidebar: oklch(0.205 0 0);
+
+  --sidebar-foreground: oklch(0.985 0 0);
+
+  --sidebar-primary: oklch(0.205 0 0);
+
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+
+  --sidebar-accent: oklch(0.269 0 0);
+
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+
+  --sidebar-border: oklch(1 0 0 / 10%);
+
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+/*
+ * What Geist hands off to.
+ *
+ * Geist ships latin, latin-ext, cyrillic, cyrillic-ext and vietnamese — no CJK, because it has
+ * none. Two of the five shipped languages are Japanese and Chinese, so without this the entire UI
+ * in those languages fell through to `sans-serif` and the design system quietly did not apply to
+ * them. System CJK is the right rendering; the point of this block is that it is now chosen.
+ *
+ * Scoped by :lang() rather than merged into one list, because Han characters are shared between
+ * the two scripts while several of their shapes are not (直, 骨, 化 among them). A single stack
+ * with a Japanese face ahead of a Chinese one renders Chinese in Japanese letterforms — legible,
+ * and wrong in the way a native reader notices immediately.
+ *
+ * This works before any JavaScript has run: index.html sets documentElement.lang from
+ * localStorage in the pre-paint script, for exactly this class of reason.
+ *
+ * Noto leads both stacks: its ja and zh cuts are drawn as a matched pair, so the two languages
+ * render at the same weight and metrics instead of drifting apart between platforms. Apple's and
+ * Microsoft's system UI faces follow to catch macOS/iOS and Windows; both are low-contrast modern
+ * gothics, which is as close to Geist's register as CJK gets.
+ *
+ * The '… Variable' entries are the Fontsource webfonts, and they are FIRST but not required. On
+ * the web their @font-face exists and wins, so ja/zh get real Noto on every platform. In the APK
+ * the alias in vite.config.ts stubs those packages out, no @font-face is declared, the name
+ * matches nothing, and the very next entry — system Noto, which Android ships — takes over. One
+ * stack, both targets, no build-time branch in the CSS.
+ *
+ * Why the APK cannot just bundle them: Fontsource splits CJK into ~120 unicode-range subsets each,
+ * which a browser fetches lazily but `cap sync` copies into the APK wholesale — 9.3 MB of woff2,
+ * which is what took the release APK from 3.3 MB to 13.6 MB. The same lazy-fetch asymmetry is why
+ * vite.config.ts keeps these subsets out of the service worker's precache manifest.
+ */
+:root {
+  --font-cjk: ui-sans-serif;
+}
+
+:root:lang(ja) {
+  --font-cjk:
+    'Noto Sans JP Variable', 'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic UI', ui-sans-serif;
+}
+
+:root:lang(zh) {
+  --font-cjk:
+    'Noto Sans SC Variable', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', ui-sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/* Importance scale: 1 = life-changing (hot) … 5 = passing thought (muted). */
+@theme {
+  --color-importance-1: #e5484d;
+  --color-importance-2: #f76b15;
+  --color-importance-3: #ffb224;
+  --color-importance-4: #4c9e63;
+  --color-importance-5: #8ea6bd;
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+/* Needs high specificity (added html before) */
+html body[data-scroll-locked] {
+  margin-right: 0 !important;
+}
+
+/* A full-bleed overlay wants the viewport, gutter included.
+ *
+ * `scrollbar-gutter: stable` reserves its strip inside the *root scroller's* padding box, which
+ * shrinks the initial containing block — so `position: fixed; inset: 0` stops short of the right
+ * edge, and the first-run tour's footer bar visibly fails to reach it. The gutter exists to stop
+ * the page jumping when a scrollbar comes and goes, and while a modal is open nothing behind it is
+ * scrolling or visible, so here it is reserving space against a shift that cannot happen.
+ *
+ * Set by components/onboarding/OnboardingFlow.tsx for as long as the tour is mounted. */
+html[data-fullbleed] {
+  scrollbar-gutter: auto;
+}
+
+/* Minimal themed scrollbar (desktop) */
+@media (pointer: fine) {
+  * {
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: var(--muted-foreground) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--muted-foreground);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+    transition: background-color 0.2s ease;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--foreground);
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+/*
+ * Reduced motion.
+ *
+ * Everything that moves in this app is decoration on top of something that already works: the
+ * chevron that rotates as sub-entries open, the tab icon that scales when selected, the FLIP
+ * reflow while an entry is dragged, the logo that morphs on hover. None of it carries meaning
+ * that the layout doesn't also carry, so honouring the OS preference costs nothing.
+ *
+ * Near-zero rather than `none`: a duration of 0 cancels the transitionend/animationend events
+ * some libraries wait on before cleaning up, which leaves elements stuck mid-state. 0.01ms fires
+ * them on the next frame while being imperceptible.
+ *
+ * Framer Motion is handled separately, by MotionConfig reducedMotion="user" in main.tsx — its
+ * animations run in JavaScript and never touch these declarations. Smooth scrolling is included
+ * because it is the one piece of motion here that can genuinely cause nausea.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * The same rules again, for the Android app.
+ *
+ * Inside the WebView the media query above is not a dependable reading of the system setting, so
+ * lib/reducedMotion.ts asks the platform directly and sets this attribute. It is written as a
+ * second block rather than folded into the one above because a media query and a selector cannot
+ * be combined in CSS — and the query has to stay the standalone baseline, since it is the only one
+ * of the two that works before any JavaScript has run.
+ */
+:root[data-reduced-motion='reduce'] *,
+:root[data-reduced-motion='reduce'] *::before,
+:root[data-reduced-motion='reduce'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}

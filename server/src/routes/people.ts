@@ -1,0 +1,162 @@
+import { OBJECT_ID_REGEX, personCreateSchema, personUpdateSchema } from '@diary/shared';
+import { Hono } from 'hono';
+import { Types } from 'mongoose';
+import { conflict, isDuplicateKey, notFound } from '../errors';
+import type { AppEnv } from '../middleware/session';
+import { jsonValidator } from '../middleware/validate';
+import { clearDeletions, recordDeletions } from '../models/deletion';
+import { Entry } from '../models/entry';
+import { Person } from '../models/person';
+import { personToDto, type LeanPerson } from '../dto';
+import { Tag } from '../models/tag';
+import { getSettings } from '../services/settingsService';
+
+const oid = (value: string) => {
+  if (!OBJECT_ID_REGEX.test(value)) throw notFound('person.not_found');
+  return value;
+};
+
+async function ownedTagIds(userId: string, ids: string[]) {
+  if (!ids.length) return [];
+  const tags = await Tag.find(
+    { userId, _id: { $in: ids.map((id) => new Types.ObjectId(id)) } },
+    '_id',
+  ).lean();
+  return tags.map((t) => t._id);
+}
+
+const PERSON_POPULATE = { path: 'tags', select: 'name color' };
+
+/* Writes only. The people list, a single person, talking points, memories and history are all
+   derived on the client from its Dexie store (web/src/db/repo.ts), so the server never serves
+   them — everything it needs to hand back comes through GET /sync. */
+export const peopleRouter = new Hono<AppEnv>()
+  .post('/', jsonValidator(personCreateSchema), async (c) => {
+    const userId = c.get('userId');
+    const input = c.req.valid('json');
+    try {
+      const checkupIntervalDays =
+        input.checkupIntervalDays !== undefined
+          ? input.checkupIntervalDays
+          : (await getSettings(userId)).defaultCheckupIntervalDays;
+      const createdAt = input.createdAt ? new Date(input.createdAt) : new Date();
+      // timestamps off: keep updatedAt at server time (not createdAt) so replayed offline
+      // creates still hit other clients' sync cursors.
+      const [person] = await Person.create(
+        [
+          {
+            _id: input.id ? new Types.ObjectId(input.id) : new Types.ObjectId(),
+            createdAt,
+            updatedAt: new Date(),
+            userId,
+            name: input.name,
+            aliases: input.aliases,
+            phone: input.phone,
+            email: input.email,
+            birthday: input.birthday,
+            company: input.company,
+            jobTitle: input.jobTitle,
+            contactId: input.contactId,
+            events: input.events,
+            tags: await ownedTagIds(userId, input.tags),
+            notes: input.notes,
+            checkupIntervalDays,
+            lastCheckupAt: createdAt,
+          },
+        ],
+        { timestamps: false },
+      );
+      // Re-creating a deleted id (undo) retracts its tombstone; a fresh id never had one.
+      if (input.id) await clearDeletions(userId, 'person', [person._id]);
+      const populated = await person.populate(PERSON_POPULATE);
+      return c.json(personToDto(populated.toObject() as unknown as LeanPerson), 201);
+    } catch (err) {
+      // A collision on _id means this exact person is already there — a replayed create, which is
+      // a success, not a conflict. See replayedCreate in services/entryService for the full why.
+      if (input.id && isDuplicateKey(err, '_id')) {
+        const existing = await Person.findOne({ _id: input.id, userId })
+          .populate(PERSON_POPULATE)
+          .lean();
+        if (existing) return c.json(personToDto(existing as unknown as LeanPerson));
+      }
+      if (isDuplicateKey(err)) throw conflict('person.duplicate_name');
+      throw err;
+    }
+  })
+  .patch('/:id', jsonValidator(personUpdateSchema), async (c) => {
+    const userId = c.get('userId');
+    const person = await Person.findOne({ _id: oid(c.req.param('id')), userId });
+    if (!person) throw notFound('person.not_found');
+    const input = c.req.valid('json');
+    // Only keys the client actually sent are applied, so a PATCH replayed from an older client
+    // (which knows nothing of these fields) can't blank them.
+    if (input.name !== undefined) person.name = input.name;
+    if (input.aliases !== undefined) person.aliases = input.aliases;
+    if (input.phone !== undefined) person.phone = input.phone;
+    if (input.email !== undefined) person.email = input.email;
+    if (input.birthday !== undefined) person.birthday = input.birthday;
+    if (input.company !== undefined) person.company = input.company;
+    if (input.jobTitle !== undefined) person.jobTitle = input.jobTitle;
+    if (input.contactId !== undefined) person.contactId = input.contactId;
+    // Mongoose casts the ISO strings in askedAt/createdAt to Dates on save.
+    if (input.events !== undefined) person.set('events', input.events);
+    if (input.notes !== undefined) person.notes = input.notes;
+    if (input.tags !== undefined) person.tags = await ownedTagIds(userId, input.tags);
+    if (input.checkupIntervalDays !== undefined)
+      person.checkupIntervalDays = input.checkupIntervalDays;
+    try {
+      await person.save();
+    } catch (err) {
+      if (isDuplicateKey(err)) throw conflict('person.duplicate_name');
+      throw err;
+    }
+    const populated = await person.populate(PERSON_POPULATE);
+    return c.json(personToDto(populated.toObject() as unknown as LeanPerson));
+  })
+  .delete('/:id', async (c) => {
+    const userId = c.get('userId');
+    const id = oid(c.req.param('id'));
+    const person = await Person.findOneAndDelete({ _id: id, userId }).lean();
+    if (!person) throw notFound('person.not_found');
+    const personId = new Types.ObjectId(id);
+    // Scoped filter: only entries that actually reference the person get their updatedAt bumped
+    // (sync pulls rely on updatedAt, so an unscoped updateMany would re-send every entry).
+    await Entry.updateMany(
+      {
+        userId,
+        $or: [{ people: personId }, { 'saidTo.person': personId }, { hiddenFor: personId }],
+      },
+      { $pull: { people: personId, saidTo: { person: personId }, hiddenFor: personId } },
+    );
+    await recordDeletions(userId, 'person', [personId]);
+    return c.json({ ok: true });
+  })
+  .put('/:id/checkup', async (c) => {
+    const userId = c.get('userId');
+    const person = await Person.findOneAndUpdate(
+      { _id: oid(c.req.param('id')), userId },
+      { lastCheckupAt: new Date() },
+      { returnDocument: 'after' },
+    )
+      .populate(PERSON_POPULATE)
+      .lean();
+    if (!person) throw notFound('person.not_found');
+    return c.json(personToDto(person as unknown as LeanPerson));
+  })
+  /* Its own route rather than a plain PATCH of the events array, because asking someone how their
+     trip went *is* an interaction: it has to bump lastCheckupAt too. The client applies the same
+     rule locally (mutations.markEventAsked), so the two converge — same contract as /checkup. */
+  .put('/:id/events/:eventId/asked', async (c) => {
+    const userId = c.get('userId');
+    const now = new Date();
+    const person = await Person.findOneAndUpdate(
+      { _id: oid(c.req.param('id')), userId, 'events.id': c.req.param('eventId') },
+      { $set: { 'events.$.askedAt': now, lastCheckupAt: now } },
+      { returnDocument: 'after' },
+    )
+      .populate(PERSON_POPULATE)
+      .lean();
+    // Also covers "the person exists but has no such event" — the filter above requires both.
+    if (!person) throw notFound('person.not_found');
+    return c.json(personToDto(person as unknown as LeanPerson));
+  });

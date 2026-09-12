@@ -1,0 +1,8 @@
+**/node_modules/
+**/dist/
+**/dev-dist/
+.env
+.git
+.github
+deploy.bat
+web/android/
