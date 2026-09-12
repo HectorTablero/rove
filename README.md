@@ -168,9 +168,12 @@ the wrong city.
 Candidates carry no coordinates: geocoding sixty events per poll would empty the month's search
 pool in a week. "Find on map" on a suggestion spends one call, on request.
 
-`docker-compose.yml` runs the app beside RSSHub and a Redis for its cache; Mongo stays the shared
-instance named in `.env`. Pin the RSSHub image tag once one has been pulled and works — its routes
-are the moving part of this whole system.
+`docker-compose.yml` runs the app beside RSSHub; Mongo and Redis stay the host's shared instances
+named in `.env` (`MONGODB_URI`, `REDIS_URL`), and the two containers join the Docker network those
+live on (`DOCKER_NETWORK`) so the service names resolve. Off the VPS, `REDIS_URL` defaults to
+`redis://localhost:6379`. Keys the app writes carry the prefix `rove:`; RSSHub's own carry
+`rsshub:`. Pin the RSSHub image tag once one has been pulled and works — its routes are the moving
+part of this whole system.
 
 ## Setup
 

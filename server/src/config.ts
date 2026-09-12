@@ -60,6 +60,14 @@ export const config = {
   amapJsSecurityCode: process.env.AMAP_JS_SECURITY_CODE ?? '',
   /** Whether the web build carries a map key — decides whether the CSP admits the Amap SDK. */
   amapJsKey: process.env.VITE_AMAP_JS_KEY ?? '',
+  /* The host's shared Redis. On the VPS it is another container on the same network, reached by
+     service name (redis://redis:6379); that name resolves nowhere on a laptop, so the default is
+     the local port. Every key this app ever writes there carries the prefix, so one Redis can
+     serve several apps without a `flush` in one taking out another. Nothing in the server reads
+     Redis yet — RSSHub (docker-compose.yml) is the only consumer, and its keys are prefixed
+     `rsshub:` by RSSHub itself; give it a database index in the URL if that ever needs isolating. */
+  redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
+  redisKeyPrefix: 'rove:',
   /* The self-hosted RSSHub the pollers read. Infrastructure, not a user setting: it lives next to
      this container (see docker-compose.yml). Empty means polling answers "not configured". */
   rsshubBaseUrl: process.env.RSSHUB_BASE_URL ?? '',

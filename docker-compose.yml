@@ -1,7 +1,11 @@
 # Rove on a VPS: the app container and the RSSHub it polls through.
 #
-# MongoDB is deliberately not here — it is the shared instance already running on the host, named
-# by MONGODB_URI in .env. Start with `docker compose up -d --build`.
+# MongoDB and Redis are deliberately not here — both are the shared instances already running on
+# the host, named by MONGODB_URI and REDIS_URL in .env. Those hostnames (`redis`, `mongo`) only
+# resolve on the Docker network the shared containers live on, so this file joins that network
+# instead of creating its own: set DOCKER_NETWORK in .env to its name (`docker network ls`, or
+# `docker inspect redis --format '{{range $k,$_ := .NetworkSettings.Networks}}{{$k}}{{end}}'`).
+# Start with `docker compose up -d --build`.
 #
 # RSSHub is pinned rather than `latest`: its routes are the moving part of this whole system, and
 # an unplanned upgrade is the likeliest way for a feed to change shape on a Tuesday. Bump the tag
@@ -30,13 +34,14 @@ services:
     environment:
       NODE_ENV: production
       CACHE_TYPE: redis
-      REDIS_URL: redis://redis:6379/
+      # The shared Redis. RSSHub prefixes its own keys with `rsshub:`; append a database index
+      # (redis://redis:6379/2) if another RSSHub ever shares the instance.
+      REDIS_URL: ${REDIS_URL:?set REDIS_URL in .env, e.g. redis://redis:6379}
       # Only this app talks to it; nothing here needs to be reachable from outside the network.
       ACCESS_KEY: ''
-    depends_on:
-      - redis
     restart: unless-stopped
 
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
+networks:
+  default:
+    external: true
+    name: ${DOCKER_NETWORK:?set DOCKER_NETWORK in .env to the network the shared Redis and Mongo are on}
