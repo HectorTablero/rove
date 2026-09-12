@@ -69,18 +69,16 @@ describe('region boundary', () => {
     }
   });
 
-  it('core never reads a providerRef id — it is opaque outside the provider that minted it', () => {
+  it('core never interprets a providerRef id — it is opaque outside the provider that minted it', () => {
     /* `providerRef.id` is an Amap POI id today and something else tomorrow. Core may compare two
-       refs for equality (dedupe) and pass one to a provider, but the moment it parses or formats
-       the id, the format is a core assumption.
-
-       Two layers copy the field verbatim and are exempt by name: the server's DTO mapper and its
-       Mongoose models (an index path). Neither reads the value — they move it. Anything else that
-       touches `.id` is treated as reading it. */
-    const serialisation = /^server\/src\/(dto\.ts|models\/)/;
+       refs for equality (dedupe), use one as a React key, and copy it through a DTO; the moment it
+       parses, slices, concatenates or interpolates the id, its *format* has become a core
+       assumption. So the grep is for string operations on the id, not for reading it. */
+    const interpreting =
+      /providerRef(\?)?\.id\s*\.\s*(slice|split|match|replace|startsWith|endsWith|substring|substr|toLowerCase|toUpperCase|trim|includes|search|at|charAt)|providerRef(\?)?\.id\s*\+|\$\{[^}]*providerRef(\?)?\.id/;
     const offenders = sources
-      .filter((file) => !isProviderCode(file) && !serialisation.test(rel(file)))
-      .filter((file) => /providerRef(\?)?\.id\b/.test(readFileSync(file, 'utf8')))
+      .filter((file) => !isProviderCode(file))
+      .filter((file) => interpreting.test(readFileSync(file, 'utf8')))
       .map(rel);
     expect(offenders).toEqual([]);
   });

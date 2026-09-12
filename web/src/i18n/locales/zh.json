@@ -1,8 +1,28 @@
 {
   "add": {
+    "captionFrom": "帖子内容（{{source}}）",
+    "chooseAnother": "换一个",
     "emptyDescription": "从 Instagram、小红书或浏览器把帖子分享到这里，或粘贴链接。",
     "emptyTitle": "添加地点",
-    "receivedTitle": "已收到链接"
+    "extract": "查找地点",
+    "extractAgain": "重新查找",
+    "extractFailed": "模型无法读取这条帖子。",
+    "linkHint": "或者在你看到帖子的应用里直接分享到 Rove。",
+    "linkLabel": "链接",
+    "linkPlaceholder": "粘贴 Instagram、小红书或网页链接",
+    "merged": "已经以 {{title}} 保存过了，新链接已添加进去。",
+    "nameLabel": "地点",
+    "namePlaceholder": "输入名称搜索…",
+    "noCaption": "没有读到可用的内容。你仍然可以在下面输入地点名称。",
+    "noMentions": "文中没有提到具体地点。",
+    "noModel": "在设置中配置提取模型后，可自动推荐地点。",
+    "noSuggestions": "附近没有找到这个名字的地点。",
+    "read": "读取",
+    "readFailed": "无法读取这个链接：",
+    "receivedTitle": "已收到链接",
+    "saved": "已保存 {{title}}",
+    "suggestFailed": "搜索没有响应。",
+    "suggestions": "推荐"
   },
   "app": {
     "name": "Rove",
@@ -22,14 +42,38 @@
     "clear": "清除",
     "close": "关闭",
     "confirm": "确认",
+    "delete": "删除",
     "loading": "加载中…",
+    "noResults": "没有结果",
     "remove": "移除",
     "save": "保存",
+    "search": "搜索",
     "selectDate": "选择日期",
     "skipToContent": "跳到主要内容",
     "today": "今天"
   },
   "errors": {
+    "codes": {
+      "ai": {
+        "invalid_key": "模型拒绝了这个 API 密钥。",
+        "rate_limited": "模型接口正在限流。",
+        "timeout": "模型响应超时。",
+        "upstream_error": "模型接口返回了错误。"
+      },
+      "extract": {
+        "bad_reply": "模型的回复不是一个地点列表。",
+        "not_configured": "尚未设置提取模型，请到设置中配置。"
+      },
+      "geocode": {
+        "not_configured": "服务器尚未配置地点搜索。",
+        "quota": "本月的地点搜索额度已用完，每月 1 日重置。",
+        "rate_limited": "搜索过于频繁，请稍等。"
+      },
+      "ingest": {
+        "no_source": "没有来源能读取这类链接。",
+        "rate_limited": "链接过多，请稍等。"
+      }
+    },
     "crash": {
       "description": "应用遇到了意外错误。你的数据安全地保存在这台设备上。",
       "reload": "重新加载",
@@ -38,25 +82,44 @@
     "unknown": "出错了"
   },
   "items": {
+    "deleted": "已删除",
+    "deleteDescription": "评分和笔记会一起删除。已保存的帖子会保留。",
+    "deleteTitle": "删除这个地点？",
     "kind": {
       "event": "活动",
       "film": "电影",
       "place": "地点"
     },
+    "markedVisited": "已标记为去过",
+    "markVisited": "标记为已去过",
+    "navigate": "导航",
+    "notes": "笔记",
+    "notesPlaceholder": "值得记下的事…",
+    "rating": "评分",
+    "sources": "来源",
+    "stars": "{{count}} 星",
     "status": {
       "candidate": "候选",
       "dismissed": "已忽略",
       "saved": "已保存",
       "visited": "已去过"
-    }
+    },
+    "unmarkVisited": "改为未去过",
+    "visitCount": "去过 {{count}} 次"
   },
   "list": {
     "emptyDescription": "在“添加”标签中分享帖子或粘贴链接。",
-    "emptyTitle": "还没有保存任何内容"
+    "emptyTitle": "还没有保存任何内容",
+    "filterAll": "全部",
+    "searchPlaceholder": "搜索地点…"
   },
   "map": {
     "emptyDescription": "已保存的 {{count}} 个地点将显示在这里。",
-    "emptyTitle": "地图将在下一阶段推出"
+    "emptyTitle": "还没有地点",
+    "loadFailed": "地图加载失败。请检查网络后重试。",
+    "markerCount": "{{count}} 个地点",
+    "unavailableDescription": "构建应用时没有设置地图密钥。列表仍然可用。",
+    "unavailableTitle": "此版本没有地图"
   },
   "nav": {
     "add": "添加",
@@ -148,6 +211,10 @@
       "export": "导出备份",
       "exportDone": "备份已导出",
       "exportOmits": "文件中评分和笔记排在最前。模型密钥不会离开服务器，设备偏好也不包含在内。",
+      "import": "导入备份",
+      "importDone": "已恢复 {{items}} 个地点和 {{reviews}} 条评价（{{skipped}} 条已存在）。",
+      "importInvalid": "文件中有 {{count}} 行无效，已跳过。",
+      "invalidFile": "这个文件不是 Rove 的备份。",
       "telemetry": "发送崩溃报告",
       "telemetryDescription": "匿名的错误和使用次数，用于发现并修复这台设备上的问题。绝不会包含地点名称、笔记或链接。",
       "title": "数据"
@@ -174,6 +241,14 @@
       "title": "常规",
       "weekStart": "每周第一天",
       "weekStartAuto": "自动（{{day}}）"
+    },
+    "region": {
+      "description": "在哪里搜索地点、由哪个地图绘制、用哪个应用导航。",
+      "notConfigured": "服务器尚未配置地点搜索（缺少地理编码密钥）。",
+      "searches": "本月已用地点搜索 {{calls}} / {{limit}} 次。为避免超出额度，搜索将在 {{stopAt}} 次时停止。",
+      "signInForUsage": "登录后即可搜索地点并查看本月用量。",
+      "title": "地区",
+      "usageUnavailable": "暂时无法读取用量。"
     },
     "settingsSaved": "设置已保存",
     "signOutDiscard": "退出并丢弃",

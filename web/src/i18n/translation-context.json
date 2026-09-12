@@ -68,7 +68,8 @@
     "map": {
       "where": "The map screen, which is the home screen. Until the renderer lands it shows an empty state with a count.",
       "keys": {
-        "emptyDescription": "Counted. {{count}} is how many saved places exist and will be drawn."
+        "emptyDescription": "Counted. {{count}} is how many saved places exist and will be drawn.",
+        "markerCount": "A small counted pill in the map's corner."
       }
     },
     "list": {
@@ -77,7 +78,9 @@
     "add": {
       "where": "The intake screen. Reached from the tab and from the Android share sheet, which arrives with a link already filled.",
       "keys": {
-        "receivedTitle": "Shown above the shared link the moment the share sheet lands, before anything has been fetched."
+        "receivedTitle": "Shown above the shared link the moment the share sheet lands, before anything has been fetched.",
+        "captionFrom": "{{source}} is a source id such as \"xiaohongshu-share\" or \"instagram-oembed\", shown as-is.",
+        "merged": "Shown when a saved link resolves to a place already in the list; {{title}} is that place's name."
       }
     },
     "items": {
@@ -85,7 +88,9 @@
       "keys": {
         "kind.film": "A film currently in cinemas. \"Film\" rather than \"movie\" in English; the everyday word elsewhere.",
         "status.candidate": "Something an automated source found that the user has not yet kept or dismissed. \"Suggested\" in English, never \"pending\".",
-        "status.dismissed": "The user saw it and said no. Neutral — not \"rejected\"."
+        "status.dismissed": "The user saw it and said no. Neutral — not \"rejected\".",
+        "stars": "Screen-reader name of each star in the rating control, counted.",
+        "navigate": "The button that opens the maps app at the place. One word; \"Navigate\", \"Go\", 导航."
       }
     },
     "calendar": {
@@ -100,14 +105,16 @@
         "general": "Theme and language, plus the advanced toggles for haptics and wi-fi-only sync on Android. quietNotifications is about in-app toasts only; its description has to make clear that errors are still shown.",
         "ai": "The extraction model: an OpenAI-compatible chat endpoint the server calls to read a shared post. \"Endpoint\" and \"model\" are the technical words on purpose — the person filling these in is running a model. The key hint must say it is stored server-side and never shown again.",
         "advanced": "Android-only sync switches. wifiOnly holds writes back until wi-fi; hidePausedStatus hides only the pill that reports that.",
-        "data": "Export, telemetry opt-out and account deletion. deleteAccount.confirmWord is what the user has to type to enable the destructive button — a short, unambiguous word in the target language, all lower case, and the dialog shows it literally."
+        "data": "Export, telemetry opt-out and account deletion. deleteAccount.confirmWord is what the user has to type to enable the destructive button — a short, unambiguous word in the target language, all lower case, and the dialog shows it literally. importDone and importInvalid report a restore: {{items}}, {{reviews}}, {{skipped}} and {{count}} are counts.",
+        "region": "The active region and the geocoder's monthly search pool. {{calls}}/{{limit}}/{{stopAt}} are numbers; \"pool\" is Amap's monthly allowance of place searches, and the app stops itself short of it."
       }
     },
     "errors": {
       "where": "Toasts and the crash screen.",
       "keys": {
         "reauth_required": "A server error code, rendered as a toast. The account deletion needs a sign-in only minutes old; this is what the user sees when confirming with Google did not produce one.",
-        "crash": "The last-resort error boundary. Its job is to reassure that nothing was lost — keep the promise that the data is safe on the device."
+        "crash": "The last-resort error boundary. Its job is to reassure that nothing was lost — keep the promise that the data is safe on the device.",
+        "codes": "Server error codes rendered as toasts, keyed by the code the API answers with (geocode.quota, extract.not_configured, …). One sentence each, saying what happened and, where there is one, what to do."
       }
     },
     "security": {

@@ -27,8 +27,11 @@ import {
   reviewsRouter,
   snapshotsRouter,
 } from './routes/collections';
+import { geocodeRouter } from './routes/geocode';
+import { ingestRouter } from './routes/ingest';
 import { settingsRouter } from './routes/settings';
 import { syncRouter } from './routes/sync';
+import { providerRoutes } from './providers';
 
 // serveStatic resolves relative to process.cwd(); compute the path to web/dist
 // from this file so it works both from the repo root and inside the container.
@@ -141,12 +144,20 @@ export const buildApp = (app: Hono<AppEnv>, auth: Auth, upgradeWebSocket?: Upgra
   api.route('/impressions', impressionsRouter);
   api.route('/settings', settingsRouter);
   api.route('/sync', syncRouter);
+  // The two halves of a paste the browser cannot do itself, and the geocoder behind its key.
+  api.route('/ingest', ingestRouter);
+  api.route('/geocode', geocodeRouter);
   // DELETE only: erases everything and the account behind it. See routes/account.ts.
   api.route('/account', accountRouter);
   app.route('/api', api);
 
   // Unknown API paths must 404 as JSON, never fall through to the SPA.
   app.all('/api/*', (c) => c.json({ error: 'errors.not_found' }, 404));
+
+  /* Provider-owned routes outside the API: today the Amap JS security proxy, which the map SDK in
+     the browser calls on this origin. Mounted here rather than under /api so the SDK's own path
+     conventions are untouched; each proxy does its own origin check. */
+  for (const { path, app: sub } of providerRoutes(trustedOrigins)) app.route(path, sub);
 
   /* Android App Links verification (see lib/assetLinks.ts).
 

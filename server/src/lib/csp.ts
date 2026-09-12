@@ -77,7 +77,13 @@ export function buildCsp(indexHtmlPath: string): CspDirectives {
       `[csp] no built SPA at ${indexHtmlPath}; inline scripts would be blocked if served`,
     );
   }
-  const scriptSrc = ["'self'", ...(hashes ?? [])];
+  /* The Amap JS API is the one third-party script the app loads, and only when the build carries
+     a key. Its tiles and data come from a family of amap.com / autonavi.com hosts that the SDK
+     picks at runtime, hence the wildcards; its data *requests* go to this origin's /_AMapService
+     proxy, which 'self' already covers. Renderer-specific by nature: a MapLibre renderer would add
+     its own tile host here instead. */
+  const amap = Boolean(process.env.VITE_AMAP_JS_KEY);
+  const scriptSrc = ["'self'", ...(hashes ?? []), ...(amap ? ['https://webapi.amap.com'] : [])];
 
   const connectSrc = new Set(["'self'"]);
   // The live-sync socket is same-origin, but ws: is a different scheme and 'self' does not cover it.
@@ -108,6 +114,16 @@ export function buildCsp(indexHtmlPath: string): CspDirectives {
     if (parentDomain.includes('.')) connectSrc.add(`${protocol}//*.${parentDomain}`);
   }
 
+  if (amap) {
+    for (const host of [
+      'https://webapi.amap.com',
+      'https://*.amap.com',
+      'https://*.autonavi.com',
+    ]) {
+      connectSrc.add(host);
+    }
+  }
+
   // Escape hatch for anything else a deployment needs to reach — a self-hosted log sink, say.
   for (const extra of (process.env.CSP_CONNECT_SRC ?? '').split(/[\s,]+/).filter(Boolean)) {
     connectSrc.add(extra);
@@ -123,10 +139,16 @@ export function buildCsp(indexHtmlPath: string): CspDirectives {
     styleSrc: ["'self'", "'unsafe-inline'"],
     // data: for the inlined flag SVGs; the Google host for the signed-in user's profile
     // picture, which is rendered with referrerPolicy="no-referrer".
-    imgSrc: ["'self'", 'data:', 'blob:', 'https://*.googleusercontent.com'],
+    imgSrc: [
+      "'self'",
+      'data:',
+      'blob:',
+      'https://*.googleusercontent.com',
+      ...(amap ? ['https://*.amap.com', 'https://*.autonavi.com'] : []),
+    ],
     fontSrc: ["'self'"],
     connectSrc: [...connectSrc],
-    workerSrc: ["'self'"], // the PWA service worker
+    workerSrc: ["'self'", ...(amap ? ['blob:'] : [])], // the PWA service worker; Amap's tile workers
     manifestSrc: ["'self'"],
     mediaSrc: ["'self'", 'blob:'], // voice recordings before they are uploaded
     baseUri: ["'self'"],

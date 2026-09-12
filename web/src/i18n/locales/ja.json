@@ -1,8 +1,28 @@
 {
   "add": {
+    "captionFrom": "投稿の内容（{{source}}）",
+    "chooseAnother": "別の候補を選ぶ",
     "emptyDescription": "InstagramやXiaohongshu、ブラウザから投稿をここに共有するか、リンクを貼り付けてください。",
     "emptyTitle": "場所を追加",
-    "receivedTitle": "リンクを受け取りました"
+    "extract": "場所を探す",
+    "extractAgain": "もう一度探す",
+    "extractFailed": "モデルがこの投稿を読み取れませんでした。",
+    "linkHint": "または、見つけたアプリからRoveに投稿を共有してください。",
+    "linkLabel": "リンク",
+    "linkPlaceholder": "InstagramやXiaohongshu、ウェブのリンクを貼り付け",
+    "merged": "{{title}}としてすでに保存済みです。新しいリンクを追加しました。",
+    "nameLabel": "場所",
+    "namePlaceholder": "名前を入力して検索…",
+    "noCaption": "読み取れる内容がありませんでした。下で場所の名前を入力できます。",
+    "noMentions": "本文に場所の名前はありません。",
+    "noModel": "設定で抽出モデルを指定すると、場所を提案できます。",
+    "noSuggestions": "この近くにその名前の場所は見つかりませんでした。",
+    "read": "読み込む",
+    "readFailed": "このリンクを読み込めませんでした：",
+    "receivedTitle": "リンクを受け取りました",
+    "saved": "{{title}}を保存しました",
+    "suggestFailed": "検索が応答しませんでした。",
+    "suggestions": "候補"
   },
   "app": {
     "name": "Rove",
@@ -22,14 +42,38 @@
     "clear": "クリア",
     "close": "閉じる",
     "confirm": "確認",
+    "delete": "削除",
     "loading": "読み込み中…",
+    "noResults": "該当なし",
     "remove": "外す",
     "save": "保存",
+    "search": "検索",
     "selectDate": "日付を選択",
     "skipToContent": "本文へスキップ",
     "today": "今日"
   },
   "errors": {
+    "codes": {
+      "ai": {
+        "invalid_key": "モデルがAPIキーを拒否しました。",
+        "rate_limited": "モデルのエンドポイントがリクエストを制限しています。",
+        "timeout": "モデルの応答に時間がかかりすぎました。",
+        "upstream_error": "モデルのエンドポイントがエラーを返しました。"
+      },
+      "extract": {
+        "bad_reply": "モデルの応答が場所の一覧ではありませんでした。",
+        "not_configured": "抽出モデルが設定されていません。設定を確認してください。"
+      },
+      "geocode": {
+        "not_configured": "サーバーで場所検索が設定されていません。",
+        "quota": "今月の場所検索の上限に達しました。1日にリセットされます。",
+        "rate_limited": "検索が多すぎます。少し待ってください。"
+      },
+      "ingest": {
+        "no_source": "その種類のリンクを読めるソースがありません。",
+        "rate_limited": "リンクが多すぎます。少し待ってください。"
+      }
+    },
     "crash": {
       "description": "予期しないエラーが発生しました。データはこの端末に安全に保存されています。",
       "reload": "再読み込み",
@@ -38,25 +82,44 @@
     "unknown": "問題が発生しました"
   },
   "items": {
+    "deleted": "削除しました",
+    "deleteDescription": "評価とメモも一緒に削除されます。保存した投稿は残ります。",
+    "deleteTitle": "この場所を削除しますか？",
     "kind": {
       "event": "イベント",
       "film": "映画",
       "place": "場所"
     },
+    "markedVisited": "訪問済みにしました",
+    "markVisited": "訪問済みにする",
+    "navigate": "ナビ",
+    "notes": "メモ",
+    "notesPlaceholder": "覚えておきたいことを…",
+    "rating": "評価",
+    "sources": "出典",
+    "stars": "星{{count}}つ",
     "status": {
       "candidate": "候補",
       "dismissed": "却下",
       "saved": "保存済み",
       "visited": "訪問済み"
-    }
+    },
+    "unmarkVisited": "未訪問に戻す",
+    "visitCount": "{{count}}回訪問"
   },
   "list": {
     "emptyDescription": "「追加」タブから投稿を共有するか、リンクを貼り付けてください。",
-    "emptyTitle": "まだ何も保存されていません"
+    "emptyTitle": "まだ何も保存されていません",
+    "filterAll": "すべて",
+    "searchPlaceholder": "場所を検索…"
   },
   "map": {
     "emptyDescription": "保存した{{count}}件の場所がここに表示されます。",
-    "emptyTitle": "地図は次のフェーズで登場します"
+    "emptyTitle": "まだ場所がありません",
+    "loadFailed": "地図を読み込めませんでした。接続を確認してもう一度お試しください。",
+    "markerCount": "{{count}}件",
+    "unavailableDescription": "アプリのビルド時に地図のキーが設定されていませんでした。リストは使えます。",
+    "unavailableTitle": "このビルドには地図がありません"
   },
   "nav": {
     "add": "追加",
@@ -148,6 +211,10 @@
       "export": "バックアップを書き出す",
       "exportDone": "バックアップを書き出しました",
       "exportOmits": "ファイルでは評価とメモが先頭に来ます。モデルのキーはサーバーから出ず、端末の設定は含まれません。",
+      "import": "バックアップを読み込む",
+      "importDone": "{{items}}件の場所と{{reviews}}件の評価を復元しました（{{skipped}}件は既存）。",
+      "importInvalid": "ファイル内の{{count}}件が無効だったためスキップしました。",
+      "invalidFile": "そのファイルはRoveのバックアップではありません。",
       "telemetry": "クラッシュレポートを送る",
       "telemetryDescription": "匿名のエラー情報と利用回数。この端末の問題を見つけて直すためのものです。場所の名前、メモ、リンクは決して送られません。",
       "title": "データ"
@@ -174,6 +241,14 @@
       "title": "一般",
       "weekStart": "週の始まり",
       "weekStartAuto": "自動（{{day}}）"
+    },
+    "region": {
+      "description": "場所を検索する範囲、地図を描くサービス、ナビに使うアプリ。",
+      "notConfigured": "サーバーで場所検索が設定されていません（ジオコーダーのキーがありません）。",
+      "searches": "今月の場所検索 {{calls}} / {{limit}} 回。上限を超えないよう {{stopAt}} 回で検索を停止します。",
+      "signInForUsage": "サインインすると場所を検索でき、今月の使用状況を確認できます。",
+      "title": "地域",
+      "usageUnavailable": "現在、使用状況を取得できません。"
     },
     "settingsSaved": "設定を保存しました",
     "signOutDiscard": "破棄してログアウト",

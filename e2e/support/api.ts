@@ -38,8 +38,23 @@ interface Rejection {
   code: string;
 }
 
+/** What the mocked resolver and geocoder answer with, so specs can assert on the same words. */
+export const FIXTURES = {
+  caption: '周末去了 Bionic Brew，在南山海上世界，精酿不错。',
+  candidate: {
+    name: 'Bionic Brew',
+    district: '南山区',
+    location: {
+      point: { lon: 113.9167, lat: 22.4869, datum: 'GCJ02' as const },
+      address: '南山区 海上世界',
+      providerRef: { provider: 'amap', id: 'B0FFH1TEST' },
+    },
+  },
+};
+
 export interface ApiMock {
   state: ApiState;
+  fixtures: typeof FIXTURES;
   /** Every API call the app made, in order. */
   calls: RecordedCall[];
   /** Answer the next pull with the whole state and `reset: true`. */
@@ -164,6 +179,39 @@ export async function installApiMock(
     await json(route, response);
   });
 
+  /* The paste pipeline: a link resolves to the fixture caption, extraction is "not configured"
+     (the honest default without a model), and the geocoder answers one candidate for its name. */
+  await page.route('**/api/ingest/resolve', async (route) => {
+    const call = record(route);
+    if (unreachable) return route.abort('connectionfailed');
+    const { url } = call.body as { url: string };
+    await json(route, {
+      sourceId: url.includes('xhslink') ? 'xiaohongshu-share' : 'generic-og',
+      fetchedAt: new Date().toISOString(),
+      canonicalUrl: url,
+      contentType: 'application/json',
+      body: '{}',
+      text: FIXTURES.caption,
+      error: null,
+      title: null,
+    });
+  });
+  await page.route('**/api/ingest/extract', async (route) => {
+    record(route);
+    await json(route, { error: 'extract.not_configured' }, 503);
+  });
+  await page.route('**/api/geocode/suggest*', async (route) => {
+    record(route);
+    if (unreachable) return route.abort('connectionfailed');
+    const q = new URL(route.request().url()).searchParams.get('q') ?? '';
+    const hit = FIXTURES.candidate.name.toLowerCase().includes(q.trim().toLowerCase());
+    await json(route, { candidates: hit ? [FIXTURES.candidate] : [] });
+  });
+  await page.route('**/api/geocode/usage*', async (route) => {
+    record(route);
+    await json(route, { configured: true, month: '2026-09', calls: 12, limit: 5000, stopAt: 4500 });
+  });
+
   await page.route('**/api/{items,snapshots,reviews,impressions,settings}**', async (route) => {
     const call = record(route);
     if (unreachable) return route.abort('connectionfailed');
@@ -174,16 +222,59 @@ export async function installApiMock(
       return json(route, { error: rejection.code }, rejection.status);
     }
 
-    // Apply creates so the next pull returns them — a round trip rather than two assertions.
-    if (call.method === 'POST' && call.path === '/api/items') {
-      const body = call.body as ItemDto;
-      state.items = [...state.items, { ...body, updatedAt: body.createdAt }];
+    /* Applied, not merely accepted. The app pulls right after every push, and a pull that hands
+       back the row as it was before the write would silently undo it locally — which is exactly
+       what a real server that lost the write would do, and not what this fixture is for. */
+    const match = call.path.match(/^\/api\/(items|snapshots|reviews|impressions)(?:\/([^/]+))?$/);
+    if (match) {
+      const coll = match[1] as 'items' | 'snapshots' | 'reviews' | 'impressions';
+      const id = match[2];
+      const rows = state[coll] as { id: string; createdAt: string; updatedAt: string }[];
+      const now = new Date().toISOString();
+      if (call.method === 'POST') {
+        /* With the defaults the shared create schema would have filled in — the real server
+           answers a pull with complete DTOs, and a row missing `visits` or `altTitles` would crash
+           a component that (correctly) trusts the wire shape. */
+        const defaults: Record<typeof coll, object> = {
+          items: {
+            altTitles: [],
+            categories: [],
+            status: 'saved',
+            snapshotIds: [],
+            sourceUrls: [],
+            expiresAt: null,
+          },
+          snapshots: {
+            canonicalUrl: null,
+            contentType: '',
+            body: '',
+            text: '',
+            error: null,
+            extraction: null,
+          },
+          reviews: { rating: null, notes: '', visits: [] },
+          impressions: { action: null },
+        };
+        const body = call.body as { id: string; createdAt: string };
+        rows.push({ ...defaults[coll], ...body, updatedAt: now } as never);
+      } else if (call.method === 'PATCH' && id) {
+        const index = rows.findIndex((r) => r.id === id);
+        if (index !== -1)
+          rows[index] = { ...rows[index], ...(call.body as object), updatedAt: now };
+      } else if (call.method === 'DELETE' && id) {
+        const index = rows.findIndex((r) => r.id === id);
+        if (index !== -1) {
+          rows.splice(index, 1);
+          state.deletions.push({ coll: coll.slice(0, -1) as never, docId: id, deletedAt: now });
+        }
+      }
     }
     await json(route, {}, call.method === 'POST' ? 201 : 200);
   });
 
   return {
     state,
+    fixtures: FIXTURES,
     calls,
     nextPullIsReset: () => {
       forceReset = true;

@@ -22,12 +22,18 @@ test('every lazy route resolves in the built bundle', async ({ app: page }) => {
   }
 });
 
-test('the share target lands on the add screen with the link', async ({ app: page }) => {
+test('the share target lands on the add screen with the link filled in and read', async ({
+  app: page,
+  api,
+}) => {
   /* What Android actually sends: the caption and the link together in `text`, `url` empty. */
   await page.goto(`/add?title=&text=${encodeURIComponent('看看这个 http://xhslink.com/m/abc，')}`);
 
-  await expect(page.getByText('Link received')).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByText('http://xhslink.com/m/abc')).toBeVisible();
+  await expect(page.getByLabel('Link')).toHaveValue('http://xhslink.com/m/abc', {
+    timeout: 20_000,
+  });
+  // Resolved on arrival, without a tap: the caption the mock server answers with is on screen.
+  await expect(page.getByText(api.fixtures.caption)).toBeVisible({ timeout: 20_000 });
 });
 
 test('an unknown path lands on the map rather than nowhere', async ({ app: page }) => {
@@ -64,6 +70,6 @@ test('the pull populates the list, newest first', async ({ app: page, api }) => 
 
   await page.goto('/list');
   await expect(page.getByText('Bionic Brew')).toBeVisible({ timeout: 20_000 });
-  const titles = await page.locator('li p.font-medium').allTextContents();
+  const titles = await page.locator('li span.block.truncate.font-medium').allTextContents();
   expect(titles).toEqual(['Bionic Brew', '文和友']);
 });

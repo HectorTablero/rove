@@ -1,8 +1,28 @@
 {
   "add": {
+    "captionFrom": "What the post says ({{source}})",
+    "chooseAnother": "Choose another",
     "emptyDescription": "Share a post here from Instagram, Xiaohongshu or your browser, or paste a link.",
     "emptyTitle": "Add a place",
-    "receivedTitle": "Link received"
+    "extract": "Find places",
+    "extractAgain": "Find again",
+    "extractFailed": "The model could not read this post.",
+    "linkHint": "Or share a post to Rove from the app you found it in.",
+    "linkLabel": "Link",
+    "linkPlaceholder": "Paste an Instagram, Xiaohongshu or web link",
+    "merged": "Already saved as {{title}} — the new link was added to it.",
+    "nameLabel": "Place",
+    "namePlaceholder": "Type a name to search…",
+    "noCaption": "Nothing readable came back. You can still name the place below.",
+    "noMentions": "No place named in the text.",
+    "noModel": "Set an extraction model in Settings to have places suggested.",
+    "noSuggestions": "Nothing found with that name here.",
+    "read": "Read",
+    "readFailed": "This link could not be read:",
+    "receivedTitle": "Link received",
+    "saved": "Saved {{title}}",
+    "suggestFailed": "The search did not answer.",
+    "suggestions": "Suggestions"
   },
   "app": {
     "name": "Rove",
@@ -22,14 +42,38 @@
     "clear": "Clear",
     "close": "Close",
     "confirm": "Confirm",
+    "delete": "Delete",
     "loading": "Loading…",
+    "noResults": "No results",
     "remove": "Remove",
     "save": "Save",
+    "search": "Search",
     "selectDate": "Select a date",
     "skipToContent": "Skip to content",
     "today": "Today"
   },
   "errors": {
+    "codes": {
+      "ai": {
+        "invalid_key": "The model refused the API key.",
+        "rate_limited": "The model endpoint is rate-limiting requests.",
+        "timeout": "The model took too long to answer.",
+        "upstream_error": "The model endpoint answered with an error."
+      },
+      "extract": {
+        "bad_reply": "The model answered with something that was not a list of places.",
+        "not_configured": "No extraction model is set. See Settings."
+      },
+      "geocode": {
+        "not_configured": "Place search is not configured on the server.",
+        "quota": "This month’s place-search pool is used up. It resets on the 1st.",
+        "rate_limited": "Too many searches at once. Wait a moment."
+      },
+      "ingest": {
+        "no_source": "No source can read that kind of link.",
+        "rate_limited": "Too many links at once. Wait a moment."
+      }
+    },
     "crash": {
       "description": "The app hit an unexpected error. Your data is safe on this device.",
       "reload": "Reload",
@@ -38,26 +82,48 @@
     "unknown": "Something went wrong"
   },
   "items": {
+    "deleted": "Deleted",
+    "deleteDescription": "Its rating and notes go with it. The saved post is kept.",
+    "deleteTitle": "Delete this place?",
     "kind": {
       "event": "Event",
       "film": "Film",
       "place": "Place"
     },
+    "markedVisited": "Marked as visited",
+    "markVisited": "Mark visited",
+    "navigate": "Navigate",
+    "notes": "Notes",
+    "notesPlaceholder": "Anything worth remembering…",
+    "rating": "Rating",
+    "sources": "Seen at",
+    "stars_one": "{{count}} star",
+    "stars_other": "{{count}} stars",
     "status": {
       "candidate": "Suggested",
       "dismissed": "Dismissed",
       "saved": "Saved",
       "visited": "Visited"
-    }
+    },
+    "unmarkVisited": "Not visited",
+    "visitCount_one": "Visited {{count}} time",
+    "visitCount_other": "Visited {{count}} times"
   },
   "list": {
     "emptyDescription": "Share a post or paste a link from the Add tab.",
-    "emptyTitle": "Nothing saved yet"
+    "emptyTitle": "Nothing saved yet",
+    "filterAll": "All",
+    "searchPlaceholder": "Search places…"
   },
   "map": {
     "emptyDescription_one": "{{count}} saved place will be drawn here.",
     "emptyDescription_other": "{{count}} saved places will be drawn here.",
-    "emptyTitle": "The map arrives in the next phase"
+    "emptyTitle": "No places yet",
+    "loadFailed": "The map could not load. Check the connection and try again.",
+    "markerCount_one": "{{count}} place",
+    "markerCount_other": "{{count}} places",
+    "unavailableDescription": "The map key was not set when the app was built. The list still works.",
+    "unavailableTitle": "No map in this build"
   },
   "nav": {
     "add": "Add",
@@ -152,6 +218,11 @@
       "export": "Export backup",
       "exportDone": "Backup exported",
       "exportOmits": "Ratings and notes come first in the file. The model key never leaves the server, and device preferences are not included.",
+      "import": "Import backup",
+      "importDone": "Restored {{items}} places and {{reviews}} reviews ({{skipped}} already here).",
+      "importInvalid_one": "{{count}} row in the file was not valid and was skipped.",
+      "importInvalid_other": "{{count}} rows in the file were not valid and were skipped.",
+      "invalidFile": "That file is not a Rove backup.",
       "telemetry": "Send crash reports",
       "telemetryDescription": "Anonymous errors and usage counts, so problems on this device can be found and fixed. Never a place name, a note or a link.",
       "title": "Data"
@@ -178,6 +249,14 @@
       "title": "General",
       "weekStart": "First day of the week",
       "weekStartAuto": "Automatic ({{day}})"
+    },
+    "region": {
+      "description": "Where places are searched, which map draws them, and which app navigates.",
+      "notConfigured": "Place search is not configured on the server (no geocoder key).",
+      "searches": "{{calls}} of {{limit}} place searches used this month. Searching stops at {{stopAt}} so the pool is never exceeded.",
+      "signInForUsage": "Sign in to search places and see this month’s usage.",
+      "title": "Region",
+      "usageUnavailable": "Usage could not be read right now."
     },
     "settingsSaved": "Settings saved",
     "signOutDiscard": "Sign out and discard",

@@ -102,6 +102,7 @@ export function modelDouble() {
        nothing, to tell a row that has moved on from a row that is gone. */
     exists: vi.fn(async (..._args: unknown[]) => null as unknown),
     create: vi.fn(async (...args: unknown[]) => args[0] as unknown[]),
+    updateOne: vi.fn(async (..._args: unknown[]) => ({ modifiedCount: 0 })),
     updateMany: vi.fn(async (..._args: unknown[]) => ({ modifiedCount: 0 })),
     deleteMany: vi.fn(async (..._args: unknown[]) => ({ deletedCount: 0 })),
     insertMany: vi.fn(async (..._args: unknown[]) => [] as unknown[]),
@@ -123,6 +124,7 @@ export function resetModels(...models: ModelDouble[]): void {
     model.findOneAndDelete.mockReturnValue(query(null));
     model.exists.mockResolvedValue(null);
     model.create.mockImplementation(async (...args: unknown[]) => args[0] as unknown[]);
+    model.updateOne.mockResolvedValue({ modifiedCount: 0 });
     model.updateMany.mockResolvedValue({ modifiedCount: 0 });
     model.deleteMany.mockResolvedValue({ deletedCount: 0 });
     model.insertMany.mockResolvedValue([]);

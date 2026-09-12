@@ -13,7 +13,8 @@ export interface ItemFilter {
 
 /** Fold for matching: NFKC so full-width and half-width forms compare equal, then case. Not
     ASCII-only, and not stripping anything — `文和友` must match `文和友`. */
-export const foldText = (text: string): string => text.normalize('NFKC').toLocaleLowerCase();
+export const foldText = (text: string): string =>
+  text.normalize('NFKC').replace(/\s+/g, ' ').trim().toLocaleLowerCase();
 
 export async function getItems(filter: ItemFilter = {}): Promise<ItemDto[]> {
   let items = await db.items.toArray();

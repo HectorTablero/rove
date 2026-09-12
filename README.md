@@ -8,10 +8,11 @@ Built for Shenzhen. Built so that a second region is additive.
 
 ## Status
 
-**Phase 0 — the strip.** The infrastructure was inherited from [Diary] (local-first sync, PWA,
-Android shell, asset generation, versioning, i18n checks, telemetry) and the diary itself has been
-removed. What exists today: the data model, the sync path end to end, the region boundary with its
-tests, the share-sheet target, and placeholder Map / List / Add screens. Nothing fetches yet.
+**Phase 1 — places, manually fed.** Share a post (Instagram, Xiaohongshu, any page) into the app:
+the server reads it, the model you configure suggests the places it names, the geocoder finds the
+one you pick, and it lands on the map with navigation one tap away. Ratings, notes and visits are
+yours. The infrastructure came from [Diary] (local-first sync, PWA, Android shell, asset
+generation, versioning, i18n checks, telemetry); Phase 0 stripped the diary out of it.
 
 The plan, with the research behind it, is in `PLAN.md`. The brief it answers is `BRIEF.md`.
 
@@ -105,9 +106,45 @@ The PWA manifest declares a `share_target` on `/add`. Android puts the shared li
 behind the caption, so `web/src/lib/shareTarget.ts` finds the first URL in any of the three fields,
 stopping at CJK punctuation. `/add` is also an App Link, so the installed Android app claims it.
 
+## Amap
+
+Three keys, one 应用 in [console.amap.com](https://console.amap.com) (the account needs 个人认证):
+
+| Key                   | Where it goes                                  | Bind it to                     | Pool it spends                                               |
+| --------------------- | ---------------------------------------------- | ------------------------------ | ------------------------------------------------------------ |
+| Web服务 (Web Service) | `AMAP_WEB_SERVICE_KEY`, server only            | the VPS's IP (IP 白名单)       | 基础搜索服务: **5,000 calls/month** on the personal tier     |
+| Web端 (JS API)        | `VITE_AMAP_JS_KEY`, inlined into the web build | the site's domain (域名白名单) | map loads, 1,500,000/month                                   |
+| its 安全密钥 (jscode) | `AMAP_JS_SECURITY_CODE`, server only           | —                              | — (the browser reaches Amap through `/_AMapService` instead) |
+
+The search pool is the scarce one. Every 输入提示 answer is cached forever by query
+(`GeocodeCache`), a monthly counter (`ProviderUsage`) is bumped before each paid call, and the
+server refuses new searches at 4,500 with `geocode.quota` rather than failing at 5,000. Settings →
+Region shows the month's count.
+
+The personal tier's free quota is documented as a one-year grant from authentication — check the
+console before relying on it in year two.
+
+## The paste pipeline
+
+```
+share sheet → /add?text=…            web/src/lib/shareTarget.ts
+  → POST /api/ingest/resolve         server/src/sources/*          (URL → snapshot fields)
+  → Snapshot row, local + queued     web/src/db/mutations.ts
+  → POST /api/ingest/extract         server/src/services/extractService.ts
+      (model proposes mentions; evidence must be a verbatim substring, or it is dropped)
+  → GET /api/geocode/suggest         server/src/providers/amap/geocoder.ts (cached, counted)
+  → dedupe                           web/src/lib/dedupe.ts
+      (same providerRef → same folded title within 100 m → same canonical URL)
+  → Item row, local + queued
+```
+
+The model never originates a fact: it returns spans of the post, and only spans that are actually
+in the post survive `validateMentions`. Coordinates, addresses and POI ids come from the geocoder.
+
 ## Setup
 
-1. `cp .env.example .env` and fill it in (`BETTER_AUTH_SECRET` via `openssl rand -base64 32`).
+1. `cp .env.example .env` and fill it in (`BETTER_AUTH_SECRET` via `openssl rand -base64 32`,
+   the three Amap keys above).
 2. In Google Cloud Console, add the OAuth redirect URIs:
    - `http://localhost:5173/api/auth/callback/google` (dev)
    - `https://<your-domain>/api/auth/callback/google` (prod)

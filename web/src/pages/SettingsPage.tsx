@@ -19,6 +19,8 @@ import { notifyError, notifySuccess } from '@/lib/notify';
 import { isNative } from '@/lib/native';
 import { useSession } from '@/lib/authClient';
 import { setPreference, usePreferences } from '@/lib/preferences';
+import { useGeocodeUsage } from '@/lib/ingest';
+import { useRegion } from '@/lib/region';
 import { applyTheme, getTheme, type Theme } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 
@@ -38,6 +40,8 @@ export default function SettingsPage() {
   const saveSettings = useSaveSettings();
 
   const prefs = usePreferences();
+  const region = useRegion();
+  const usage = useGeocodeUsage(region.id, Boolean(session?.user));
   const [theme, setTheme] = useState<Theme>(getTheme());
   const [draft, setDraft] = useState<SettingsDto | null>(null);
   /* Bumped by every control that considers its change settled. It exists because a handler
@@ -218,6 +222,39 @@ export default function SettingsPage() {
               </div>
             </div>
             <LanguageSetting />
+          </div>
+        </Section>
+
+        <Section title={t('settings.region.title')} description={t('settings.region.description')}>
+          <div className="flex flex-col gap-1.5 text-sm">
+            <p>
+              <span className="font-medium">{region.name}</span>
+              <span className="text-muted-foreground">
+                {' '}
+                · {region.tz} · {region.datum}
+              </span>
+            </p>
+            {/* The one number that decides whether the add screen keeps working this month. Shown
+                plainly rather than hidden until it bites: the search pool is small and monthly. */}
+            {session?.user ? (
+              usage.data ? (
+                <p className="text-xs text-muted-foreground">
+                  {usage.data.configured
+                    ? t('settings.region.searches', {
+                        calls: usage.data.calls,
+                        limit: usage.data.limit,
+                        stopAt: usage.data.stopAt,
+                      })
+                    : t('settings.region.notConfigured')}
+                </p>
+              ) : usage.isError ? (
+                <p className="text-xs text-muted-foreground">
+                  {t('settings.region.usageUnavailable')}
+                </p>
+              ) : null
+            ) : (
+              <p className="text-xs text-muted-foreground">{t('settings.region.signInForUsage')}</p>
+            )}
           </div>
         </Section>
 

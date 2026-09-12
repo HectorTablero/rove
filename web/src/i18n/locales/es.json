@@ -1,8 +1,28 @@
 {
   "add": {
+    "captionFrom": "Lo que dice la publicación ({{source}})",
+    "chooseAnother": "Elegir otro",
     "emptyDescription": "Comparte aquí una publicación desde Instagram, Xiaohongshu o el navegador, o pega un enlace.",
     "emptyTitle": "Añadir un lugar",
-    "receivedTitle": "Enlace recibido"
+    "extract": "Buscar lugares",
+    "extractAgain": "Buscar de nuevo",
+    "extractFailed": "El modelo no pudo leer esta publicación.",
+    "linkHint": "O comparte una publicación con Rove desde la app donde la encontraste.",
+    "linkLabel": "Enlace",
+    "linkPlaceholder": "Pega un enlace de Instagram, Xiaohongshu o web",
+    "merged": "Ya estaba guardado como {{title}}: se le ha añadido el nuevo enlace.",
+    "nameLabel": "Lugar",
+    "namePlaceholder": "Escribe un nombre para buscar…",
+    "noCaption": "No llegó nada legible. Aun así puedes escribir el nombre del lugar abajo.",
+    "noMentions": "El texto no nombra ningún lugar.",
+    "noModel": "Configura un modelo de extracción en Ajustes para que te sugiera lugares.",
+    "noSuggestions": "No hay nada con ese nombre por aquí.",
+    "read": "Leer",
+    "readFailed": "No se pudo leer este enlace:",
+    "receivedTitle": "Enlace recibido",
+    "saved": "Guardado {{title}}",
+    "suggestFailed": "La búsqueda no respondió.",
+    "suggestions": "Sugerencias"
   },
   "app": {
     "name": "Rove",
@@ -22,14 +42,38 @@
     "clear": "Borrar",
     "close": "Cerrar",
     "confirm": "Confirmar",
+    "delete": "Eliminar",
     "loading": "Cargando…",
+    "noResults": "Sin resultados",
     "remove": "Quitar",
     "save": "Guardar",
+    "search": "Buscar",
     "selectDate": "Elegir fecha",
     "skipToContent": "Saltar al contenido",
     "today": "Hoy"
   },
   "errors": {
+    "codes": {
+      "ai": {
+        "invalid_key": "El modelo rechazó la clave de API.",
+        "rate_limited": "El endpoint del modelo está limitando las peticiones.",
+        "timeout": "El modelo tardó demasiado en responder.",
+        "upstream_error": "El endpoint del modelo respondió con un error."
+      },
+      "extract": {
+        "bad_reply": "El modelo respondió con algo que no era una lista de lugares.",
+        "not_configured": "No hay un modelo de extracción configurado. Mira en Ajustes."
+      },
+      "geocode": {
+        "not_configured": "La búsqueda de lugares no está configurada en el servidor.",
+        "quota": "El cupo de búsquedas de este mes está agotado. Se renueva el día 1.",
+        "rate_limited": "Demasiadas búsquedas seguidas. Espera un momento."
+      },
+      "ingest": {
+        "no_source": "Ninguna fuente sabe leer ese tipo de enlace.",
+        "rate_limited": "Demasiados enlaces seguidos. Espera un momento."
+      }
+    },
     "crash": {
       "description": "La app ha encontrado un error inesperado. Tus datos están a salvo en este dispositivo.",
       "reload": "Recargar",
@@ -38,26 +82,48 @@
     "unknown": "Algo ha salido mal"
   },
   "items": {
+    "deleted": "Eliminado",
+    "deleteDescription": "Su valoración y sus notas se van con él. La publicación guardada se conserva.",
+    "deleteTitle": "¿Eliminar este lugar?",
     "kind": {
       "event": "Evento",
       "film": "Película",
       "place": "Lugar"
     },
+    "markedVisited": "Marcado como visitado",
+    "markVisited": "Marcar como visitado",
+    "navigate": "Ir",
+    "notes": "Notas",
+    "notesPlaceholder": "Lo que merezca la pena recordar…",
+    "rating": "Valoración",
+    "sources": "Visto en",
+    "stars_one": "{{count}} estrella",
+    "stars_other": "{{count}} estrellas",
     "status": {
       "candidate": "Sugerido",
       "dismissed": "Descartado",
       "saved": "Guardado",
       "visited": "Visitado"
-    }
+    },
+    "unmarkVisited": "No visitado",
+    "visitCount_one": "Visitado {{count}} vez",
+    "visitCount_other": "Visitado {{count}} veces"
   },
   "list": {
     "emptyDescription": "Comparte una publicación o pega un enlace desde la pestaña Añadir.",
-    "emptyTitle": "Aún no hay nada guardado"
+    "emptyTitle": "Aún no hay nada guardado",
+    "filterAll": "Todos",
+    "searchPlaceholder": "Buscar lugares…"
   },
   "map": {
     "emptyDescription_one": "{{count}} lugar guardado se mostrará aquí.",
     "emptyDescription_other": "{{count}} lugares guardados se mostrarán aquí.",
-    "emptyTitle": "El mapa llega en la siguiente fase"
+    "emptyTitle": "Aún no hay lugares",
+    "loadFailed": "El mapa no se pudo cargar. Comprueba la conexión e inténtalo de nuevo.",
+    "markerCount_one": "{{count}} lugar",
+    "markerCount_other": "{{count}} lugares",
+    "unavailableDescription": "La clave del mapa no estaba configurada al compilar la app. La lista sigue funcionando.",
+    "unavailableTitle": "Esta compilación no tiene mapa"
   },
   "nav": {
     "add": "Añadir",
@@ -155,6 +221,11 @@
       "export": "Exportar copia de seguridad",
       "exportDone": "Copia de seguridad exportada",
       "exportOmits": "Las valoraciones y las notas van primero en el archivo. La clave del modelo nunca sale del servidor y las preferencias del dispositivo no se incluyen.",
+      "import": "Importar copia",
+      "importDone": "Restaurados {{items}} lugares y {{reviews}} valoraciones ({{skipped}} ya estaban).",
+      "importInvalid_one": "{{count}} fila del archivo no era válida y se ha omitido.",
+      "importInvalid_other": "{{count}} filas del archivo no eran válidas y se han omitido.",
+      "invalidFile": "Ese archivo no es una copia de Rove.",
       "telemetry": "Enviar informes de fallos",
       "telemetryDescription": "Errores anónimos y recuentos de uso, para poder encontrar y arreglar problemas en este dispositivo. Nunca el nombre de un lugar, una nota o un enlace.",
       "title": "Datos"
@@ -181,6 +252,14 @@
       "title": "General",
       "weekStart": "Primer día de la semana",
       "weekStartAuto": "Automático ({{day}})"
+    },
+    "region": {
+      "description": "Dónde se buscan los lugares, qué mapa los dibuja y qué app te lleva hasta ellos.",
+      "notConfigured": "La búsqueda de lugares no está configurada en el servidor (falta la clave del geocodificador).",
+      "searches": "{{calls}} de {{limit}} búsquedas de lugares usadas este mes. La búsqueda se detiene en {{stopAt}} para no pasarse nunca del cupo.",
+      "signInForUsage": "Inicia sesión para buscar lugares y ver el uso de este mes.",
+      "title": "Región",
+      "usageUnavailable": "Ahora mismo no se ha podido leer el uso."
     },
     "settingsSaved": "Ajustes guardados",
     "signOutDiscard": "Cerrar sesión y descartar",

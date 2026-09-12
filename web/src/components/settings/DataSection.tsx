@@ -1,5 +1,6 @@
-import { Download, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { Download, Trash2, Upload } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Spinner } from '@/components/common/Spinner';
 import { DeleteAccountDialog } from '@/components/settings/DeleteAccountDialog';
@@ -7,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useSyncStatus } from '@/db/useSyncStatus';
 import { useSession } from '@/lib/authClient';
 import { backupFileName, buildBackupEnvelope } from '@/lib/backup';
+import { importBackup } from '@/lib/backupImport';
 import { resumingAccountDeletion } from '@/lib/deleteAccountResume';
 import { saveTextFile } from '@/lib/fileSave';
 import { notifyError, notifySuccess } from '@/lib/notify';
@@ -26,6 +28,9 @@ export function DataSection() {
   const { blocker } = useSyncStatus();
   const serverUnreachable = blocker === 'offline' || blocker === 'unreachable';
   const [exportingBackup, setExportingBackup] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const importFileRef = useRef<HTMLInputElement>(null);
+  const qc = useQueryClient();
   /* Open on arrival when this page load is the far side of a deletion re-authentication — the web
      has to leave for Google to prove who it is, and Settings is where it comes back to (see
      lib/deleteAccountResume.ts). Native never redirects and always gets `false`. */

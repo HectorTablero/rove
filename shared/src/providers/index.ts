@@ -1,4 +1,8 @@
 import type { Navigation } from '../region';
+
+/* The one datum conversion, re-exported for renderers; only a provider may call it (see the
+   boundary test). */
+export { toDatum } from './datum';
 import { amapNavigation } from './amap/navigation';
 
 /* The navigation registry — the one provider surface that is pure and therefore lives in shared,

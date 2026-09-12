@@ -1,0 +1,221 @@
+import type { ItemDto } from '@rove/shared';
+import { navigationById } from '@rove/shared';
+import { Check, ExternalLink, Navigation, Trash2, Undo2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useDeleteItem, useItem, useReview, useUpdateItem, useUpsertReview } from '@/api/hooks';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { StarRating } from '@/components/items/StarRating';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { recordAction, recordShown } from '@/lib/impressions';
+import { notifySuccess } from '@/lib/notify';
+import { useRegion } from '@/lib/region';
+
+/* One item, and everything you can do to it: navigate there, mark it visited, rate it, write a
+   note, delete it. Opened from the map and the list alike. Notes save on a short debounce and on
+   close, like the settings page — a field typed into and closed never blurs. */
+
+const NOTES_DEBOUNCE_MS = 600;
+
+export function ItemSheet({ itemId, onClose }: { itemId: string | null; onClose: () => void }) {
+  return (
+    <Dialog open={itemId !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md">
+        {itemId && <ItemSheetBody itemId={itemId} onClose={onClose} />}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => void }) {
+  const { t } = useTranslation();
+  const region = useRegion();
+  const { data: item } = useItem(itemId);
+  const { data: review } = useReview(itemId);
+  const updateItem = useUpdateItem();
+  const upsertReview = useUpsertReview();
+  const deleteItem = useDeleteItem();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [notes, setNotes] = useState<string | null>(null);
+  const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => recordShown(itemId, 'sheet'), [itemId]);
+
+  // Seed the notes draft once the review is known; later edits are local until saved.
+  useEffect(() => {
+    if (review !== undefined && notes === null) setNotes(review?.notes ?? '');
+  }, [review, notes]);
+
+  const saveNotes = (value: string) => {
+    if ((review?.notes ?? '') === value) return;
+    upsertReview.mutate({ itemId, input: { notes: value } });
+  };
+  const onNotesChange = (value: string) => {
+    setNotes(value);
+    if (notesTimer.current) clearTimeout(notesTimer.current);
+    notesTimer.current = setTimeout(() => saveNotes(value), NOTES_DEBOUNCE_MS);
+  };
+  // The last save, on unmount: the sheet closing is the normal end of an edit.
+  const notesRef = useRef(notes);
+  notesRef.current = notes;
+  const reviewRef = useRef(review);
+  reviewRef.current = review;
+  useEffect(
+    () => () => {
+      if (notesTimer.current) clearTimeout(notesTimer.current);
+      const value = notesRef.current;
+      if (value !== null && (reviewRef.current?.notes ?? '') !== value) {
+        upsertReview.mutate({ itemId, input: { notes: value } });
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [itemId],
+  );
+
+  if (!item) return null;
+  const location = item.kind === 'film' ? null : item.location;
+  const visited = item.status === 'visited';
+
+  const navigate = () => {
+    if (!location) return;
+    recordAction(itemId, 'sheet', 'navigate');
+    const url = navigationById(region.navigation).routeUrl(location.point, item.title);
+    window.open(url, '_blank', 'noopener');
+  };
+
+  const toggleVisited = () => {
+    const now = new Date().toISOString();
+    updateItem.mutate({ id: itemId, input: { status: visited ? 'saved' : 'visited' } });
+    if (!visited) {
+      upsertReview.mutate({ itemId, input: { visits: [...(review?.visits ?? []), now] } });
+      notifySuccess(t('items.markedVisited'));
+    }
+  };
+
+  const remove = () => {
+    recordAction(itemId, 'sheet', 'dismiss');
+    deleteItem.mutate(itemId, {
+      onSuccess: () => {
+        notifySuccess(t('items.deleted'), { important: true });
+        onClose();
+      },
+    });
+  };
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle className="pr-6">{item.title}</DialogTitle>
+        <DialogDescription className="flex flex-wrap items-center gap-1.5">
+          <Badge variant="secondary">{t(`items.kind.${item.kind}`)}</Badge>
+          <Badge variant={visited ? 'default' : 'outline'}>
+            {t(`items.status.${item.status}`)}
+          </Badge>
+          {item.altTitles.length > 0 && (
+            <span className="text-xs text-muted-foreground">{item.altTitles.join(' · ')}</span>
+          )}
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="flex flex-col gap-4">
+        {location?.address && <p className="text-sm text-muted-foreground">{location.address}</p>}
+
+        <div className="flex flex-wrap gap-2">
+          {location && (
+            <Button size="sm" className="gap-1.5" onClick={navigate}>
+              <Navigation className="size-4" />
+              {t('items.navigate')}
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant={visited ? 'secondary' : 'outline'}
+            className="gap-1.5"
+            onClick={toggleVisited}
+          >
+            {visited ? <Undo2 className="size-4" /> : <Check className="size-4" />}
+            {visited ? t('items.unmarkVisited') : t('items.markVisited')}
+          </Button>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label>{t('items.rating')}</Label>
+          <StarRating
+            value={review?.rating ?? null}
+            onChange={(rating) => upsertReview.mutate({ itemId, input: { rating } })}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="item-notes">{t('items.notes')}</Label>
+          <Textarea
+            id="item-notes"
+            rows={3}
+            placeholder={t('items.notesPlaceholder')}
+            value={notes ?? ''}
+            onChange={(e) => onNotesChange(e.target.value)}
+            onBlur={() => notes !== null && saveNotes(notes)}
+          />
+        </div>
+
+        {item.sourceUrls.length > 0 && (
+          <div className="flex flex-col gap-1">
+            <Label>{t('items.sources')}</Label>
+            <ul className="flex flex-col gap-1">
+              {item.sourceUrls.map((url) => (
+                <li key={url}>
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex max-w-full items-center gap-1 text-xs text-muted-foreground underline-offset-2 hover:underline"
+                  >
+                    <ExternalLink className="size-3 shrink-0" />
+                    <span className="truncate">{new URL(url).hostname.replace(/^www\./, '')}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {review?.visits.length ? (
+          <p className="text-xs text-muted-foreground">
+            {t('items.visitCount', { count: review.visits.length })}
+          </p>
+        ) : null}
+
+        <div className="flex justify-end border-t pt-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="gap-1.5 text-muted-foreground hover:text-destructive"
+            onClick={() => setConfirmDelete(true)}
+          >
+            <Trash2 className="size-3.5" />
+            {t('common.delete')}
+          </Button>
+        </div>
+      </div>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title={t('items.deleteTitle')}
+        description={t('items.deleteDescription')}
+        confirmLabel={t('common.delete')}
+        onConfirm={remove}
+      />
+    </>
+  );
+}

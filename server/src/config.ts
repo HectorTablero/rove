@@ -52,5 +52,11 @@ export const config = {
   // console-only, so local development and self-hosters need no account.
   betterStackToken: process.env.BETTERSTACK_SOURCE_TOKEN,
   betterStackIngestUrl: process.env.BETTERSTACK_INGEST_URL,
+  /* Amap, both halves. The Web Service key never leaves the server and is what geocoding spends;
+     the JS security code is the server-side half of the browser map's key (see
+     providers/amap/jsProxy.ts). Both optional: without them geocoding answers "not configured"
+     rather than throwing at import, and the map still draws if the browser was built with a key. */
+  amapWebServiceKey: process.env.AMAP_WEB_SERVICE_KEY ?? '',
+  amapJsSecurityCode: process.env.AMAP_JS_SECURITY_CODE ?? '',
   appVersion: readAppVersion(),
 };

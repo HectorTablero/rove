@@ -113,7 +113,10 @@ export async function upsertReview(itemId: string, input: ReviewUpdateInput): Pr
 // --- Impressions ---
 
 export async function logImpression(
-  input: Omit<ImpressionCreateInput, 'id' | 'createdAt' | 'at'> & { at?: string },
+  input: Omit<ImpressionCreateInput, 'id' | 'createdAt' | 'at' | 'action'> & {
+    at?: string;
+    action?: ImpressionDto['action'];
+  },
 ): Promise<ImpressionDto> {
   const id = newObjectId();
   const createdAt = now();
