@@ -1,6 +1,6 @@
 import type { ItemDto } from '@rove/shared';
 import { navigationById } from '@rove/shared';
-import { Check, ExternalLink, Navigation, Trash2, Undo2 } from 'lucide-react';
+import { Bookmark, Check, ExternalLink, MapPin, Navigation, Trash2, Undo2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDeleteItem, useItem, useReview, useUpdateItem, useUpsertReview } from '@/api/hooks';
@@ -18,7 +18,10 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { recordAction, recordShown } from '@/lib/impressions';
-import { notifySuccess } from '@/lib/notify';
+import { suggestPlaces } from '@/lib/ingest';
+import { ApiError } from '@/lib/apiClient';
+import { formatWhen } from '@/lib/when';
+import { notifyError, notifySuccess } from '@/lib/notify';
 import { useRegion } from '@/lib/region';
 
 /* One item, and everything you can do to it: navigate there, mark it visited, rate it, write a
@@ -38,9 +41,10 @@ export function ItemSheet({ itemId, onClose }: { itemId: string | null; onClose:
 }
 
 function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => void }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const region = useRegion();
   const { data: item } = useItem(itemId);
+  const [locating, setLocating] = useState(false);
   const { data: review } = useReview(itemId);
   const updateItem = useUpdateItem();
   const upsertReview = useUpsertReview();
@@ -85,6 +89,44 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
   if (!item) return null;
   const location = item.kind === 'film' ? null : item.location;
   const visited = item.status === 'visited';
+  const candidate = item.status === 'candidate';
+  const when = item.kind !== 'place' && item.when ? formatWhen(item.when, i18n.language) : null;
+  const venue = item.kind === 'event' ? item.venue : null;
+
+  /* A candidate's venue is text the feed printed. Finding it on the map spends one geocoder call,
+     on purpose and on request — never sixty per poll — and keeps the first answer. */
+  const locate = async () => {
+    if (!venue) return;
+    setLocating(true);
+    try {
+      const [first] = await suggestPlaces(venue, region.id);
+      if (!first) {
+        notifyError(t('items.venueNotFound', { venue }));
+        return;
+      }
+      updateItem.mutate({ id: itemId, input: { location: first.location } });
+    } catch (err) {
+      notifyError(
+        err instanceof ApiError
+          ? t(`errors.codes.${err.code}`, { defaultValue: t('errors.unknown') })
+          : t('errors.unknown'),
+      );
+    } finally {
+      setLocating(false);
+    }
+  };
+
+  const keep = () => {
+    recordAction(itemId, 'sheet', 'save');
+    updateItem.mutate({ id: itemId, input: { status: 'saved' } });
+    notifySuccess(t('items.kept'), { important: true });
+  };
+
+  const dismiss = () => {
+    recordAction(itemId, 'sheet', 'dismiss');
+    updateItem.mutate({ id: itemId, input: { status: 'dismissed' } });
+    onClose();
+  };
 
   const navigate = () => {
     if (!location) return;
@@ -128,25 +170,57 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
       </DialogHeader>
 
       <div className="flex flex-col gap-4">
-        {location?.address && <p className="text-sm text-muted-foreground">{location.address}</p>}
+        {(when || venue || location?.address) && (
+          <div className="flex flex-col gap-0.5 text-sm text-muted-foreground">
+            {when && <p>{when}</p>}
+            {item.kind !== 'place' && !item.when && <p>{t('items.timeUnknown')}</p>}
+            {venue && <p>{venue}</p>}
+            {location?.address && <p>{location.address}</p>}
+          </div>
+        )}
 
-        <div className="flex flex-wrap gap-2">
-          {location && (
-            <Button size="sm" className="gap-1.5" onClick={navigate}>
-              <Navigation className="size-4" />
-              {t('items.navigate')}
+        {candidate ? (
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" className="gap-1.5" onClick={keep}>
+              <Bookmark className="size-4" />
+              {t('items.keep')}
             </Button>
-          )}
-          <Button
-            size="sm"
-            variant={visited ? 'secondary' : 'outline'}
-            className="gap-1.5"
-            onClick={toggleVisited}
-          >
-            {visited ? <Undo2 className="size-4" /> : <Check className="size-4" />}
-            {visited ? t('items.unmarkVisited') : t('items.markVisited')}
-          </Button>
-        </div>
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={dismiss}>
+              <X className="size-4" />
+              {t('items.dismiss')}
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {location && (
+              <Button size="sm" className="gap-1.5" onClick={navigate}>
+                <Navigation className="size-4" />
+                {t('items.navigate')}
+              </Button>
+            )}
+            {!location && venue && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                disabled={locating}
+                onClick={() => void locate()}
+              >
+                <MapPin className="size-4" />
+                {t('items.findOnMap')}
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant={visited ? 'secondary' : 'outline'}
+              className="gap-1.5"
+              onClick={toggleVisited}
+            >
+              {visited ? <Undo2 className="size-4" /> : <Check className="size-4" />}
+              {visited ? t('items.unmarkVisited') : t('items.markVisited')}
+            </Button>
+          </div>
+        )}
 
         <div className="flex flex-col gap-1.5">
           <Label>{t('items.rating')}</Label>

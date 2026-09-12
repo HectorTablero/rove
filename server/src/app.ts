@@ -30,6 +30,7 @@ import {
 import { geocodeRouter } from './routes/geocode';
 import { ingestRouter } from './routes/ingest';
 import { settingsRouter } from './routes/settings';
+import { sourcesRouter } from './routes/sources';
 import { syncRouter } from './routes/sync';
 import { providerRoutes } from './providers';
 
@@ -147,6 +148,8 @@ export const buildApp = (app: Hono<AppEnv>, auth: Auth, upgradeWebSocket?: Upgra
   // The two halves of a paste the browser cannot do itself, and the geocoder behind its key.
   api.route('/ingest', ingestRouter);
   api.route('/geocode', geocodeRouter);
+  // The feeds: what each did last, and a button to run them now.
+  api.route('/sources', sourcesRouter);
   // DELETE only: erases everything and the account behind it. See routes/account.ts.
   api.route('/account', accountRouter);
   app.route('/api', api);

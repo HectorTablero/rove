@@ -73,6 +73,8 @@ export interface EventItemDto extends ItemBaseDto {
   location: LocationDto | null;
   /** Null means the time is genuinely unknown — shown as "time unknown", never invented. */
   when: WhenDto | null;
+  /** The venue as the source wrote it, before (or instead of) a geocode. */
+  venue: string | null;
 }
 
 export interface FilmItemDto extends ItemBaseDto {
@@ -153,6 +155,7 @@ export interface SettingsDto {
      *whether* one is stored crosses the wire, so it is not in the settings response, not in the
      IndexedDB mirror, and not in a backup file. */
   hasLlmKey: boolean;
+  pollSources: string[];
 }
 
 // --- Sync ---

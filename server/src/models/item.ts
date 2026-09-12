@@ -59,6 +59,7 @@ const itemSchema = new Schema(
     expiresAt: { type: Date, default: null },
     location: { type: locationSchema, default: null },
     when: { type: whenSchema, default: null },
+    venue: { type: String, default: null },
   },
   { timestamps: true },
 );

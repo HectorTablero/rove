@@ -47,6 +47,7 @@ export interface LeanItem {
   expiresAt?: Date | null;
   location?: LeanLocation | null;
   when?: LeanWhen | null;
+  venue?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -99,6 +100,7 @@ export const itemToDto = (item: LeanItem): ItemDto => {
         kind: 'event',
         location: item.location ? locationToDto(item.location) : null,
         when: item.when ? whenToDto(item.when) : null,
+        venue: item.venue ?? null,
       };
     case 'film':
       return { ...base, kind: 'film', when: item.when ? whenToDto(item.when) : null };

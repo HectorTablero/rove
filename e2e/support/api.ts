@@ -55,6 +55,27 @@ export const FIXTURES = {
 export interface ApiMock {
   state: ApiState;
   fixtures: typeof FIXTURES;
+  /** What GET /api/sources/status answers; specs set it before navigating. */
+  sourceStatus: {
+    sourceId: string;
+    down: boolean;
+    lastRun: {
+      at: string;
+      ok: boolean;
+      found: number;
+      created: number;
+      error: string | null;
+      trigger: string;
+    } | null;
+  }[];
+  /** What POST /api/sources/poll answers. */
+  pollRuns: {
+    sourceId: string;
+    ok: boolean;
+    found: number;
+    created: number;
+    error: string | null;
+  }[];
   /** Every API call the app made, in order. */
   calls: RecordedCall[];
   /** Answer the next pull with the whole state and `reset: true`. */
@@ -207,6 +228,17 @@ export async function installApiMock(
     const hit = FIXTURES.candidate.name.toLowerCase().includes(q.trim().toLowerCase());
     await json(route, { candidates: hit ? [FIXTURES.candidate] : [] });
   });
+  /* The feeds: a status the spec can shape (`api.sourceStatus`), and a poll that answers with
+     whatever the spec put in `api.pollRuns`. */
+  await page.route('**/api/sources/status', async (route) => {
+    record(route);
+    await json(route, { sources: mock.sourceStatus });
+  });
+  await page.route('**/api/sources/poll', async (route) => {
+    record(route);
+    await json(route, { runs: mock.pollRuns });
+  });
+
   await page.route('**/api/geocode/usage*', async (route) => {
     record(route);
     await json(route, { configured: true, month: '2026-09', calls: 12, limit: 5000, stopAt: 4500 });
@@ -243,6 +275,8 @@ export async function installApiMock(
             snapshotIds: [],
             sourceUrls: [],
             expiresAt: null,
+            when: null,
+            venue: null,
           },
           snapshots: {
             canonicalUrl: null,
@@ -272,10 +306,12 @@ export async function installApiMock(
     await json(route, {}, call.method === 'POST' ? 201 : 200);
   });
 
-  return {
+  const mock: ApiMock = {
     state,
     fixtures: FIXTURES,
     calls,
+    sourceStatus: [],
+    pollRuns: [],
     nextPullIsReset: () => {
       forceReset = true;
     },
@@ -299,4 +335,5 @@ export async function installApiMock(
       }
     },
   };
+  return mock;
 }

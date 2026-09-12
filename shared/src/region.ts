@@ -36,6 +36,13 @@ export interface RegionDescriptor {
   renderer: string;
   /** The sources whose `regionIds` include this one, resolved by the source registry. */
   sources: string[];
+  /**
+   * Per-source parameters this region needs — the Douban location id, the Showstart city code,
+   * the Damai city name. Strings, keyed by source id then parameter, so a poller reads
+   * `region.sourceParams[source.id].locationId` and a missing one is a loud "not configured"
+   * rather than a feed for the wrong city.
+   */
+  sourceParams: Record<string, Record<string, string>>;
 }
 
 /**
@@ -78,6 +85,8 @@ export interface SourceManifest {
   tier: SourceTier;
   /** Whether a pasted URL belongs to this source. Pure, and cheap enough to run on every keystroke. */
   matches(url: URL): boolean;
-  /** Whether the server can poll this source on a schedule (Phase 2), or only resolve shared URLs. */
+  /** Whether the server can poll this source on a schedule, or only resolve shared URLs. */
   polls: boolean;
+  /** The region parameters a poller needs, by name, so the registry can say which are missing. */
+  params?: string[];
 }

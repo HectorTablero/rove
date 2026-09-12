@@ -26,6 +26,8 @@ COPY . .
 # the web app simply runs without telemetry.
 ARG VITE_BETTERSTACK_SOURCE_TOKEN
 ARG VITE_BETTERSTACK_INGEST_URL
+# The Amap JS key is public by design (bound to the domain in Amap's console) and inlined too.
+ARG VITE_AMAP_JS_KEY
 RUN npm run build
 
 FROM node:24-alpine

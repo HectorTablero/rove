@@ -58,5 +58,12 @@ export const config = {
      rather than throwing at import, and the map still draws if the browser was built with a key. */
   amapWebServiceKey: process.env.AMAP_WEB_SERVICE_KEY ?? '',
   amapJsSecurityCode: process.env.AMAP_JS_SECURITY_CODE ?? '',
+  /** Whether the web build carries a map key — decides whether the CSP admits the Amap SDK. */
+  amapJsKey: process.env.VITE_AMAP_JS_KEY ?? '',
+  /* The self-hosted RSSHub the pollers read. Infrastructure, not a user setting: it lives next to
+     this container (see docker-compose.yml). Empty means polling answers "not configured". */
+  rsshubBaseUrl: process.env.RSSHUB_BASE_URL ?? '',
+  /** How often every enabled feed is read. Six hours is plenty for listings that change daily. */
+  pollIntervalMinutes: Number(process.env.POLL_INTERVAL_MINUTES ?? 360),
   appVersion: readAppVersion(),
 };

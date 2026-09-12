@@ -1,0 +1,42 @@
+# Rove on a VPS: the app container and the RSSHub it polls through.
+#
+# MongoDB is deliberately not here — it is the shared instance already running on the host, named
+# by MONGODB_URI in .env. Start with `docker compose up -d --build`.
+#
+# RSSHub is pinned rather than `latest`: its routes are the moving part of this whole system, and
+# an unplanned upgrade is the likeliest way for a feed to change shape on a Tuesday. Bump the tag
+# on purpose, then check Settings → Sources still reports "found > 0" for each feed.
+services:
+  app:
+    build:
+      context: .
+      args:
+        VITE_AMAP_JS_KEY: ${VITE_AMAP_JS_KEY}
+        VITE_BETTERSTACK_SOURCE_TOKEN: ${VITE_BETTERSTACK_SOURCE_TOKEN:-}
+        VITE_BETTERSTACK_INGEST_URL: ${VITE_BETTERSTACK_INGEST_URL:-}
+    env_file: .env
+    environment:
+      # Inside the compose network the RSSHub container is reachable by service name.
+      RSSHUB_BASE_URL: http://rsshub:1200
+    ports:
+      - '3000:3000'
+    depends_on:
+      - rsshub
+    restart: unless-stopped
+
+  rsshub:
+    # `latest` until a date tag has been pulled once and works; then pin that tag here.
+    image: diygod/rsshub:latest
+    environment:
+      NODE_ENV: production
+      CACHE_TYPE: redis
+      REDIS_URL: redis://redis:6379/
+      # Only this app talks to it; nothing here needs to be reachable from outside the network.
+      ACCESS_KEY: ''
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped

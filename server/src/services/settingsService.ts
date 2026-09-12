@@ -16,6 +16,7 @@ export async function getSettings(userId: string): Promise<SettingsDto> {
     llmModel: doc.llmModel ?? '',
     // Presence only. The key stays here; see getLlmConfig.
     hasLlmKey: !!doc.llmApiKey?.trim(),
+    pollSources: doc.pollSources ?? [],
   };
 }
 

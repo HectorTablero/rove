@@ -2,8 +2,8 @@ import { expect, test } from '../support/app';
 
 /* The whole of Phase 1's promise, end to end in a real browser: a shared link becomes a saved
  * place with a datum-tagged location, it shows up in the list, and its rating and notes are
- * queued for the server as ordinary writes. The map itself cannot be drawn here (no Amap key in
- * a test build), and the spec asserts that this is *said* rather than shown as a blank. */
+ * queued for the server as ordinary writes. The map tiles themselves are not asserted on: a build
+ * may or may not carry a map key, and the SDK is not loaded from this harness. */
 
 const SHARED = 'http://xhslink.com/m/1gJ5tOG6M1b';
 
@@ -21,8 +21,8 @@ test('a shared link becomes a saved, geocoded place', async ({ app: page, api })
   const option = page.getByRole('option', { name: /Bionic Brew/ });
   await expect(option).toBeVisible({ timeout: 20_000 });
   await option.click();
-  // No map key in this build: the preview says so instead of leaving a blank rectangle.
-  await expect(page.getByText('No map in this build')).toBeVisible();
+  // The preview names the candidate whether or not this build carries a map key.
+  await expect(page.getByText('南山区 海上世界').last()).toBeVisible();
 
   // 3. Save → an item with the geocoder's GCJ-02 point and provider ref goes to the server.
   await page.getByRole('button', { name: 'Save' }).click();

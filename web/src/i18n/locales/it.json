@@ -72,6 +72,15 @@
       "ingest": {
         "no_source": "Nessuna fonte sa leggere quel tipo di link.",
         "rate_limited": "Troppi link in una volta. Aspetta un momento."
+      },
+      "poll": {
+        "bad_feed": "La fonte è arrivata in una forma illeggibile.",
+        "not_pollable": "Quella fonte non può essere letta periodicamente.",
+        "rate_limited": "Troppe letture in una volta. Aspetta un momento.",
+        "rsshub_not_configured": "Il server non ha un RSSHub da cui leggere le fonti.",
+        "rsshub_unreachable": "RSSHub non ha risposto.",
+        "unknown_source": "Non esiste un lettore per quella fonte.",
+        "wrong_region": "Quella fonte non copre questa regione."
       }
     },
     "crash": {
@@ -85,6 +94,10 @@
     "deleted": "Eliminato",
     "deleteDescription": "Voto e note se ne vanno con lui. Il post salvato resta.",
     "deleteTitle": "Eliminare questo luogo?",
+    "dismiss": "Non fa per me",
+    "findOnMap": "Trova sulla mappa",
+    "keep": "Tieni",
+    "kept": "Tenuto",
     "kind": {
       "event": "Evento",
       "film": "Film",
@@ -105,15 +118,22 @@
       "saved": "Salvato",
       "visited": "Visitato"
     },
+    "timeUnknown": "Orario sconosciuto",
     "unmarkVisited": "Non visitato",
+    "venueNotFound": "Nessun risultato per “{{venue}}”.",
     "visitCount_one": "Visitato {{count}} volta",
     "visitCount_other": "Visitato {{count}} volte"
   },
   "list": {
+    "candidateCount_one": "{{count}} nuovo suggerimento",
+    "candidateCount_other": "{{count}} nuovi suggerimenti",
     "emptyDescription": "Condividi un post o incolla un link dalla scheda Aggiungi.",
     "emptyTitle": "Ancora niente di salvato",
     "filterAll": "Tutti",
-    "searchPlaceholder": "Cerca luoghi…"
+    "searchPlaceholder": "Cerca luoghi…",
+    "sourcesDown": "Nessuna risposta da {{sources}} nelle ultime due letture. La fonte potrebbe essere cambiata: controlla Impostazioni → Fonti.",
+    "weekend": "Questo weekend",
+    "weekendEmpty": "Ancora niente per questo weekend"
   },
   "map": {
     "emptyDescription_one": "{{count}} luogo salvato verrà mostrato qui.",
@@ -267,6 +287,24 @@
     "signOutPendingTitle_many": "Uscire con {{count}} modifiche non ancora salvate sul tuo account?",
     "signOutPendingTitle_one": "Uscire con {{count}} modifica non ancora salvata sul tuo account?",
     "signOutPendingTitle_other": "Uscire con {{count}} modifiche non ancora salvate sul tuo account?",
+    "sources": {
+      "description": "Fonti che il server legge periodicamente e trasforma in suggerimenti. Niente viene salvato finché non lo tieni tu.",
+      "down": "Giù",
+      "lastFailed": "Fallita {{when}}: {{error}}",
+      "lastRun": "Ultima lettura {{when}}: {{found}} trovati, {{created}} nuovi.",
+      "neverRun": "Non ancora letta: nelle prossime ore, oppure premi Leggi ora.",
+      "polled_one": "Fonti lette: {{count}} nuovo suggerimento.",
+      "polled_other": "Fonti lette: {{count}} nuovi suggerimenti.",
+      "pollNow": "Leggi ora",
+      "signInRequired": "Accedi per attivare le fonti: le legge il server.",
+      "tier": {
+        "A": "API ufficiale o pulita.",
+        "B": "Pagina pubblica, estratta. In gioco c’è solo un IP; la prima a rompersi.",
+        "C": "Serve un account con accesso, che è a rischio.",
+        "M": "Solo manuale: condividi nell’app."
+      },
+      "title": "Fonti"
+    },
     "title": "Impostazioni"
   },
   "sync": {

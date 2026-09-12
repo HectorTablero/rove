@@ -73,7 +73,12 @@
       }
     },
     "list": {
-      "where": "The list screen: every saved item, newest first, and its empty state."
+      "where": "The list screen: every saved item, newest first, and its empty state.",
+      "keys": {
+        "weekend": "A toggle beside the filter tabs: only events in the coming Friday-evening-to-Sunday window. Short — it sits on a phone row.",
+        "sourcesDown": "A warning banner; {{sources}} is a comma-separated list of source names in their own script (豆瓣同城, 秀动).",
+        "candidateCount": "Screen-reader text for the badge on the List tab, counted."
+      }
     },
     "add": {
       "where": "The intake screen. Reached from the tab and from the Android share sheet, which arrives with a link already filled.",
@@ -90,7 +95,10 @@
         "status.candidate": "Something an automated source found that the user has not yet kept or dismissed. \"Suggested\" in English, never \"pending\".",
         "status.dismissed": "The user saw it and said no. Neutral — not \"rejected\".",
         "stars": "Screen-reader name of each star in the rating control, counted.",
-        "navigate": "The button that opens the maps app at the place. One word; \"Navigate\", \"Go\", 导航."
+        "navigate": "The button that opens the maps app at the place. One word; \"Navigate\", \"Go\", 导航.",
+        "keep": "Accept a suggestion into the saved list. Pairs with dismiss; both are short buttons.",
+        "dismiss": "Decline a suggestion. Neutral and personal (\"not for me\"), never \"reject\".",
+        "findOnMap": "Geocode a suggested event's venue text on request; spends one search."
       }
     },
     "calendar": {
@@ -106,7 +114,8 @@
         "ai": "The extraction model: an OpenAI-compatible chat endpoint the server calls to read a shared post. \"Endpoint\" and \"model\" are the technical words on purpose — the person filling these in is running a model. The key hint must say it is stored server-side and never shown again.",
         "advanced": "Android-only sync switches. wifiOnly holds writes back until wi-fi; hidePausedStatus hides only the pill that reports that.",
         "data": "Export, telemetry opt-out and account deletion. deleteAccount.confirmWord is what the user has to type to enable the destructive button — a short, unambiguous word in the target language, all lower case, and the dialog shows it literally. importDone and importInvalid report a restore: {{items}}, {{reviews}}, {{skipped}} and {{count}} are counts.",
-        "region": "The active region and the geocoder's monthly search pool. {{calls}}/{{limit}}/{{stopAt}} are numbers; \"pool\" is Amap's monthly allowance of place searches, and the app stops itself short of it."
+        "region": "The active region and the geocoder's monthly search pool. {{calls}}/{{limit}}/{{stopAt}} are numbers; \"pool\" is Amap's monthly allowance of place searches, and the app stops itself short of it.",
+        "sources": "The feeds the server polls. tier.A–M describe what a source costs (see the README's tier table); lastRun/lastFailed report a poll with {{when}} already formatted, {{found}}/{{created}} counts and {{error}} a translated error sentence."
       }
     },
     "errors": {

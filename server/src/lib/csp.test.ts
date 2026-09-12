@@ -2,8 +2,19 @@ import { createHash } from 'node:crypto';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
-import { buildCsp } from './csp';
+import { describe, expect, it, vi } from 'vitest';
+
+/* Pinned rather than read from .env: the policy admits the Amap SDK only when the build carries a
+   map key, and a developer's own .env has one. These tests are about the inline-script hashes. */
+vi.mock('../config', () => ({
+  config: {
+    betterAuthUrl: 'http://localhost:5173',
+    betterStackIngestUrl: undefined,
+    amapJsKey: '',
+  },
+}));
+
+const { buildCsp } = await import('./csp');
 
 /* Fixtures rather than the real web/dist/index.html: these run in CI before anything is built,
    and a test that silently passes because the file was missing would be worse than no test. */

@@ -14,6 +14,8 @@ import {
   MAX_MENTION_LENGTH,
   MAX_MENTIONS_PER_SNAPSHOT,
   MAX_NOTES_LENGTH,
+  MAX_POLL_SOURCES,
+  MAX_VENUE_LENGTH,
   MAX_PROVIDER_ID_LENGTH,
   MAX_SNAPSHOT_BODY_BYTES,
   MAX_SNAPSHOT_TEXT_LENGTH,
@@ -106,6 +108,7 @@ export const itemCreateSchema = z.discriminatedUnion('kind', [
     kind: z.literal('event'),
     location: locationSchema.nullable().default(null),
     when: whenSchema.nullable().default(null),
+    venue: z.string().trim().max(MAX_VENUE_LENGTH).nullable().default(null),
   }),
   z.object({
     ...itemBaseCreate,
@@ -127,6 +130,7 @@ export const itemUpdateSchema = z.object({
   expiresAt: isoDateTimeSchema.nullable().optional(),
   location: locationSchema.nullable().optional(),
   when: whenSchema.nullable().optional(),
+  venue: z.string().trim().max(MAX_VENUE_LENGTH).nullable().optional(),
 });
 
 // --- Snapshots ---
@@ -230,6 +234,7 @@ export const settingsSchema = z.object({
   /** Optional so a replayed offline payload from a save that never touched the key cannot blank it.
       An empty string is an explicit removal. */
   llmApiKey: z.string().trim().max(MAX_LLM_KEY_LENGTH).optional(),
+  pollSources: z.array(sourceIdSchema).max(MAX_POLL_SOURCES).default([]),
 });
 
 // --- Sync ---

@@ -8,6 +8,7 @@ import { SecuritySection } from '@/components/security/SecuritySection';
 import { AccountSection } from '@/components/settings/AccountSection';
 import { ApiKeyField } from '@/components/settings/ApiKeyField';
 import { DataSection } from '@/components/settings/DataSection';
+import { SourcesSection } from '@/components/settings/SourcesSection';
 import { notifyDeviceSaved, Section, SubToggleRow, ToggleRow } from '@/components/settings/Section';
 import { VersionFooter } from '@/components/settings/VersionFooter';
 import { LanguageSetting } from '@/components/settings/deviceSettings';
@@ -31,6 +32,7 @@ const toPayload = (draft: SettingsDto) => ({
   quietNotifications: draft.quietNotifications,
   llmBaseUrl: draft.llmBaseUrl,
   llmModel: draft.llmModel,
+  pollSources: draft.pollSources,
 });
 
 export default function SettingsPage() {
@@ -308,6 +310,16 @@ export default function SettingsPage() {
             </div>
           )}
         </Section>
+
+        <SourcesSection
+          draft={draft}
+          disabled={accountRequired}
+          onChange={(pollSources) => {
+            if (!draft) return;
+            setDraft({ ...draft, pollSources });
+            requestCommit();
+          }}
+        />
 
         <AccountSection />
 

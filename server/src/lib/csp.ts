@@ -82,7 +82,7 @@ export function buildCsp(indexHtmlPath: string): CspDirectives {
      picks at runtime, hence the wildcards; its data *requests* go to this origin's /_AMapService
      proxy, which 'self' already covers. Renderer-specific by nature: a MapLibre renderer would add
      its own tile host here instead. */
-  const amap = Boolean(process.env.VITE_AMAP_JS_KEY);
+  const amap = Boolean(config.amapJsKey);
   const scriptSrc = ["'self'", ...(hashes ?? []), ...(amap ? ['https://webapi.amap.com'] : [])];
 
   const connectSrc = new Set(["'self'"]);

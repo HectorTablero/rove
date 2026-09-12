@@ -8,7 +8,10 @@ Built for Shenzhen. Built so that a second region is additive.
 
 ## Status
 
-**Phase 1 — places, manually fed.** Share a post (Instagram, Xiaohongshu, any page) into the app:
+**Phase 2 — feeds.** A self-hosted RSSHub reads 豆瓣同城, 秀动, 大麦 and 猫眼 on a schedule; what
+it finds lands in the list as _suggestions_ with a time window, a venue and a link, kept or
+dismissed with one tap, filtered to "this weekend", and swept when stale. A feed that answers
+nothing twice running is announced by name. Places still arrive the Phase 1 way: Share a post (Instagram, Xiaohongshu, any page) into the app:
 the server reads it, the model you configure suggests the places it names, the geocoder finds the
 one you pick, and it lands on the map with navigation one tap away. Ratings, notes and visits are
 yours. The infrastructure came from [Diary] (local-first sync, PWA, Android shell, asset
@@ -140,6 +143,34 @@ share sheet → /add?text=…            web/src/lib/shareTarget.ts
 
 The model never originates a fact: it returns spans of the post, and only spans that are actually
 in the post survive `validateMentions`. Coordinates, addresses and POI ids come from the geocoder.
+
+## Feeds
+
+```
+schedule (POLL_INTERVAL_MINUTES) → pollAll()          server/src/services/pollService.ts
+  for each account with pollSources, for each source:
+    RSSHub route from region.sourceParams              shared/src/regions/shenzhen.ts
+    → fetchFeed()                                      server/src/sources/rss.ts
+    → poller.map(entry)                                server/src/sources/pollers/index.ts
+        (labelled lines → when / venue; dates parsed, never invented)
+    → skip if any item already carries the link
+    → Snapshot + Item { status: 'candidate', expiresAt }
+    → SourceRun row (ok / found / created / error)     the status screen and the down banner
+  → sweepExpiredCandidates()                            a month past expiry, with tombstones
+```
+
+Region parameters: Douban needs its numeric `locationId` (118282 for Shenzhen — **verify** on the
+self-hosted instance with `/douban/event/hot/118282`), Showstart a `cityCode` that RSSHub finds
+for you (`/showstart/search/city/深圳` on your instance; paste it into `regions/shenzhen.ts`),
+Damai the city name. A missing parameter is a recorded `poll.missing_param` run, not a feed for
+the wrong city.
+
+Candidates carry no coordinates: geocoding sixty events per poll would empty the month's search
+pool in a week. "Find on map" on a suggestion spends one call, on request.
+
+`docker-compose.yml` runs the app beside RSSHub and a Redis for its cache; Mongo stays the shared
+instance named in `.env`. Pin the RSSHub image tag once one has been pulled and works — its routes
+are the moving part of this whole system.
 
 ## Setup
 

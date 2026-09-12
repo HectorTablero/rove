@@ -72,6 +72,15 @@
       "ingest": {
         "no_source": "Ninguna fuente sabe leer ese tipo de enlace.",
         "rate_limited": "Demasiados enlaces seguidos. Espera un momento."
+      },
+      "poll": {
+        "bad_feed": "La fuente llegó con una forma que no se pudo leer.",
+        "not_pollable": "Esa fuente no se puede leer periódicamente.",
+        "rate_limited": "Demasiadas lecturas seguidas. Espera un momento.",
+        "rsshub_not_configured": "El servidor no tiene un RSSHub del que leer fuentes.",
+        "rsshub_unreachable": "RSSHub no respondió.",
+        "unknown_source": "No existe lector para esa fuente.",
+        "wrong_region": "Esa fuente no cubre esta región."
       }
     },
     "crash": {
@@ -85,6 +94,10 @@
     "deleted": "Eliminado",
     "deleteDescription": "Su valoración y sus notas se van con él. La publicación guardada se conserva.",
     "deleteTitle": "¿Eliminar este lugar?",
+    "dismiss": "No me interesa",
+    "findOnMap": "Buscar en el mapa",
+    "keep": "Guardar",
+    "kept": "Guardado",
     "kind": {
       "event": "Evento",
       "film": "Película",
@@ -105,15 +118,22 @@
       "saved": "Guardado",
       "visited": "Visitado"
     },
+    "timeUnknown": "Hora desconocida",
     "unmarkVisited": "No visitado",
+    "venueNotFound": "No se ha encontrado nada para «{{venue}}».",
     "visitCount_one": "Visitado {{count}} vez",
     "visitCount_other": "Visitado {{count}} veces"
   },
   "list": {
+    "candidateCount_one": "{{count}} sugerencia nueva",
+    "candidateCount_other": "{{count}} sugerencias nuevas",
     "emptyDescription": "Comparte una publicación o pega un enlace desde la pestaña Añadir.",
     "emptyTitle": "Aún no hay nada guardado",
     "filterAll": "Todos",
-    "searchPlaceholder": "Buscar lugares…"
+    "searchPlaceholder": "Buscar lugares…",
+    "sourcesDown": "Sin respuesta de {{sources}} en las dos últimas lecturas. Puede que la fuente haya cambiado: revisa Ajustes → Fuentes.",
+    "weekend": "Este finde",
+    "weekendEmpty": "Aún no hay nada para este fin de semana"
   },
   "map": {
     "emptyDescription_one": "{{count}} lugar guardado se mostrará aquí.",
@@ -267,6 +287,24 @@
     "signOutPendingTitle_many": "¿Cerrar sesión con {{count}} cambios sin guardar en tu cuenta?",
     "signOutPendingTitle_one": "¿Cerrar sesión con {{count}} cambio sin guardar en tu cuenta?",
     "signOutPendingTitle_other": "¿Cerrar sesión con {{count}} cambios sin guardar en tu cuenta?",
+    "sources": {
+      "description": "Fuentes que el servidor lee periódicamente y convierte en sugerencias. Nada se guarda hasta que tú lo guardes.",
+      "down": "Caída",
+      "lastFailed": "Falló {{when}}: {{error}}",
+      "lastRun": "Última lectura {{when}}: {{found}} encontradas, {{created}} nuevas.",
+      "neverRun": "Aún no leída: en las próximas horas, o pulsa Leer ahora.",
+      "polled_one": "Fuentes leídas: {{count}} sugerencia nueva.",
+      "polled_other": "Fuentes leídas: {{count}} sugerencias nuevas.",
+      "pollNow": "Leer ahora",
+      "signInRequired": "Inicia sesión para activar fuentes: las lee el servidor.",
+      "tier": {
+        "A": "API oficial o limpia.",
+        "B": "Página pública, extraída. Solo hay una IP en juego; la primera que se rompe.",
+        "C": "Necesita una cuenta con sesión iniciada, que corre riesgo.",
+        "M": "Solo manual: comparte en la app."
+      },
+      "title": "Fuentes"
+    },
     "title": "Ajustes"
   },
   "sync": {

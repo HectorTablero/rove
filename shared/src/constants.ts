@@ -81,7 +81,24 @@ export const DEFAULT_SETTINGS = {
   llmModel: '',
   /** Whether a key is stored — never the key itself. */
   hasLlmKey: false,
+  /** Source ids the server polls for this account. Empty: nothing is fetched on a schedule. */
+  pollSources: [] as string[],
 };
+
+/* --- Polling -------------------------------------------------------------------------------------
+
+   Feeds are read on a schedule by the server for every account that has switched a source on.
+   Candidates expire: an event after it has happened, a film a couple of months after release, and
+   anything a poller could not date after a month — a stale suggestion is worse than none. */
+export const MAX_POLL_ITEMS_PER_RUN = 60;
+export const MAX_POLL_SOURCES = 20;
+/** How long an undated candidate stays in the inbox. */
+export const CANDIDATE_UNDATED_TTL_DAYS = 30;
+/** How long a film stays after its release date. */
+export const FILM_TTL_DAYS = 60;
+/** Two empty or failed runs in a row is "the source is down", shown as a banner. */
+export const SOURCE_DOWN_AFTER_RUNS = 2;
+export const MAX_VENUE_LENGTH = 200;
 
 export const MAX_LLM_BASE_URL_LENGTH = 300;
 export const MAX_LLM_MODEL_LENGTH = 100;
@@ -110,16 +127,16 @@ export const LOGO_DISPLACED_VIEWBOX = '-10 0 490 500';
 */
 export const BRAND_LOGO_PATHS = [
   { d: 'M 375 250 L 50 250' },
-  { d: 'M 300 125 L 375 250 L 300 375' },
+  { d: 'M 300 125 L 337.5 187.5 L 375 250 L 337.5 312.5 L 300 375' },
   { d: 'M 450 100 L 450 400' },
 ] as const;
 
 /** App path, matching the number of path corners per path in the brand logo so browsers can
     smoothly transition between them (d property). */
 export const APP_LOGO_PATHS = [
-  { d: 'M 100 100 L 100 400' },
-  { d: 'M 175 100 L 400 250 L 175 400' },
-  { d: 'M 200 250 L 100 250' },
+  { d: 'M 275 400 L 125 400' },
+  { d: 'M 200 100 L 375 100 L 325 175 L 375 250 L 200 250' },
+  { d: 'M 200 100 L 200 400' },
 ] as const;
 
 /**

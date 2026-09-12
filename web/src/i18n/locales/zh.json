@@ -72,6 +72,15 @@
       "ingest": {
         "no_source": "没有来源能读取这类链接。",
         "rate_limited": "链接过多，请稍等。"
+      },
+      "poll": {
+        "bad_feed": "来源返回的格式无法解析。",
+        "not_pollable": "该来源无法定期读取。",
+        "rate_limited": "读取过于频繁，请稍等。",
+        "rsshub_not_configured": "服务器没有可用于读取来源的 RSSHub。",
+        "rsshub_unreachable": "RSSHub 没有响应。",
+        "unknown_source": "没有对应该来源的读取程序。",
+        "wrong_region": "该来源不覆盖当前地区。"
       }
     },
     "crash": {
@@ -85,6 +94,10 @@
     "deleted": "已删除",
     "deleteDescription": "评分和笔记会一起删除。已保存的帖子会保留。",
     "deleteTitle": "删除这个地点？",
+    "dismiss": "不感兴趣",
+    "findOnMap": "在地图上查找",
+    "keep": "收藏",
+    "kept": "已收藏",
     "kind": {
       "event": "活动",
       "film": "电影",
@@ -104,14 +117,20 @@
       "saved": "已保存",
       "visited": "已去过"
     },
+    "timeUnknown": "时间未知",
     "unmarkVisited": "改为未去过",
+    "venueNotFound": "没有找到“{{venue}}”。",
     "visitCount": "去过 {{count}} 次"
   },
   "list": {
+    "candidateCount": "{{count}} 条新推荐",
     "emptyDescription": "在“添加”标签中分享帖子或粘贴链接。",
     "emptyTitle": "还没有保存任何内容",
     "filterAll": "全部",
-    "searchPlaceholder": "搜索地点…"
+    "searchPlaceholder": "搜索地点…",
+    "sourcesDown": "{{sources}} 在最近两次读取中都没有响应。来源可能已变动，请检查设置 → 来源。",
+    "weekend": "本周末",
+    "weekendEmpty": "本周末还没有安排"
   },
   "map": {
     "emptyDescription": "已保存的 {{count}} 个地点将显示在这里。",
@@ -254,6 +273,23 @@
     "signOutDiscard": "退出并丢弃",
     "signOutPendingDescription": "退出登录会清空本设备的数据。仍在等待同步的内容将永久丢失。如需保留，请重新联网并等待同步完成。",
     "signOutPendingTitle_other": "还有 {{count}} 项更改尚未保存到账号，确定退出登录吗？",
+    "sources": {
+      "description": "服务器定期读取并转为推荐的信息源。在你收藏之前不会保存任何内容。",
+      "down": "已中断",
+      "lastFailed": "失败于 {{when}}：{{error}}",
+      "lastRun": "上次读取 {{when}}：找到 {{found}} 条，新增 {{created}} 条。",
+      "neverRun": "尚未读取：几小时内会读取，或点击“立即读取”。",
+      "polled": "已读取来源，新增 {{count}} 条推荐。",
+      "pollNow": "立即读取",
+      "signInRequired": "登录后才能开启来源：读取由服务器完成。",
+      "tier": {
+        "A": "官方或稳定的接口。",
+        "B": "抓取公开页面。只涉及 IP，最容易失效。",
+        "C": "需要已登录的账号，该账号有风险。",
+        "M": "仅手动：分享到应用。"
+      },
+      "title": "来源"
+    },
     "title": "设置"
   },
   "sync": {

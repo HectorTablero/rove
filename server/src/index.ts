@@ -15,6 +15,7 @@ import {
 import type { AppEnv } from './middleware/session';
 import { ensureTombstoneTtl, tombstoneGauges } from './models/deletion';
 import { liveSyncGauges } from './services/liveSync';
+import { pollAll, sweepExpiredCandidates } from './services/pollService';
 
 async function main() {
   /* Registered before connect(), so the first transition is caught too.
@@ -46,6 +47,19 @@ async function main() {
   injectWebSocket(server);
 
   trackEvent('server_started', { port: config.port, node: process.version });
+
+  /* The feed schedule: every enabled source of every account, then the sweep of candidates
+     nobody acted on. A plain interval rather than a cron library — there is one process and one
+     job. The first pass waits a minute so a restart loop cannot hammer RSSHub, and every failure
+     inside is recorded per source rather than thrown here. */
+  if (config.rsshubBaseUrl) {
+    const pass = () =>
+      pollAll()
+        .then(() => sweepExpiredCandidates())
+        .catch((err) => captureError(err, { scope: 'pollSchedule' }));
+    setTimeout(pass, 60_000);
+    setInterval(pass, Math.max(15, config.pollIntervalMinutes) * 60_000);
+  }
   /* Heap, event-loop lag, the live-sync gauges and the tombstone gauges, once a minute. Per
      container, not per user. Composed here rather than inside the metrics module so neither gauge
      source has to know the other exists — and so lib/telemetry.ts keeps importing no model and no

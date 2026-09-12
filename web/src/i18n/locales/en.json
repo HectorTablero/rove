@@ -72,6 +72,15 @@
       "ingest": {
         "no_source": "No source can read that kind of link.",
         "rate_limited": "Too many links at once. Wait a moment."
+      },
+      "poll": {
+        "bad_feed": "The feed came back in a shape that could not be read.",
+        "not_pollable": "That source cannot be read on a schedule.",
+        "rate_limited": "Too many reads at once. Wait a moment.",
+        "rsshub_not_configured": "The server has no RSSHub to read feeds from.",
+        "rsshub_unreachable": "RSSHub did not answer.",
+        "unknown_source": "No poller exists for that source.",
+        "wrong_region": "That source does not serve this region."
       }
     },
     "crash": {
@@ -85,6 +94,10 @@
     "deleted": "Deleted",
     "deleteDescription": "Its rating and notes go with it. The saved post is kept.",
     "deleteTitle": "Delete this place?",
+    "dismiss": "Not for me",
+    "findOnMap": "Find on map",
+    "keep": "Keep",
+    "kept": "Kept",
     "kind": {
       "event": "Event",
       "film": "Film",
@@ -105,15 +118,22 @@
       "saved": "Saved",
       "visited": "Visited"
     },
+    "timeUnknown": "Time unknown",
     "unmarkVisited": "Not visited",
+    "venueNotFound": "Nothing found for “{{venue}}”.",
     "visitCount_one": "Visited {{count}} time",
     "visitCount_other": "Visited {{count}} times"
   },
   "list": {
+    "candidateCount_one": "{{count}} new suggestion",
+    "candidateCount_other": "{{count}} new suggestions",
     "emptyDescription": "Share a post or paste a link from the Add tab.",
     "emptyTitle": "Nothing saved yet",
     "filterAll": "All",
-    "searchPlaceholder": "Search places…"
+    "searchPlaceholder": "Search places…",
+    "sourcesDown": "No answer from {{sources}} in the last two runs. The feed may have changed — check Settings → Sources.",
+    "weekend": "This weekend",
+    "weekendEmpty": "Nothing on this weekend yet"
   },
   "map": {
     "emptyDescription_one": "{{count}} saved place will be drawn here.",
@@ -263,6 +283,24 @@
     "signOutPendingDescription": "Signing out clears this device. Anything still waiting to sync will be lost for good. Reconnect and let it finish first if you want to keep it.",
     "signOutPendingTitle_one": "Sign out with {{count}} change not yet saved to your account?",
     "signOutPendingTitle_other": "Sign out with {{count}} changes not yet saved to your account?",
+    "sources": {
+      "description": "Feeds the server reads on a schedule and turns into suggestions. Nothing is saved until you keep it.",
+      "down": "Down",
+      "lastFailed": "Failed {{when}}: {{error}}",
+      "lastRun": "Last read {{when}}: {{found}} found, {{created}} new.",
+      "neverRun": "Not read yet — within the next few hours, or press Read now.",
+      "polled_one": "Feeds read — {{count}} new suggestion.",
+      "polled_other": "Feeds read — {{count}} new suggestions.",
+      "pollNow": "Read now",
+      "signInRequired": "Sign in to switch feeds on — they are read by the server.",
+      "tier": {
+        "A": "Official or clean API.",
+        "B": "Public page, scraped. Only an IP at stake; the first to break.",
+        "C": "Needs a logged-in account, which is at risk.",
+        "M": "Manual only: share into the app."
+      },
+      "title": "Sources"
+    },
     "title": "Settings"
   },
   "sync": {

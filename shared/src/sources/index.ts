@@ -31,6 +31,57 @@ export const xiaohongshuShare: SourceManifest = {
   polls: false,
 };
 
+/* The four feeds a self-hosted RSSHub reads for the Greater Bay Area. Each is also claimed as a
+   pasted-link source, so a Damai page shared into the app is read by the generic resolver rather
+   than refused. `params` names what the region has to supply. */
+
+export const doubanEvents: SourceManifest = {
+  id: 'douban-events',
+  name: '豆瓣同城',
+  regionIds: ['shenzhen'],
+  kinds: ['event'],
+  // A public JSON API behind RSSHub's route; no cookie.
+  tier: 'A',
+  matches: (url) => host(url, 'douban.com') && /\/event\//.test(url.pathname),
+  polls: true,
+  params: ['locationId'],
+};
+
+export const showstart: SourceManifest = {
+  id: 'showstart',
+  name: '秀动',
+  regionIds: ['shenzhen'],
+  kinds: ['event'],
+  tier: 'A',
+  matches: (url) => host(url, 'showstart.com'),
+  polls: true,
+  params: ['cityCode'],
+};
+
+export const damai: SourceManifest = {
+  id: 'damai',
+  name: '大麦',
+  regionIds: ['shenzhen'],
+  kinds: ['event'],
+  // A search endpoint RSSHub flags as anti-crawler: expect it to be the first to break.
+  tier: 'B',
+  matches: (url) => host(url, 'damai.cn'),
+  polls: true,
+  params: ['city'],
+};
+
+export const maoyan: SourceManifest = {
+  id: 'maoyan',
+  name: '猫眼',
+  regionIds: ['shenzhen'],
+  kinds: ['film'],
+  // Nationwide "in cinemas now": no city and no showtimes, which is why a film has no location.
+  tier: 'A',
+  matches: (url) => host(url, 'maoyan.com'),
+  polls: true,
+  params: [],
+};
+
 export const genericOg: SourceManifest = {
   id: 'generic-og',
   name: 'Web page',
@@ -42,7 +93,15 @@ export const genericOg: SourceManifest = {
   polls: false,
 };
 
-export const SOURCES: readonly SourceManifest[] = [instagramOembed, xiaohongshuShare, genericOg];
+export const SOURCES: readonly SourceManifest[] = [
+  instagramOembed,
+  xiaohongshuShare,
+  doubanEvents,
+  showstart,
+  damai,
+  maoyan,
+  genericOg,
+];
 
 export function sourceById(id: string): SourceManifest {
   const source = SOURCES.find((s) => s.id === id);

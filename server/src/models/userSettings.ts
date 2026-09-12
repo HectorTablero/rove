@@ -12,6 +12,7 @@ const userSettingsSchema = new Schema(
        reports `hasLlmKey` instead — so it is readable only through `getLlmConfig`, and no response
        can carry it by accident. */
     llmApiKey: { type: String, default: '' },
+    pollSources: { type: [String], default: [] },
   },
   { timestamps: true },
 );

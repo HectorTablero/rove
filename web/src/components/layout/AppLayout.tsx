@@ -4,6 +4,7 @@ import type { LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, NavLink, Outlet } from 'react-router';
+import { useItems } from '@/api/hooks';
 import { FullScreenSpinner } from '@/components/common/Spinner';
 import { shouldShowBlocker } from '@/components/layout/syncPill';
 import { forceSyncNow, kick, type SyncBlocker } from '@/db/sync';
@@ -34,7 +35,24 @@ const NAV: NavItem[] = [
   { to: '/settings', icon: Settings, labelKey: 'nav.settings' },
 ];
 
-function SidebarLink({ item }: { item: NavItem }) {
+/** New suggestions waiting in the list, for the badge on its tab. Reactive: every pull invalidates. */
+function useCandidateCount(): number {
+  const { data } = useItems({ status: ['candidate'] });
+  return data?.length ?? 0;
+}
+
+function CountBadge({ count }: { count: number }) {
+  const { t } = useTranslation();
+  if (count <= 0) return null;
+  return (
+    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-semibold text-primary-foreground">
+      <span className="sr-only">{t('list.candidateCount', { count })}</span>
+      <span aria-hidden>{count > 99 ? '99+' : count}</span>
+    </span>
+  );
+}
+
+function SidebarLink({ item, badge = 0 }: { item: NavItem; badge?: number }) {
   const { t } = useTranslation();
   return (
     <NavLink
@@ -50,11 +68,12 @@ function SidebarLink({ item }: { item: NavItem }) {
     >
       <item.icon className="size-4.5 shrink-0" />
       <span className="flex-1 truncate">{t(item.labelKey)}</span>
+      <CountBadge count={badge} />
     </NavLink>
   );
 }
 
-function Sidebar() {
+function Sidebar({ candidates }: { candidates: number }) {
   const { t } = useTranslation();
   return (
     <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col border-r bg-sidebar px-3 py-5 md:flex">
@@ -64,7 +83,7 @@ function Sidebar() {
       </NavLink>
       <nav className="flex flex-1 flex-col gap-1">
         {NAV.filter((item) => item.to !== '/settings').map((item) => (
-          <SidebarLink key={item.to} item={item} />
+          <SidebarLink key={item.to} item={item} badge={item.to === '/list' ? candidates : 0} />
         ))}
         <div className="mt-auto flex flex-col gap-1">
           <SidebarLink item={NAV[NAV.length - 1]} />
@@ -77,7 +96,7 @@ function Sidebar() {
 const TAB_SLOT =
   'flex min-w-0 flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition-colors relative';
 
-function TabBar() {
+function TabBar({ candidates }: { candidates: number }) {
   const { t } = useTranslation();
   return (
     <nav
@@ -103,6 +122,14 @@ function TabBar() {
                   <item.icon
                     className={cn('size-5 transition-transform', isActive && 'scale-110')}
                   />
+                  {item.to === '/list' && candidates > 0 && (
+                    <span className="absolute -top-0.5 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary px-0.5 text-[9px] leading-none font-bold text-primary-foreground">
+                      <span className="sr-only">
+                        {t('list.candidateCount', { count: candidates })}
+                      </span>
+                      <span aria-hidden>{candidates > 9 ? '9+' : candidates}</span>
+                    </span>
+                  )}
                 </span>
                 <span className="truncate">{t(item.labelKey)}</span>
                 {isActive && (
@@ -275,6 +302,7 @@ function SkipToContentLink() {
 export default function AppLayout() {
   const { data: session, isPending, error } = useSession();
   const cached = getCachedUser();
+  const candidates = useCandidateCount();
 
   useEffect(() => {
     if (session?.user) {
@@ -319,7 +347,7 @@ export default function AppLayout() {
   return (
     <div className="flex min-h-dvh">
       {!isNative && <SkipToContentLink />}
-      {!isNative && <Sidebar />}
+      {!isNative && <Sidebar candidates={candidates} />}
       <main
         id="main"
         tabIndex={-1}
@@ -332,7 +360,7 @@ export default function AppLayout() {
         <SyncStatusOverlay />
         <Outlet />
       </main>
-      <TabBar />
+      <TabBar candidates={candidates} />
     </div>
   );
 }

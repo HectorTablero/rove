@@ -72,6 +72,15 @@
       "ingest": {
         "no_source": "その種類のリンクを読めるソースがありません。",
         "rate_limited": "リンクが多すぎます。少し待ってください。"
+      },
+      "poll": {
+        "bad_feed": "フィードの形式が読み取れませんでした。",
+        "not_pollable": "そのソースは定期的に読み込めません。",
+        "rate_limited": "読み込みが多すぎます。少し待ってください。",
+        "rsshub_not_configured": "サーバーにフィードを読むためのRSSHubがありません。",
+        "rsshub_unreachable": "RSSHubが応答しませんでした。",
+        "unknown_source": "そのソースに対応する読み込み処理がありません。",
+        "wrong_region": "そのソースはこの地域に対応していません。"
       }
     },
     "crash": {
@@ -85,6 +94,10 @@
     "deleted": "削除しました",
     "deleteDescription": "評価とメモも一緒に削除されます。保存した投稿は残ります。",
     "deleteTitle": "この場所を削除しますか？",
+    "dismiss": "興味なし",
+    "findOnMap": "地図で探す",
+    "keep": "保存",
+    "kept": "保存しました",
     "kind": {
       "event": "イベント",
       "film": "映画",
@@ -104,14 +117,20 @@
       "saved": "保存済み",
       "visited": "訪問済み"
     },
+    "timeUnknown": "時間は不明",
     "unmarkVisited": "未訪問に戻す",
+    "venueNotFound": "「{{venue}}」は見つかりませんでした。",
     "visitCount": "{{count}}回訪問"
   },
   "list": {
+    "candidateCount": "新しい候補 {{count}}件",
     "emptyDescription": "「追加」タブから投稿を共有するか、リンクを貼り付けてください。",
     "emptyTitle": "まだ何も保存されていません",
     "filterAll": "すべて",
-    "searchPlaceholder": "場所を検索…"
+    "searchPlaceholder": "場所を検索…",
+    "sourcesDown": "{{sources}} から直近2回の読み込みで応答がありません。フィードが変わった可能性があります。設定→ソースを確認してください。",
+    "weekend": "今週末",
+    "weekendEmpty": "今週末の予定はまだありません"
   },
   "map": {
     "emptyDescription": "保存した{{count}}件の場所がここに表示されます。",
@@ -254,6 +273,23 @@
     "signOutDiscard": "破棄してログアウト",
     "signOutPendingDescription": "ログアウトするとこの端末のデータは消去されます。同期待ちの内容は完全に失われます。残したい場合は再接続して同期の完了を待ってください。",
     "signOutPendingTitle_other": "アカウントに未保存の変更が{{count}}件ありますが、ログアウトしますか？",
+    "sources": {
+      "description": "サーバーが定期的に読み込んで候補にするフィード。保存するまで何も残りません。",
+      "down": "停止中",
+      "lastFailed": "失敗 {{when}}：{{error}}",
+      "lastRun": "最終読み込み {{when}}：{{found}}件見つかり、{{created}}件が新規。",
+      "neverRun": "まだ読み込んでいません。数時間以内に読み込まれるか、「今すぐ読む」を押してください。",
+      "polled": "フィードを読み込みました。新しい候補 {{count}}件。",
+      "pollNow": "今すぐ読む",
+      "signInRequired": "フィードを有効にするにはサインインしてください。読み込みはサーバーが行います。",
+      "tier": {
+        "A": "公式または安定したAPI。",
+        "B": "公開ページのスクレイピング。危険にさらされるのはIPだけ。真っ先に壊れるもの。",
+        "C": "ログイン済みアカウントが必要で、そのアカウントに危険が及びます。",
+        "M": "手動のみ：アプリに共有してください。"
+      },
+      "title": "ソース"
+    },
     "title": "設定"
   },
   "sync": {
