@@ -26,33 +26,22 @@ const assetLinks = vi.hoisted(() => ({
 }));
 vi.mock('./lib/assetLinks', () => assetLinks);
 
-/* Stand-ins for the eight routers. Each answers just enough to prove it was reached, and between
-   them they keep this file from needing every model in the codebase mocked as well. */
-vi.mock('./routes/entries', async () => {
+/* Stand-ins for the routers. Each answers just enough to prove it was reached, and between them
+   they keep this file from needing every model in the codebase mocked as well. */
+vi.mock('./routes/collections', async () => {
   const { Hono: H } = await import('hono');
+  const stub = (name: string) => new H<AppEnv>().post('/', (c) => c.json({ reached: name }));
   return {
-    entriesRouter: new H<AppEnv>()
-      .post('/', (c) => c.json({ reached: 'entries', userId: c.get('userId') }, 201))
-      .get('/', (c) => c.json({ reached: 'entries-read' })),
-  };
-});
-vi.mock('./routes/people', async () => {
-  const { Hono: H } = await import('hono');
-  return { peopleRouter: new H<AppEnv>().post('/', (c) => c.json({ reached: 'people' })) };
-});
-vi.mock('./routes/tags', async () => {
-  const { Hono: H } = await import('hono');
-  return {
-    tagsRouter: new H<AppEnv>()
-      .post('/', (c) => c.json({ reached: 'tags' }))
+    itemsRouter: new H<AppEnv>()
+      .post('/', (c) => c.json({ reached: 'items', userId: c.get('userId') }, 201))
+      .get('/', (c) => c.json({ reached: 'items-read' }))
       .post('/boom', () => {
         throw new Error('kaboom');
       }),
+    snapshotsRouter: stub('snapshots'),
+    reviewsRouter: stub('reviews'),
+    impressionsRouter: stub('impressions'),
   };
-});
-vi.mock('./routes/threads', async () => {
-  const { Hono: H } = await import('hono');
-  return { threadsRouter: new H<AppEnv>().post('/', (c) => c.json({ reached: 'threads' })) };
 });
 vi.mock('./routes/settings', async () => {
   const { Hono: H } = await import('hono');
@@ -66,11 +55,6 @@ vi.mock('./routes/account', async () => {
   const { Hono: H } = await import('hono');
   return { accountRouter: new H<AppEnv>().delete('/', (c) => c.body(null, 204)) };
 });
-vi.mock('./routes/ai', async () => {
-  const { Hono: H } = await import('hono');
-  return { aiRouter: new H<AppEnv>().post('/suggestions', (c) => c.json({ reached: 'ai' })) };
-});
-
 const { buildApp } = await import('./app');
 
 /* Both halves of what requireAuth reads. `session.createdAt` is when the user last signed in, and
@@ -115,14 +99,14 @@ describe('the API surface', () => {
   it('refuses every API route without a session', async () => {
     session.value = null;
 
-    const res = await mutate('/api/tags');
+    const res = await mutate('/api/items');
 
     expect(res.status).toBe(401);
     expect(await res.json()).toEqual({ error: 'errors.unauthorized' });
   });
 
   it('hands the routers the id from the verified session', async () => {
-    const res = await mutate('/api/entries');
+    const res = await mutate('/api/items');
 
     expect(res.status).toBe(201);
     // The only place a user id enters the API. Nothing downstream accepts one from the caller.
@@ -151,7 +135,7 @@ describe('the API surface', () => {
   });
 
   it('turns an unexpected error into a 500 with the shared body shape', async () => {
-    const res = await mutate('/api/tags/boom');
+    const res = await mutate('/api/items/boom');
 
     expect(res.status).toBe(500);
     // Every failure in this API is `{ error: <i18n key> }`; the client's ApiError parses nothing else.
@@ -161,12 +145,12 @@ describe('the API surface', () => {
 
 describe('the live-sync nudge', () => {
   it('fires after a successful mutation, carrying the originating client', async () => {
-    const res = await app.request('/api/tags', {
+    const res = await app.request('/api/items', {
       method: 'POST',
       headers: { Origin: ORIGIN, 'X-Client-Id': 'client_abc' },
     });
 
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(201);
     /* The client that made the change is excluded — it already applied it locally, and telling it
        to pull would be a round trip to learn what it just did. */
     expect(live.notifyUserChanged).toHaveBeenCalledWith('user_app_test', 'client_abc');
@@ -181,7 +165,7 @@ describe('the live-sync nudge', () => {
   });
 
   it('does not fire for a mutation that failed', async () => {
-    const res = await mutate('/api/tags/boom');
+    const res = await mutate('/api/items/boom');
 
     expect(res.status).toBe(500);
     // Nothing changed, so there is nothing for the other devices to come and fetch.
@@ -191,7 +175,7 @@ describe('the live-sync nudge', () => {
   it('does not fire for a request the auth gate refused', async () => {
     session.value = null;
 
-    await mutate('/api/tags');
+    await mutate('/api/items');
 
     expect(live.notifyUserChanged).not.toHaveBeenCalled();
   });

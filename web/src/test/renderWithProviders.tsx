@@ -16,7 +16,7 @@ import { queryClient as appQueryClient } from '@/lib/queryClient';
  * wholesale to get around it). */
 
 export interface RenderOptions {
-  /** Route pattern to mount `ui` at, e.g. 'diary/:date'. Default '/'. */
+  /** Route pattern to mount `ui` at, e.g. 'items/:id'. Default '/'. */
   path?: string;
   /** Memory history to start from. Must match `path` when that has parameters. */
   initialEntries?: string[];

@@ -16,7 +16,7 @@ import {
   LOGO_LOCAL_COLOR,
   LOGO_STROKE_WIDTH,
   LOGO_VIEWBOX,
-} from '@diary/shared';
+} from '@rove/shared';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -61,7 +61,7 @@ function log(...args: unknown[]): void {
 
 async function main(): Promise<void> {
   log('═══════════════════════════════════════════════');
-  log('  Diary Logo Generator');
+  log('  Rove Logo Generator');
   log('═══════════════════════════════════════════════');
 
   await writeSvg(

@@ -1,7 +1,7 @@
 import { Preferences } from '@capacitor/preferences';
 import { compareVersions } from './version';
 
-const REPO = 'HectorTablero/diary';
+const REPO = 'HectorTablero/rove';
 const DISMISSED_KEY = 'update.dismissedVersion';
 
 /** CI publishes `bundle-<version>-<nativeFingerprint>.zip` beside the APK on every release. */

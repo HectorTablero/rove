@@ -1,1 +1,1 @@
-VITE_API_BASE=https://diary.tablerus.es
+VITE_API_BASE=https://rove.tablerus.es

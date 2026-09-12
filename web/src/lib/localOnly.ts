@@ -4,7 +4,7 @@
    AppLayout's offline-bypass logic (and the sync engine's "has ever linked" gate) fire for
    someone who was never signed in at all. */
 
-const KEY = 'diary.localOnly';
+const KEY = 'rove.localOnly';
 
 export function isLocalOnly(): boolean {
   try {

@@ -1,9 +1,9 @@
 apply plugin: 'com.android.application'
 
 // Release signing lives in an untracked keystore.properties next to this file:
-//   storeFile=diary-release.keystore
+//   storeFile=rove-release.keystore
 //   storePassword=...
-//   keyAlias=diary
+//   keyAlias=rove
 //   keyPassword=...
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = file('keystore.properties')
@@ -19,13 +19,13 @@ def appVersionNameValue = project.hasProperty('appVersionName') ? project.appVer
    AndroidManifest.xml). It must match the origin the app talks to — web/.env.app's VITE_API_BASE —
    because that is the server answering /.well-known/assetlinks.json, and Android will not verify
    the link against anything else. Overridable with -PappHost for a fork or a staging build. */
-def appHostValue = project.hasProperty('appHost') ? project.appHost : "diary.tablerus.es"
+def appHostValue = project.hasProperty('appHost') ? project.appHost : "rove.tablerus.es"
 
 android {
-    namespace = "es.tablerus.diary"
+    namespace = "es.tablerus.rove"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "es.tablerus.diary"
+        applicationId "es.tablerus.rove"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode appVersionCode

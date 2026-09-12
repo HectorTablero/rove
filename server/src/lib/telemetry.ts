@@ -60,7 +60,7 @@ export function captureError(err: unknown, fields: Fields = {}): void {
  * "How many people hit this today", "is this one account or the whole fleet" and "did the same
  * account see it twice" are the questions that make an error report actionable, and all three need
  * only a stable pseudonym. A raw user id is a database key: it joins a log line to a person's
- * diary, and it does not belong in a third-party log service that this app makes optional
+ * user's data, and it does not belong in a third-party log service that this app makes optional
  * precisely because some people will not want it.
  *
  * Salted with BETTER_AUTH_SECRET so the hash cannot be recovered by hashing every ObjectId in a

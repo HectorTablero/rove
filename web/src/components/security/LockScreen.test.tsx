@@ -48,7 +48,7 @@ describe('LockScreen', () => {
   it('asks for a passcode and offers no way past until one is typed', () => {
     setup();
 
-    expect(screen.getByText('Diary is locked')).toBeInTheDocument();
+    expect(screen.getByText('Rove is locked')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Unlock' })).toBeDisabled();
   });
 

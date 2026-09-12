@@ -8,7 +8,7 @@
     @capacitor/local-notifications, which resolves it with getIdentifier(). The shrinker's safe mode
     catches some name-based lookups by matching string constants in the dex, but a name that only
     exists in an asset file is invisible to it — and the release build's own report agrees, listing
-    `@es.tablerus.diary:drawable/ic_stat_notify : reachable=false`.
+    `@es.tablerus.rove:drawable/ic_stat_notify : reachable=false`.
 
     Losing it is not a build error, which is what made this take a while to spot: the plugin falls
     back to android.R.drawable.ic_dialog_info, so every notification quietly shipped with the

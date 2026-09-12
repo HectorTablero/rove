@@ -3,7 +3,7 @@ import { useSyncExternalStore } from 'react';
 /**
  * Whether this device has a network at all, as a React value.
  *
- * Deliberately *not* the sync engine's status: that one is about a relationship with the diary's
+ * Deliberately *not* the sync engine's status: that one is about a relationship with the account's
  * server (it can be `needsAuth`, or `unreachable`, or held back by a preference, and it stays
  * silent altogether on a local-only device). This answers the narrower question that the browser
  * itself can answer — "would a fetch have anywhere to go" — which is what anything downloading a

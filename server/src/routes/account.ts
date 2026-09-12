@@ -3,12 +3,10 @@ import mongoose from 'mongoose';
 import { ObjectId } from 'mongodb';
 import type { AppEnv } from '../middleware/session';
 import { Deletion } from '../models/deletion';
-import { Entry } from '../models/entry';
-import { Person } from '../models/person';
-import { PluginDocument } from '../models/pluginDocument';
-import { PluginRecord } from '../models/pluginRecord';
-import { Tag } from '../models/tag';
-import { Thread } from '../models/thread';
+import { Impression } from '../models/impression';
+import { Item } from '../models/item';
+import { Review } from '../models/review';
+import { Snapshot } from '../models/snapshot';
 import { UserSettings } from '../models/userSettings';
 
 /**
@@ -17,7 +15,7 @@ import { UserSettings } from '../models/userSettings';
  * The one endpoint here does what no other write in this API does: it destroys data the user cannot
  * get back, and it is meant to. Everything about how it is written is downstream of that.
  *
- * **Diary content first, credentials second.** If the content deletion fails halfway, the account
+ * **Content first, credentials second.** If the content deletion fails halfway, the account
  * still exists and the request can simply be retried — nothing is stranded. Reversing the order
  * would mean a failure could leave documents behind with no account left that could ever reach or
  * delete them. The two are not atomic (MongoDB transactions need a replica set, which a
@@ -62,10 +60,10 @@ import { UserSettings } from '../models/userSettings';
  * confirmation all have to fit inside the same window. Being refused *after* re-authenticating is
  * the one failure that would teach someone the feature is broken.
  *
- * What it buys, and what it does not: a session token on its own can no longer erase the diary,
+ * What it buys, and what it does not: a session token on its own can no longer erase everything,
  * which is worth insisting on because it is the only loss here that nothing can undo. It does
  * nothing about a token stolen minutes after a sign-in, and was never going to — that token can
- * already read the whole diary, which is a different loss needing a different answer.
+ * already read everything, which is a different loss needing a different answer.
  */
 const REAUTH_MAX_AGE_MS = 5 * 60 * 1000;
 
@@ -82,12 +80,10 @@ export const accountRouter = new Hono<AppEnv>().delete('/', async (c) => {
   }
 
   await Promise.all([
-    Entry.deleteMany({ userId }),
-    Person.deleteMany({ userId }),
-    Tag.deleteMany({ userId }),
-    Thread.deleteMany({ userId }),
-    PluginRecord.deleteMany({ userId }),
-    PluginDocument.deleteMany({ userId }),
+    Item.deleteMany({ userId }),
+    Snapshot.deleteMany({ userId }),
+    Review.deleteMany({ userId }),
+    Impression.deleteMany({ userId }),
     UserSettings.deleteMany({ userId }),
     // Including the tombstones: they describe documents that no longer exist for an account that
     // is about to stop existing, and nothing will ever pull them.

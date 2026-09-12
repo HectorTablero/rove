@@ -153,7 +153,7 @@ export const sampled = (rate: number): boolean => Math.random() < rate;
  * being blocked, and by roughly how much?") without pretending to a standard metric it isn't.
  *
  * Nothing here is collected for a device fingerprint: no memory size, no core count, no user agent
- * beyond the platform already in baseContext. It is a diary. */
+ * beyond the platform already in baseContext. It is a private app. */
 let largestContentfulPaint = 0;
 let cumulativeLayoutShift = 0;
 let longTaskCount = 0;

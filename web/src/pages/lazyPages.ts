@@ -4,25 +4,13 @@ import { lazy } from 'react';
 // preloader (for warming the cache ahead of navigation). Kept in one place
 // so both sides reference the same import() specifiers.
 export const pageLoaders = {
-  diary: () => import('./DiaryDayPage'),
-  calendar: () => import('./CalendarPage'),
-  people: () => import('./PeopleListPage'),
-  personProfile: () => import('./PersonProfilePage'),
-  importContacts: () => import('./ImportContactsPage'),
-  importBackup: () => import('./ImportBackupPage'),
-  search: () => import('./SearchPage'),
+  map: () => import('./MapPage'),
+  list: () => import('./ListPage'),
+  add: () => import('./AddPage'),
   settings: () => import('./SettingsPage'),
-  tags: () => import('./TagsPage'),
-  threads: () => import('./ThreadsPage'),
 } as const;
 
-export const DiaryDayPage = lazy(pageLoaders.diary);
-export const CalendarPage = lazy(pageLoaders.calendar);
-export const PeopleListPage = lazy(pageLoaders.people);
-export const PersonProfilePage = lazy(pageLoaders.personProfile);
-export const ImportContactsPage = lazy(pageLoaders.importContacts);
-export const ImportBackupPage = lazy(pageLoaders.importBackup);
-export const SearchPage = lazy(pageLoaders.search);
+export const MapPage = lazy(pageLoaders.map);
+export const ListPage = lazy(pageLoaders.list);
+export const AddPage = lazy(pageLoaders.add);
 export const SettingsPage = lazy(pageLoaders.settings);
-export const TagsPage = lazy(pageLoaders.tags);
-export const ThreadsPage = lazy(pageLoaders.threads);

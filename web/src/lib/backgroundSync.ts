@@ -1,8 +1,6 @@
 import { BackgroundFetch } from '@transistorsoft/capacitor-background-fetch';
 import { syncNow } from '@/db/sync';
-import { syncNativeWidgets } from '@/plugins/nativeWidgets';
 import { isNative } from './native';
-import { refreshNotificationsNow } from './notifications';
 import { captureError, trackEvent } from './telemetry';
 
 /* Periodic background sync for the Android app.
@@ -12,35 +10,21 @@ import { captureError, trackEvent } from './telemetry';
  * every 15 minutes via WorkManager, and we spend it on exactly the work a foreground sync does.
  *
  * Deliberately not a parallel implementation. The task calls syncNow() — the same push-outbox-then-
- * pull engine every other trigger calls — and then the same notification reconcile, so a background
- * pass can never drift from a foreground one, and a bug fixed in one is fixed in both. That is also
+ * pull engine every other trigger calls — so a background pass can never drift from a foreground
+ * one, and a bug fixed in one is fixed in both. That is also
  * why this lives in the WebView rather than in a detached JS runtime: Dexie *is* the source of
  * truth, and a runtime without IndexedDB could only ever approximate it.
  *
  * What it cannot do: once Android reclaims or the user force-stops the app, no JavaScript of ours
- * runs at all. Notifications already scheduled survive that (they are real AlarmManager alarms),
- * so the practical loss is discovering *new* reasons to notify while the app is fully dead.
+ * runs at all.
  */
 
 /** Android floors any shorter request at 15 minutes anyway (WorkManager's minimum period). */
 const MINIMUM_FETCH_INTERVAL_MINUTES = 15;
 
 async function runBackgroundSync(): Promise<void> {
-  // syncNow swallows its own network/auth failures and resolves either way, so an offline wake-up
-  // still falls through to the reconcile below — which is the half that matters offline anyway,
-  // since a rolled-over day changes which reminders should be armed with no server involved.
+  // syncNow swallows its own network/auth failures and resolves either way.
   await syncNow({ trigger: 'background' });
-  /* A tighter budget for plugins than a foreground pass gets. The OS closes this window when the
-     task reports done and kills it if we outstay it — and a killed reconcile is worse than a slow
-     one, because `schedule()` may have run while `cancel()` has not. A plugin that overruns simply
-     keeps the alarms it already had until the next pass. */
-  await refreshNotificationsNow({ pluginTimeoutMs: 2_000 });
-  /* Home-screen widgets last, because they restate what the two passes above have just settled.
-     This is also the only thing that keeps a widget current across midnight: the provider notices
-     the day has turned over (ACTION_DATE_CHANGED) but cannot read Dexie to find out what today
-     looks like, so it shows a "open the app" line until one of these wake-ups replaces the
-     snapshot — normally within the quarter hour rather than at the user's next launch. */
-  await syncNativeWidgets();
 }
 
 /** Call once at app bootstrap, before the first render — Android may launch the app straight into
@@ -56,8 +40,8 @@ export async function initBackgroundSync(): Promise<void> {
         startOnBoot: true,
         // Headless mode would need a native Java task; our work is JavaScript by definition.
         enableHeadless: false,
-        // No constraints: we want the wake-up even on a metered connection or a low battery,
-        // because the notification reconcile is useful with no connection at all.
+        // No constraints: the wi-fi-only preference is enforced inside syncNow itself, so one
+        // guard covers the foreground timer, the resume kick and this wake alike.
         requiredNetworkType: BackgroundFetch.NETWORK_TYPE_NONE,
         requiresCharging: false,
         requiresDeviceIdle: false,

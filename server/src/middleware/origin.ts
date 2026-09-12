@@ -17,7 +17,7 @@ import type { AppEnv } from './session';
  *    not a setting this repo states, so it is one dependency upgrade away from being a different
  *    default.
  *
- * Neither is wrong today. But the endpoints behind this include one that erases a user's diary
+ * Neither is wrong today. But the endpoints behind this include one that erases a user's data
  * irreversibly, and "the browser will refuse to send it" is a bad last line for that. So the origin
  * is checked here, in this codebase, against the same list CORS uses.
  *

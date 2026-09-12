@@ -1,4 +1,4 @@
-import { TOMBSTONE_RETENTION_MS } from '@diary/shared';
+import { TOMBSTONE_RETENTION_MS } from '@rove/shared';
 import { describe, expect, it } from 'vitest';
 import { isCursorStale } from './deletion';
 
@@ -7,7 +7,7 @@ import { isCursorStale } from './deletion';
  * inside the window where tombstones exist.
  *
  * Getting it wrong in either direction is invisible from the outside. Too strict and every device
- * downloads the whole diary on a routine sync; too lax and a pull looks perfectly healthy while
+ * downloads the whole store on a routine sync; too lax and a pull looks perfectly healthy while
  * quietly failing to mention a delete, leaving that doc on that device for good.
  */
 

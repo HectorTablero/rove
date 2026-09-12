@@ -72,7 +72,7 @@ export async function logVersion(): Promise<void> {
   logged = true;
 
   const info = await getVersionInfo();
-  const parts = [`Diary v${info.version}`, info.platform];
+  const parts = [`Rove v${info.version}`, info.platform];
   if (info.bundleId) parts.push(`bundle ${info.bundleId}`);
   if (info.apkVersion) parts.push(`apk v${info.apkVersion} (${info.apkVersionCode ?? '?'})`);
   parts.push(`native ${info.fingerprint}`, `built ${info.buildTime}`);

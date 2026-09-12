@@ -8,7 +8,7 @@ import type { SyncBlocker } from '@/db/sync';
  *
  * `navigator.onLine` answers "is there a network", which is not the question. The locale files are
  * static assets on our own origin, so a server the sync engine has just failed to reach is a server
- * these cannot come from either — the diary being down, or a captive portal answering every request
+ * these cannot come from either — the server being down, or a captive portal answering every request
  * with its own login page. Both leave `navigator.onLine` cheerfully true, which is how a language
  * that could not possibly load stayed on offer while every other part of the app said so.
  *

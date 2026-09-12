@@ -45,11 +45,11 @@ describe('ErrorBoundary', () => {
   it('renders its children when nothing is wrong', () => {
     render(
       <ErrorBoundary>
-        <p>The diary</p>
+        <p>The app</p>
       </ErrorBoundary>,
     );
 
-    expect(screen.getByText('The diary')).toBeInTheDocument();
+    expect(screen.getByText('The app')).toBeInTheDocument();
   });
 
   it('replaces a crash with something a person can act on', () => {
@@ -62,7 +62,7 @@ describe('ErrorBoundary', () => {
     expect(screen.getByText('Something went wrong')).toBeInTheDocument();
     // The sentence that matters most, and the one only this component can say: a render crash does
     // not touch IndexedDB, so nothing the user wrote is at risk.
-    expect(screen.getByText(/entries are safe on this device/)).toBeInTheDocument();
+    expect(screen.getByText(/data is safe on this device/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Reload' })).toBeInTheDocument();
   });
 

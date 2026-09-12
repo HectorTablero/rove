@@ -222,9 +222,21 @@ function forgetRefusals() {
 // Guarded for the same reason as the `storage` listener in lib/preferences.ts: this is the only
 // statement in the module that assumes a browser, and leaving it bare made *importing* i18n throw
 // under the node-environment `logic` project — which lib/dates.ts drags in, and which therefore
-// dictated what half the app was allowed to import. onReconnected is environment-agnostic.
+// dictated what half the app was allowed to import.
 if (typeof window !== 'undefined') window.addEventListener('online', forgetRefusals);
-onReconnected(forgetRefusals);
+
+/* Subscribed on first use rather than at module scope, and that is the difference between the app
+   booting and not. This module and db/sync.ts import each other — sync → preferences → dates →
+   i18n → sync — so whichever is evaluated second sees the other half-initialised. A module-scope
+   `onReconnected(...)` here ran before sync.ts had created its listener set, and the whole bundle
+   died on the first line of main.tsx with "cannot read 'add' of undefined". Deferring the call to
+   the hook's effect means every module has finished evaluating by the time it runs. */
+let reconnectSubscribed = false;
+function subscribeReconnectOnce(): void {
+  if (reconnectSubscribed) return;
+  reconnectSubscribed = true;
+  onReconnected(forgetRefusals);
+}
 
 /**
  * A predicate for "could this device switch to that language right now", which re-renders its
@@ -245,6 +257,8 @@ export function useLanguageAvailability(): (code: LanguageCode) => boolean {
   // Wider than `navigator.onLine`: an unreachable server serves these chunks no better than no
   // network does. The reasoning, and why the other two blockers are not in it, is in ./availability.
   const canFetchStrings = canFetchLocales(online, blocker);
+
+  useEffect(subscribeReconnectOnce, []);
 
   useEffect(() => {
     if (canFetchStrings || isNative) return;
@@ -277,7 +291,7 @@ export async function changeLanguage(lng: LanguageCode): Promise<void> {
    The detector's own rule is that a stored `lang` key is an explicit choice and its absence means
    "ask the browser". That is already the behaviour on a first run, but it was previously a state
    the user could leave and never get back to: picking a language wrote the key, and nothing removed
-   it, so a phone that later changed its system language kept the diary in whatever had been chosen
+   it, so a phone that later changed its system language kept the app in whatever had been chosen
    once. These make it a choice you can return to. */
 
 /** i18next's `lookupLocalStorage`, in one place rather than spelled out at each use. */

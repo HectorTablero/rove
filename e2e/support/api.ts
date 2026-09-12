@@ -1,24 +1,20 @@
 import type { Page, Route } from '@playwright/test';
 import type {
-  EntryDto,
-  PersonDto,
+  ImpressionDto,
+  ItemDto,
+  ReviewDto,
   SettingsDto,
+  SnapshotDto,
   SyncResponse,
-  TagDto,
-  PluginRecordDto,
-  ThreadDto,
-} from '@diary/shared';
-import { DEFAULT_SETTINGS } from '@diary/shared';
+} from '@rove/shared';
+import { DEFAULT_SETTINGS } from '@rove/shared';
 
 /* The server, as a fixture.
  *
  * Stateful rather than a pile of one-off `page.route` calls, because most of these specs are about
  * state moving *through* it: a write leaves the browser, lands here, and comes back on the next
- * pull. A stack of independent responders cannot express that, and mocking each call individually
- * would mean every spec re-deciding what the API does.
- *
- * Typed against `SyncResponse` from `@diary/shared` — the same type the real route returns — so the
- * fixture cannot drift away from the server without the typecheck saying so. */
+ * pull. Typed against `SyncResponse` from `@rove/shared` — the same type the real route returns —
+ * so the fixture cannot drift away from the server without the typecheck saying so. */
 
 export interface RecordedCall {
   method: string;
@@ -27,11 +23,10 @@ export interface RecordedCall {
 }
 
 interface ApiState {
-  entries: EntryDto[];
-  people: PersonDto[];
-  tags: TagDto[];
-  threads: ThreadDto[];
-  pluginRecords: PluginRecordDto[];
+  items: ItemDto[];
+  snapshots: SnapshotDto[];
+  reviews: ReviewDto[];
+  impressions: ImpressionDto[];
   settings: SettingsDto;
   deletions: SyncResponse['deletions'];
 }
@@ -51,13 +46,7 @@ export interface ApiMock {
   nextPullIsReset(): void;
   /** Refuse the next matching write once, the way a validation failure would. */
   rejectOnce(rejection: Rejection): void;
-  /**
-   * Make the server unreachable *without* taking the network down.
-   *
-   * A genuinely different state from `context.setOffline(true)`: `navigator.onLine` stays true, the
-   * fetch throws, and the app resolves that to `blocker: 'unreachable'` rather than `'offline'` —
-   * a server that is down, or a captive portal eating requests. Both deserve a spec.
-   */
+  /** Make the server unreachable *without* taking the network down. */
   setUnreachable(down: boolean): void;
   /** Resolve once the app has made a matching call. */
   waitForCall(method: string, path: RegExp, timeoutMs?: number): Promise<RecordedCall>;
@@ -93,11 +82,10 @@ export async function installApiMock(
   const { signedIn = true } = options;
 
   const state: ApiState = {
-    entries: [],
-    people: [],
-    tags: [],
-    threads: [],
-    pluginRecords: [],
+    items: [],
+    snapshots: [],
+    reviews: [],
+    impressions: [],
     settings: { ...DEFAULT_SETTINGS },
     deletions: [],
     ...seed,
@@ -116,7 +104,7 @@ export async function installApiMock(
         try {
           return request.postDataJSON();
         } catch {
-          return undefined; // not JSON (multipart upload), or no body at all
+          return undefined;
         }
       })(),
     };
@@ -124,19 +112,14 @@ export async function installApiMock(
     return call;
   };
 
-  /* Registration order is load-bearing and counter-intuitive: Playwright matches the *most
-     recently* registered route first, so the catch-all has to go on first or it would swallow
-     everything below it. The catch-all exists so an endpoint nobody thought to mock becomes a
-     visible 404 in `calls` rather than a request that hangs until the test times out. */
+  /* Registration order is load-bearing: Playwright matches the *most recently* registered route
+     first, so the catch-all has to go on first or it would swallow everything below it. */
   await page.route('**/api/**', async (route) => {
-    const call = record(route);
+    record(route);
     if (unreachable) return route.abort('connectionfailed');
     await json(route, { error: 'errors.not_found' }, 404);
-    void call;
   });
 
-  // The reconnect probe polls this every 10s once a sync has failed on network grounds. Without an
-  // answer, `onReconnected` never fires and the "Connection restored" toast never appears.
   await page.route('**/api/health', async (route) => {
     record(route);
     if (unreachable) return route.abort('connectionfailed');
@@ -147,17 +130,15 @@ export async function installApiMock(
     record(route);
     if (unreachable) return route.abort('connectionfailed');
     if (route.request().url().includes('get-session')) {
-      // `null` is better-auth's signed-out answer, and a 200 — not a 401, which the client would
-      // read as a session that expired rather than one that never existed.
+      // `null` is better-auth's signed-out answer, and a 200 — not a 401.
       return json(route, signedIn ? { session: SESSION, user: SIGNED_IN_USER } : null);
     }
     await json(route, { error: 'errors.not_found' }, 404);
   });
 
   /* Deliberately refused. `page.route` does not intercept WebSocket handshakes, so if the ticket
-     succeeded the app would open a real socket against `vite preview`, get a 404, and re-arm a
-     ten-second reconnect for the rest of the run. Failing the ticket means the socket is never
-     constructed, and sync.ts's existing catch handles it exactly as designed (retry later). */
+     succeeded the app would open a real socket against `vite preview` and re-arm a ten-second
+     reconnect for the rest of the run. */
   await page.route('**/api/sync/ws-ticket', async (route) => {
     record(route);
     await json(route, { error: 'errors.unavailable' }, 503);
@@ -170,17 +151,12 @@ export async function installApiMock(
     const reset = forceReset || !since;
     forceReset = false;
     const response: SyncResponse = {
-      // The client stores `serverTime - 10s` as its next cursor, to absorb clock skew.
       serverTime: new Date().toISOString(),
       reset,
-      entries: state.entries,
-      people: state.people,
-      tags: state.tags,
-      threads: state.threads,
-      pluginRecords: state.pluginRecords,
-      // Never omitted when empty: under `reset` the client deletes every local id the response
-      // did not name, so "absent" and "none" must not look alike. See SyncResponse.
-      pluginDocuments: [],
+      items: state.items,
+      snapshots: state.snapshots,
+      reviews: state.reviews,
+      impressions: state.impressions,
       settings: state.settings,
       // A reset carries no tombstones — the ids it omits *are* the deletions.
       deletions: reset ? [] : state.deletions,
@@ -188,25 +164,22 @@ export async function installApiMock(
     await json(route, response);
   });
 
-  await page.route('**/api/{entries,people,tags,threads,settings}**', async (route) => {
+  await page.route('**/api/{items,snapshots,reviews,impressions,settings}**', async (route) => {
     const call = record(route);
     if (unreachable) return route.abort('connectionfailed');
 
     const index = rejections.findIndex((r) => r.method === call.method && r.path.test(call.path));
     if (index !== -1) {
       const [rejection] = rejections.splice(index, 1);
-      /* `{ error: <i18n key> }` is the contract: apiClient parses it into ApiError.code, sync.ts
-           stores that on the dead-letter row, and the toast renders it. Any other body shape would
-           make the rejection path untestable while still looking like a failure. */
       return json(route, { error: rejection.code }, rejection.status);
     }
 
-    // Apply creates so the next pull returns them — which is what makes "write, drain, reload"
-    // a round trip rather than two unrelated assertions.
-    if (call.method === 'POST' && call.path === '/api/entries') {
-      state.entries = [...state.entries, call.body as EntryDto];
+    // Apply creates so the next pull returns them — a round trip rather than two assertions.
+    if (call.method === 'POST' && call.path === '/api/items') {
+      const body = call.body as ItemDto;
+      state.items = [...state.items, { ...body, updatedAt: body.createdAt }];
     }
-    await json(route, {});
+    await json(route, {}, call.method === 'POST' ? 201 : 200);
   });
 
   return {

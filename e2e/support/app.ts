@@ -6,29 +6,16 @@ import { installApiMock, SIGNED_IN_USER, type ApiMock } from './api';
  * Two halves are needed and neither is sufficient alone: the session call has to be answered (see
  * api.ts) *and* localStorage has to be seeded. The seeding uses `addInitScript` rather than an
  * `evaluate` after `goto`, because index.html runs a pre-paint script that reads `theme` and `lang`
- * before any module loads — setting them afterwards means the first frame is wrong and the language
- * is whatever Chromium's locale implies. */
+ * before any module loads. */
 
 interface BootOptions {
-  /** Boot without an account, the way "use without signing in" does. */
+  /** Boot without an account, the way "continue without an account" does. */
   localOnly?: boolean;
   /** Passed to the app-lock module's storage, for the lock spec. */
   appLock?: unknown;
-  /**
-   * Which palette to boot into. Defaults to light.
-   *
-   * Only the accessibility scan passes this today, and it is not a preference there but the subject:
-   * contrast is a property of the theme, so a light-only scan has checked half the colours the app
-   * ships. Never `'auto'` — that would make the result depend on the runner's OS setting.
-   */
+  /** Which palette to boot into. Never `'auto'` — that would depend on the runner's OS setting. */
   theme?: 'light' | 'dark';
-  /**
-   * Boot as a device that has never run the app: no cached user, no local-only flag, and the
-   * first-run tour still pending.
-   *
-   * The only state in which `/login` renders anything, since a cached user redirects straight to
-   * the diary — so the onboarding scan cannot use the `app` fixture and has to say this instead.
-   */
+  /** Boot as a device that has never run the app: no cached user and no local-only flag. */
   firstRun?: boolean;
 }
 
@@ -40,29 +27,24 @@ export async function seedBrowserState(
     ({ user, localOnly, appLock, theme, firstRun }) => {
       /* Belt to `serviceWorkers: 'block'`'s braces. workbox-window feature-detects
          `'serviceWorker' in navigator`, so hiding it makes registerSW a no-op even where the
-         context option is unavailable. A worker that claims the page would serve index.html from
-         precache and route interception would stop seeing navigations. */
+         context option is unavailable. */
       Object.defineProperty(navigator, 'serviceWorker', { get: () => undefined });
 
       localStorage.setItem('theme', theme);
       localStorage.setItem('lang', 'en');
-      /* The first-run tour is a full-screen modal over /login, so every spec that is not about it
-         has to boot past it. Written as a one-key blob because lib/preferences.ts shallow-merges
-         over its defaults — this cannot go stale as keys are added. */
       if (!firstRun) localStorage.setItem('preferences', JSON.stringify({ onboardingSeen: true }));
       if (firstRun) {
-        // A device with no history at all: neither branch below applies, and /login renders.
-        localStorage.removeItem('diary.user');
-        localStorage.removeItem('diary.localOnly');
+        localStorage.removeItem('rove.user');
+        localStorage.removeItem('rove.localOnly');
       } else if (localOnly) {
-        localStorage.setItem('diary.localOnly', '1');
-        localStorage.removeItem('diary.user');
+        localStorage.setItem('rove.localOnly', '1');
+        localStorage.removeItem('rove.user');
       } else {
         /* Not only the offline-usable bypass in AppLayout: `syncNow()` returns immediately when
            `getCachedUser()` is null, so without this *nothing syncs at all* until AppLayout's
            session effect has run — which makes every sync assertion race a React effect. */
-        localStorage.setItem('diary.user', JSON.stringify(user));
-        localStorage.removeItem('diary.localOnly');
+        localStorage.setItem('rove.user', JSON.stringify(user));
+        localStorage.removeItem('rove.localOnly');
       }
       if (appLock) localStorage.setItem('appLock', JSON.stringify(appLock));
     },
@@ -76,36 +58,11 @@ export async function seedBrowserState(
   );
 }
 
-/** `yyyy-MM-dd` for today, computed the way the app computes it (local time, and the zone is
-    pinned to UTC in playwright.config.ts) rather than hardcoded into a fixture. */
-export const todayKey = (): string => new Date().toISOString().slice(0, 10);
-
-/**
- * An entry *row*, as opposed to anything else showing the same words.
- *
- * A bare `getByText` is ambiguous here and fails strict mode: right after saving, the text is in
- * the entry list *and* still in the composer's textarea (which clears a tick later, once the
- * mutation resolves). `data-tree-row-id` is what EntryItem puts on each row, so this asks the
- * question the specs actually mean — is there an entry saying this.
- */
-export const entryRow = (page: Page, text: string) =>
-  page.locator('[data-tree-row-id]').filter({ hasText: text });
-
-/**
- * The sync pill's message.
- *
- * Located by its words rather than by `role="status"`, which is also ambiguous — the Save button's
- * spinner carries one too. The words are what the user reads, and pinning them means a copy change
- * that quietly empties the pill fails here rather than passing silently.
- */
-export const syncMessage = (page: Page, text: string | RegExp) => page.getByText(text);
-
 /**
  * A page with the API mocked and the browser seeded, ready to navigate.
  *
  * Exposed as a fixture so a spec reads `test('…', async ({ page, api }) => …)` and cannot
- * accidentally navigate before the routes are installed — which would let the first sync through
- * to a real 404 and put the app into an `unreachable` state the spec never asked for.
+ * accidentally navigate before the routes are installed.
  */
 export const test = base.extend<{ api: ApiMock; app: Page }>({
   api: async ({ page }, use) => {

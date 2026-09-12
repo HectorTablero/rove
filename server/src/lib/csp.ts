@@ -131,7 +131,7 @@ export function buildCsp(indexHtmlPath: string): CspDirectives {
     mediaSrc: ["'self'", 'blob:'], // voice recordings before they are uploaded
     baseUri: ["'self'"],
     formAction: ["'self'"],
-    // A diary is worth clickjacking. Nothing here is ever meant to be embedded.
+    // Private data is worth clickjacking. Nothing here is ever meant to be embedded.
     frameAncestors: ["'none'"],
     objectSrc: ["'none'"],
   };

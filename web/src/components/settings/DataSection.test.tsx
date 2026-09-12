@@ -71,7 +71,7 @@ describe('DataSection · crash reporting', () => {
     setup();
 
     expect(
-      screen.getByText(/Never entry text, names or notes\./, { exact: false }),
+      screen.getByText(/Never a place name, a note or a link\./, { exact: false }),
     ).toBeInTheDocument();
   });
 });

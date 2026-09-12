@@ -13,7 +13,7 @@ import { googleSignIn } from '@/lib/googleSignIn';
 import { notifyError } from '@/lib/notify';
 import { Section } from './Section';
 
-/** Who this diary belongs to: the signed-in account, or the offer to attach one. Owns the whole
+/** Who this data belongs to: the signed-in account, or the offer to attach one. Owns the whole
     sign-out sequence, including the confirmation, because nothing else on the page needs it. */
 export function AccountSection() {
   const { t } = useTranslation();

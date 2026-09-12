@@ -1,5 +1,5 @@
 {
-  "name": "@diary/shared",
+  "name": "@rove/shared",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "gcoord": "^1.0.7",
     "zod": "^4.0.0"
   },
   "devDependencies": {

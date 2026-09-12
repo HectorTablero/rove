@@ -1,24 +1,10 @@
-import type { SyncCollection, SyncResponse } from '@diary/shared';
+import type { SyncCollection, SyncResponse } from '@rove/shared';
 import { API_BASE, CLIENT_ID, api, ApiError, apiGet } from '@/lib/apiClient';
 import { isMeteredConnection } from '@/lib/network';
 import { getPreferences, subscribePreferences } from '@/lib/preferences';
 import { getCachedUser } from '@/lib/sessionCache';
 import { captureError, sampled, trackEvent } from '@/lib/telemetry';
-import {
-  bumpLookupVersion,
-  db,
-  entryFromDto,
-  getMeta,
-  personFromDto,
-  setMeta,
-  type OutboxOp,
-} from './db';
-import {
-  documentBasePushed,
-  documentWritePrecondition,
-  reconcilePluginDocuments,
-  type MergedDocumentWrite,
-} from './pluginDocumentMerge';
+import { db, getMeta, setMeta, type OutboxOp } from './db';
 import { checkStoragePressure } from './storage';
 
 /* Sync engine: replays the outbox against the REST API in order (push), then
@@ -185,24 +171,6 @@ export function onReconnected(cb: () => void): () => void {
   return () => reconnectListeners.delete(cb);
 }
 
-const mergeListeners = new Set<(conflicts: number) => void>();
-
-/**
- * Fires when a pull merged two devices' edits and had to keep both versions of something.
- *
- * Only for the conflicted case. A clean merge is the machinery doing its job and is not worth
- * interrupting anyone over — the document simply contains both people's work, which is what they
- * would each have expected. A *conflict* has left a duplicated sentence in someone's prose, and
- * they need to know it is there so they can delete the half they don't want.
- *
- * A listener rather than a toast from in here, for the same reason as onRejected below: this module
- * knows nothing about i18n or the toaster. main.tsx wires it up.
- */
-export function onDocumentsMerged(cb: (conflicts: number) => void): () => void {
-  mergeListeners.add(cb);
-  return () => mergeListeners.delete(cb);
-}
-
 const rejectionListeners = new Set<(count: number) => void>();
 
 /**
@@ -220,28 +188,18 @@ async function refreshPending() {
   setStatus({ pending: await db.outbox.count() });
 }
 
-/* Outbox paths carry document ids — `/people/<id>/events/<id>/asked` — and an id is both the
+/* Outbox paths carry document ids — `/items/<id>` — and an id is both the
    user's own data and the thing that would turn one chart into a thousand single-row series. The
    shape is what a question about rejected writes is actually about, so every segment that isn't
    part of the route template becomes `:id`. An allow-list rather than a pattern match, because the
    ids are generated in more than one place and nothing guarantees they keep looking alike. */
 const ROUTE_SEGMENTS = new Set([
-  'entries',
-  'people',
-  'tags',
-  'threads',
-  // The route is flat (/plugin-records/:id) rather than /plugins/:pluginId/records, so that
-  // dirtyIds below still finds the document id in the second segment. The pluginId travels in the
-  // body; it is deliberately not part of the shape, being far higher cardinality than a route.
-  'plugin-records',
-  'plugin-documents',
+  'items',
+  'snapshots',
+  'reviews',
+  'impressions',
   'settings',
   'sync',
-  'checkup',
-  'events',
-  'asked',
-  'said',
-  'order',
 ]);
 
 const routeShape = (path: string): string =>
@@ -256,7 +214,7 @@ async function dirtyIds(): Promise<Set<string>> {
   for (const op of await db.outbox.toArray()) {
     const body = op.body as { id?: string } | undefined;
     if (body?.id) ids.add(body.id);
-    const segments = op.path.split('/').filter(Boolean); // e.g. entries/<id>/said/<personId>
+    const segments = op.path.split('/').filter(Boolean); // e.g. items/<id>
     if (segments[1]) ids.add(segments[1]);
   }
   return ids;
@@ -272,33 +230,11 @@ async function pushOutbox(): Promise<boolean> {
   for (;;) {
     const op = await db.outbox.orderBy('seq').first();
     if (!op) return true;
-    /* The one op in the queue that is not sent exactly as it was written down: a document's body is
-       the whole text, so it goes up as a compare-and-swap against the version this device last saw.
-       The precondition is read now rather than baked in at enqueue time — see
-       documentWritePrecondition for why that distinction is the difference between the guard
-       working and the guard refusing every write after the first. */
-    const bodyWrite = documentBodyWrite(op);
-    const precondition = bodyWrite ? await documentWritePrecondition(bodyWrite.id) : undefined;
-    const payload =
-      bodyWrite && precondition ? { ...(op.body as object), baseVersion: precondition } : op.body;
     try {
-      const response = await api<unknown>(op.path, {
+      await api<unknown>(op.path, {
         method: op.method,
-        body: payload === undefined ? undefined : JSON.stringify(payload),
+        body: op.body === undefined ? undefined : JSON.stringify(op.body),
       });
-      /* The server has our text now, so the ancestor moves onto it — and onto the version the
-         server just stamped, which is what the *next* write has to match.
-
-         Only when a precondition was actually sent. Without one there was no base record, and the
-         op is something else that happens to carry a string `body`: a *revision*, whose body is an
-         encoded patch and which has no ancestor to track. Writing one here would leave a base
-         behind that sent every future pull of that revision through the merge path. */
-      if (bodyWrite && precondition) {
-        const version = (response as { updatedAt?: unknown } | null)?.updatedAt;
-        if (typeof version === 'string') {
-          await documentBasePushed(bodyWrite.id, bodyWrite.body, version);
-        }
-      }
       await db.outbox.delete(op.seq!);
       pushedThisPass++;
     } catch (err) {
@@ -316,19 +252,6 @@ async function pushOutbox(): Promise<boolean> {
         setStatus({ blocker: 'unreachable' });
         networkFailure = true;
         return false; // server hiccup: retry once it answers again
-      }
-      /* A conditional body write the server refused because the row moved underneath it — the
-         non-fast-forward push, and the whole point of `baseVersion` (see the shared update schema).
-         The op leaves the queue and nothing is lost: the text is still in Dexie, the merge base is
-         still recorded, and the pull that follows this drained queue will merge the two versions
-         and enqueue the result. Retrying the op as-is would only be refused again, forever, and
-         dead-lettering it would report data loss for a write the app is about to redo properly. */
-      if (err.status === 409 && bodyWrite && precondition) {
-        await db.outbox.delete(op.seq!);
-        // Sampled: a document edited on two devices produces a burst of these, and the rate is the
-        // signal. The merge that follows is counted in full, in pull().
-        if (sampled(0.1)) trackEvent('sync_stale_write', { path: routeShape(op.path) });
-        continue;
       }
       if (err.status === 409 && op.method === 'POST') {
         await removeLocalDoc(op);
@@ -408,27 +331,14 @@ async function trimDeadLetter(): Promise<void> {
   await db.deadLetter.bulkDelete(oldest);
 }
 
-/** The document id and text of an op that rewrites a document's body, or null for anything else. */
-function documentBodyWrite(op: OutboxOp): { id: string; body: string } | null {
-  if (op.method !== 'PATCH' || !op.path.startsWith('/plugin-documents/')) return null;
-  const body = (op.body as { body?: unknown } | undefined)?.body;
-  if (typeof body !== 'string') return null;
-  return { id: op.path.slice('/plugin-documents/'.length), body };
-}
-
 /** A conflicted local create is a phantom (never made it to the server): remove it. */
 async function removeLocalDoc(op: OutboxOp) {
   const id = (op.body as { id?: string } | undefined)?.id;
   if (!id) return;
-  if (op.path.startsWith('/entries')) await db.entries.delete(id);
-  else if (op.path.startsWith('/people')) await db.people.delete(id);
-  else if (op.path.startsWith('/tags')) await db.tags.delete(id);
-  else if (op.path.startsWith('/threads')) await db.threads.delete(id);
-  else if (op.path.startsWith('/plugin-records')) await db.pluginRecords.delete(id);
-  /* Reached far more often than the others, and not only by the offline-enable race they exist for:
-     two devices writing the same document on the same day collide on the unique revision index, and
-     this is what drops the loser's phantom row so the pull can hand it the winner. */
-  else if (op.path.startsWith('/plugin-documents')) await db.pluginDocuments.delete(id);
+  if (op.path.startsWith('/items')) await db.items.delete(id);
+  else if (op.path.startsWith('/snapshots')) await db.snapshots.delete(id);
+  else if (op.path.startsWith('/reviews')) await db.reviews.delete(id);
+  else if (op.path.startsWith('/impressions')) await db.impressions.delete(id);
 }
 
 /* Live channel: a WebSocket per open client. The server nudges the user's
@@ -562,90 +472,33 @@ async function pull(): Promise<PullSummary> {
   );
   const fetchMs = Math.round(performance.now() - fetchStartedAt);
 
-  const threads = res.threads ?? []; // tolerates a server that predates threads (stale deploy)
-  const pluginRecords = res.pluginRecords ?? []; // ditto — see `acknowledged` below
-  const pluginDocuments = res.pluginDocuments ?? []; // ditto
-  /* Whether this response is the whole server state rather than a delta — see SyncResponse.reset.
-     The `?? !since` mirrors the threads line above for a server that predates the field: without a
-     cursor the client can reach the same conclusion on its own, and that is the only case where it
-     safely can. With a cursor it must assume a delta, which is exactly how it behaved before. */
-  const reset = res.reset ?? !since;
+  const reset = res.reset;
 
   /* Ids the server sent back as *alive* in this very response, per collection.
      A doc is only in a pull if the server still had it when the query ran, so a tombstone naming
      one of these is describing a doc that exists again — an undo re-created it under its original
-     id. The server normally retracts such a tombstone on the re-create (clearDeletions), so this
-     is the belt to that braces: it also covers the moment between the re-create committing and its
-     tombstone being cleared (the two pull queries run concurrently and can straddle it), and any
-     client still talking to a server from before that change.
-
-     Presence, not timestamps, decides it: TagDto carries no updatedAt to compare, and "the server
-     still has it" is the stronger statement anyway. The one case this reads too generously — a doc
-     deleted *while* this pull was running, so the entry query saw it alive and the deletion query
-     saw its tombstone — heals on the next pull, where the cursor overlap re-sends the tombstone and
-     the doc is genuinely absent. */
+     id. The server normally retracts such a tombstone on the re-create (clearDeletions); this is
+     the belt to that braces, covering the moment between the re-create committing and its
+     tombstone being cleared (the two pull queries run concurrently and can straddle it). */
   const alive: Record<SyncCollection, Set<string>> = {
-    entry: new Set(res.entries.map((e) => e.id)),
-    person: new Set(res.people.map((p) => p.id)),
-    tag: new Set(res.tags.map((t) => t.id)),
-    thread: new Set(threads.map((t) => t.id)),
-    pluginRecord: new Set(pluginRecords.map((r) => r.id)),
-    pluginDocument: new Set(pluginDocuments.map((d) => d.id)),
+    item: new Set(res.items.map((d) => d.id)),
+    snapshot: new Set(res.snapshots.map((d) => d.id)),
+    review: new Set(res.reviews.map((d) => d.id)),
+    impression: new Set(res.impressions.map((d) => d.id)),
   };
 
-  /* Which collections this response actually *spoke about*, as opposed to spoke about and had
-     nothing to say.
-
-     The reset branch below deletes every local id the response did not name, so those two cases
-     must not be conflated — and `res.x ?? []` conflates them exactly. A client talking to a server
-     from before a collection existed (a staggered deploy, or an Android build that outran the
-     server) reads the missing key as an empty array, concludes the account owns none of them, and
-     deletes the lot. Nothing about that looks like a failure from either end.
-
-     So absence means "this server cannot speak for that collection", and the sweep skips it. The
-     cost of being wrong that way is a locally-deleted row lingering until the next pull from a
-     server that does know; the cost of being wrong the other way is the data. */
-  const acknowledged = new Set<SyncCollection>(['entry', 'person', 'tag']);
-  if (res.threads !== undefined) acknowledged.add('thread');
-  if (res.pluginRecords !== undefined) acknowledged.add('pluginRecord');
-  if (res.pluginDocuments !== undefined) acknowledged.add('pluginDocument');
-
-  /* db.outbox joins the transaction so `dirty` can be read *inside* it.
-     Reading it beforehand left a window: a mutation enqueued between that read and this
-     transaction is missing from `dirty`, and — being newer than the response — missing from the
-     server's answer too. Under the reset branch below, "in neither" is the definition of a doc to
-     delete, so a note written in that instant would be erased by the very sync meant to save it.
-     Holding the table for the transaction's duration makes the two reads agree. */
-  /* Did this response actually carry anything? Set inside the transaction, read after it.
-     Everything downstream of a pull is expensive — the listeners invalidate the whole query cache
-     and re-run every read on screen, several of which scan a table — and a poll fires every 60
-     seconds whether or not the diary changed. On an idle app that is the entire cost of the app,
-     paid over and over to arrive back where it started. */
+  /* db.outbox joins the transaction so `dirty` can be read *inside* it. Reading it beforehand left
+     a window: a mutation enqueued between that read and this transaction is missing from `dirty`,
+     and — being newer than the response — missing from the server's answer too. Under the reset
+     branch below, "in neither" is the definition of a doc to delete, so a write made in that
+     instant would be erased by the very sync meant to save it. */
   let applied = reset;
   let orphaned = 0;
   let dirtySkipped = 0;
-  /* Filled inside the transaction, acted on after it — a Dexie transaction may only touch the
-     tables it declared, and a merged body has to be queued as well as stored. */
-  let mergedWrites: MergedDocumentWrite[] = [];
-  let mergeConflicts = 0;
 
   await db.transaction(
     'rw',
-    [
-      db.entries,
-      db.people,
-      db.tags,
-      db.threads,
-      db.pluginRecords,
-      db.pluginDocuments,
-      /* Joined for reconcilePluginDocuments, which reads the merge base for every document row in
-         the response and rewrites it when a merge happens. It has to be inside this transaction:
-         the base is what stops two devices' prose overwriting each other, and reading it outside
-         would leave a window where a keystroke moved it between the read and the write. */
-      db.pluginDocumentBases,
-      db.outbox,
-      db.meta,
-    ],
+    [db.items, db.snapshots, db.reviews, db.impressions, db.outbox, db.meta],
     async () => {
       const dirty = await dirtyIds();
       const clean = <T extends { id: string }>(docs: T[]) => {
@@ -654,26 +507,18 @@ async function pull(): Promise<PullSummary> {
         return kept;
       };
 
-      await db.entries.bulkPut(clean(res.entries).map(entryFromDto));
-      await db.people.bulkPut(clean(res.people).map(personFromDto));
-      await db.tags.bulkPut(clean(res.tags));
-      await db.threads.bulkPut(clean(threads));
-      await db.pluginRecords.bulkPut(clean(pluginRecords));
-      /* The one collection a pull may not simply overwrite. A document's body is a page of prose in
-         a single field, so `bulkPut` here means "whichever device synced last is the one that wrote
-         today" — see reconcilePluginDocuments, which merges instead. */
-      const reconciled = await reconcilePluginDocuments(clean(pluginDocuments));
-      await db.pluginDocuments.bulkPut(reconciled.rows);
-      mergedWrites = reconciled.writes;
-      mergeConflicts = reconciled.conflicts;
       const tables: Record<SyncCollection, SyncTable> = {
-        entry: db.entries,
-        person: db.people,
-        tag: db.tags,
-        thread: db.threads,
-        pluginRecord: db.pluginRecords,
-        pluginDocument: db.pluginDocuments,
+        item: db.items,
+        snapshot: db.snapshots,
+        review: db.reviews,
+        impression: db.impressions,
       };
+
+      await db.items.bulkPut(clean(res.items));
+      await db.snapshots.bulkPut(clean(res.snapshots));
+      await db.reviews.bulkPut(clean(res.reviews));
+      await db.impressions.bulkPut(clean(res.impressions));
+
       for (const del of res.deletions) {
         if (dirty.has(del.docId)) {
           dirtySkipped++;
@@ -681,10 +526,6 @@ async function pull(): Promise<PullSummary> {
         }
         if (alive[del.coll]?.has(del.docId)) continue; // re-created since: stale tombstone
         await tables[del.coll]?.delete(del.docId);
-        /* A merge base outlives the document it belongs to unless it is dropped with it, and a
-           document deleted elsewhere never appears in a pull again, so nothing later would clear
-           it. Cheap either way: the table is empty on most devices. */
-        if (del.coll === 'pluginDocument') await db.pluginDocumentBases.delete(del.docId);
       }
 
       /* A reset response carries no tombstones — there are none left to carry — so the deletes it
@@ -694,38 +535,31 @@ async function pull(): Promise<PullSummary> {
          only what changed, so treating an unmentioned id as deleted there would wipe the entire
          local database on the first quiet minute. */
       if (reset) {
-        // `acknowledged`, not every key of `tables`: a collection this server didn't mention is one
-        // it cannot speak for, and "unmentioned" is the delete signal here. See its definition.
-        for (const coll of acknowledged) {
+        for (const coll of Object.keys(tables) as SyncCollection[]) {
           const local = await tables[coll].toCollection().primaryKeys();
           const gone = local.filter((id) => !alive[coll].has(id) && !dirty.has(id));
           orphaned += gone.length;
           await tables[coll].bulkDelete(gone);
-          if (coll === 'pluginDocument') await db.pluginDocumentBases.bulkDelete(gone);
         }
       }
 
       /* Settings come back on every pull regardless of the cursor — the server has no changed-since
          filter for a singleton — so they can't be counted as a change by their presence, the way
-         the arrays above can. Comparing is cheap (one small object) and is the only way a
-         preference changed on another device still reaches this one promptly. */
+         the arrays above can. Comparing is cheap and is the only way a preference changed on
+         another device reaches this one promptly. */
       const previous = await getMeta<unknown>('settings');
       if (JSON.stringify(previous) !== JSON.stringify(res.settings)) applied = true;
       await setMeta('settings', res.settings);
 
       if (
-        res.entries.length ||
-        res.people.length ||
-        res.tags.length ||
-        threads.length ||
-        pluginRecords.length ||
-        pluginDocuments.length ||
+        res.items.length ||
+        res.snapshots.length ||
+        res.reviews.length ||
+        res.impressions.length ||
         res.deletions.length
       ) {
         applied = true;
       }
-      // Tags, people and threads are what repo.ts's join-map cache is built from; entries aren't.
-      if (reset || res.people.length || res.tags.length || threads.length) bumpLookupVersion();
 
       // 10s overlap absorbs clock skew between capture and the queries; upserts are idempotent.
       await setMeta('syncCursor', new Date(Date.parse(res.serverTime) - 10_000).toISOString());
@@ -737,47 +571,8 @@ async function pull(): Promise<PullSummary> {
   setStatus({ blocker: null, needsAuth: false, lastSyncAt: new Date().toISOString() });
   stopReconnectProbe(); // reached the server through some other trigger
 
-  /* Documents this pull merged rather than overwrote now hold text the server has never seen, so
-     they go straight back into the queue. Written here rather than through db/outbox.ts's enqueue:
-     that helper reaches i18n and back into this module, and importing it would close a cycle that
-     breaks module initialisation. Nothing it adds is wanted anyway — the caches it invalidates hold
-     people and tags, and the notification reconcile has nothing to say about a document. The kick
-     below is the one part that is. */
-  if (mergedWrites.length) {
-    await db.outbox.bulkAdd(
-      mergedWrites.map(({ id, body }) => ({
-        method: 'PATCH' as const,
-        path: `/plugin-documents/${id}`,
-        body: { body },
-      })),
-    );
-    // This pass is already past its push, so without a kick the merged text would sit in the queue
-    // until the next timer tick — a minute of the other device not seeing an answer.
-    kick('mutation');
-  }
-  if (mergeConflicts > 0) {
-    const conflicts = mergeConflicts;
-    mergeListeners.forEach((cb) => cb(conflicts));
-  }
-  if (mergedWrites.length) {
-    /* Never sampled, and counted rather than merely logged. This is the event that says two devices
-       were editing the same document at once and the app put the two versions back together — the
-       situation that used to silently lose one of them. A rate that climbs after a release means
-       either that people really do write on two devices more than anyone thought, or that something
-       in the precondition path has started manufacturing collisions. */
-    trackEvent('plugin_document_merged', {
-      documents: mergedWrites.length,
-      conflicts: mergeConflicts,
-    });
-  }
-
   const received =
-    res.entries.length +
-    res.people.length +
-    res.tags.length +
-    threads.length +
-    pluginRecords.length +
-    pluginDocuments.length;
+    res.items.length + res.snapshots.length + res.reviews.length + res.impressions.length;
 
   /* A reset with a cursor is the one branch in this file that deletes local documents the user
      never asked to delete, and it is never sampled.
@@ -787,7 +582,7 @@ async function pull(): Promise<PullSummary> {
      removed, and it is the number that matters — a handful is a device catching up, while a large
      one on a device that syncs weekly is the retention window being wrong, or a bug in the
      server's idea of what still exists. Nothing could see that before this line. */
-  /* A reset writes the user's entire diary in one transaction — the largest thing this app ever
+  /* A reset writes the user's entire store in one transaction — the largest thing this app ever
      stores — so it is the write most likely to be the one that finds the edge of the quota, and
      the moment just after it is when a device sitting near that edge is worth noticing. */
   if (reset) void checkStoragePressure();

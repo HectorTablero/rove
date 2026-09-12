@@ -21,15 +21,14 @@ import {
 import { requireTrustedOrigin } from './middleware/origin';
 import { requireAuth, type AppEnv } from './middleware/session';
 import { accountRouter } from './routes/account';
-import { aiRouter } from './routes/ai';
-import { entriesRouter } from './routes/entries';
-import { peopleRouter } from './routes/people';
+import {
+  impressionsRouter,
+  itemsRouter,
+  reviewsRouter,
+  snapshotsRouter,
+} from './routes/collections';
 import { settingsRouter } from './routes/settings';
 import { syncRouter } from './routes/sync';
-import { tagsRouter } from './routes/tags';
-import { pluginDocumentsRouter } from './routes/pluginDocuments';
-import { pluginRecordsRouter } from './routes/pluginRecords';
-import { threadsRouter } from './routes/threads';
 
 // serveStatic resolves relative to process.cwd(); compute the path to web/dist
 // from this file so it works both from the repo root and inside the container.
@@ -134,24 +133,16 @@ export const buildApp = (app: Hono<AppEnv>, auth: Auth, upgradeWebSocket?: Upgra
   });
   /* The client is local-first: it reads exclusively from its own Dexie store and reconciles via
      GET /sync, so the API only needs to accept *writes* (replayed from the client's outbox) plus
-     the sync pull and the AI assistant. The read endpoints this once served — day entries, the
-     people list, talking points, memories, history, calendar, on-this-day, search — are all
-     computed on the client now (web/src/db/repo.ts) and have been removed. */
-  api.route('/entries', entriesRouter);
-  api.route('/people', peopleRouter);
-  api.route('/tags', tagsRouter);
-  api.route('/threads', threadsRouter);
-  /* Flat, not nested under a plugin id — see the note at the top of routes/pluginRecords.ts: the
-     client's dirty-id tracking reads the second path segment as the document id. */
-  api.route('/plugin-records', pluginRecordsRouter);
-  // Flat for the same reason, and it matters more here: a document delete is queued offline with no
-  // body at all, so the id has to be findable in the path.
-  api.route('/plugin-documents', pluginDocumentsRouter);
+     the sync pull. Flat paths, one collection each — the client's dirty-id tracking reads the
+     second path segment as the document id, so nothing may nest under a parent id. */
+  api.route('/items', itemsRouter);
+  api.route('/snapshots', snapshotsRouter);
+  api.route('/reviews', reviewsRouter);
+  api.route('/impressions', impressionsRouter);
   api.route('/settings', settingsRouter);
   api.route('/sync', syncRouter);
-  // DELETE only: erases the diary and the account behind it. See routes/account.ts.
+  // DELETE only: erases everything and the account behind it. See routes/account.ts.
   api.route('/account', accountRouter);
-  api.route('/ai', aiRouter);
   app.route('/api', api);
 
   // Unknown API paths must 404 as JSON, never fall through to the SPA.

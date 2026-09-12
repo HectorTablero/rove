@@ -7,12 +7,12 @@ import type { AppEnv } from './session';
  * The server-side half of the CSRF defence.
  *
  * Worth its own tests because the thing it guards against leaves no trace when it works and is
- * catastrophic when it doesn't: one of the endpoints behind this erases a diary irreversibly. The
+ * catastrophic when it doesn't: one of the endpoints behind this erases an account irreversibly. The
  * cases below are the four a hostile page could produce, plus the two legitimate callers that must
  * keep working — the deployed web origin and the Android webview, which is genuinely cross-site.
  */
 
-const TRUSTED = ['https://diary.example.com', 'https://localhost', 'capacitor://localhost'];
+const TRUSTED = ['https://rove.example.com', 'https://localhost', 'capacitor://localhost'];
 
 const app = new Hono<AppEnv>()
   .use(requireTrustedOrigin(TRUSTED))
@@ -31,8 +31,8 @@ describe('requireTrustedOrigin', () => {
   });
 
   it('is not fooled by an origin that merely starts with a trusted one', async () => {
-    // https://diary.example.com.evil.example — a prefix match would wave this through.
-    const res = await request('DELETE', 'https://diary.example.com.evil.example');
+    // https://rove.example.com.evil.example — a prefix match would wave this through.
+    const res = await request('DELETE', 'https://rove.example.com.evil.example');
 
     expect(res.status).toBe(403);
   });
@@ -44,7 +44,7 @@ describe('requireTrustedOrigin', () => {
   });
 
   it('allows the deployed web origin', async () => {
-    const res = await request('DELETE', 'https://diary.example.com');
+    const res = await request('DELETE', 'https://rove.example.com');
 
     expect(res.status).toBe(200);
   });

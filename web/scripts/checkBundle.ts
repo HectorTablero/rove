@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
  *   1. Plugin code in the entry chunk. A stray static import is all it takes, and the app behaves
  *      identically either way.
  *   2. Plugin locales precached. Vite inlined them as base64 data URIs into the *day page* chunk
- *      (they are a few hundred bytes, under assetsInlineLimit), so every user with a diary
+ *      (they are a few hundred bytes, under assetsInlineLimit), so every user
  *      downloaded every plugin's strings in all five languages. `dist` looked empty of them, which
  *      read as success.
  *   3. Plugin locales colliding with the core ones. Emitted as files but into `assets/`, they take

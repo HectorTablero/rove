@@ -16,7 +16,7 @@ import { isNative } from './native';
    returned — and the app still shows the login screen, permanently, because every get-session is
    answered for the dead token instead of the live cookie. */
 
-const KEY = 'diary.authToken';
+const KEY = 'rove.authToken';
 
 let token: string | null = null;
 

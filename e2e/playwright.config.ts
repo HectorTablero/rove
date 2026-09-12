@@ -42,7 +42,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     video: 'off',
     locale: 'en-GB',
-    /* `todayKey()` is local time, and `/diary` redirects to today — so without a pinned zone the
+    /* Times are formatted in local time — so without a pinned zone the
        suite would compute a different day depending on where it runs. Specs derive the expected
        key with the app's own formula rather than hardcoding one. */
     timezoneId: 'UTC',
@@ -60,7 +60,7 @@ export default defineConfig({
     command: `npm run preview -w web -- --port ${PORT} --strictPort`,
     cwd: repoRoot,
     // Also proves the SPA history fallback, which a request for `/` would not.
-    url: `http://localhost:${PORT}/diary`,
+    url: `http://localhost:${PORT}/map`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     stdout: 'ignore',

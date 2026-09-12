@@ -6,7 +6,7 @@ import { routeApp, USER_ID } from '../test/routeApp';
  *
  * Two properties matter more than the status code, and neither is visible in a response:
  *
- *   - **Order.** Diary content goes first, credentials second. A failure halfway then leaves an
+ *   - **Order.** Content goes first, credentials second. A failure halfway then leaves an
  *     account that still exists and a request that can simply be retried. Reversed, a failure could
  *     strand documents behind an account that no longer exists to reach or delete them — and
  *     nothing is atomic here, because MongoDB transactions need a replica set that a self-hosted
@@ -17,16 +17,14 @@ import { routeApp, USER_ID } from '../test/routeApp';
  *
  * A third is visible only in a status code, and is the one guard here that a refactor could delete
  * without breaking anything else: the caller has to have signed in recently. Everything else
- * standing between a tap and an erased diary — the typed word, the device lock — lives in the
+ * standing between a tap and erased data — the typed word, the device lock — lives in the
  * client and is invisible from here, so this is the whole of what the server itself insists on.
  */
 
-const Entry = modelDouble();
-const Person = modelDouble();
-const Tag = modelDouble();
-const Thread = modelDouble();
-const PluginRecord = modelDouble();
-const PluginDocument = modelDouble();
+const Item = modelDouble();
+const Snapshot = modelDouble();
+const Review = modelDouble();
+const Impression = modelDouble();
 const UserSettings = modelDouble();
 const Deletion = modelDouble();
 
@@ -68,12 +66,10 @@ vi.mock('mongoose', async (importOriginal) => {
   };
 });
 
-vi.mock('../models/entry', () => ({ Entry }));
-vi.mock('../models/person', () => ({ Person }));
-vi.mock('../models/tag', () => ({ Tag }));
-vi.mock('../models/thread', () => ({ Thread }));
-vi.mock('../models/pluginRecord', () => ({ PluginRecord }));
-vi.mock('../models/pluginDocument', () => ({ PluginDocument }));
+vi.mock('../models/item', () => ({ Item }));
+vi.mock('../models/snapshot', () => ({ Snapshot }));
+vi.mock('../models/review', () => ({ Review }));
+vi.mock('../models/impression', () => ({ Impression }));
 vi.mock('../models/userSettings', () => ({ UserSettings }));
 vi.mock('../models/deletion', () => ({ Deletion }));
 
@@ -81,7 +77,7 @@ const { accountRouter } = await import('./account');
 
 const app = routeApp('/account', accountRouter);
 
-const CONTENT_MODELS = { Entry, Person, Tag, Thread, PluginRecord, UserSettings, Deletion };
+const CONTENT_MODELS = { Item, Snapshot, Review, Impression, UserSettings, Deletion };
 
 beforeEach(() => {
   resetModels(...Object.values(CONTENT_MODELS));
@@ -108,12 +104,12 @@ describe('DELETE /account', () => {
     expect(await res.text()).toBe('');
   });
 
-  it('erases every collection the diary lives in, scoped to the caller', async () => {
+  it('erases every collection the data lives in, scoped to the caller', async () => {
     await app.request('/account', { method: 'DELETE' });
 
     for (const model of Object.values(CONTENT_MODELS)) {
       /* The whole authorisation model, asserted once per collection. An unscoped `deleteMany({})`
-         here would erase every user's diary on the deployment and still answer 204. */
+         here would erase every user's data on the deployment and still answer 204. */
       expect(model.deleteMany).toHaveBeenCalledWith({ userId: USER_ID });
     }
   });
@@ -127,7 +123,7 @@ describe('DELETE /account', () => {
     expect(Deletion.deleteMany).toHaveBeenCalledWith({ userId: USER_ID });
   });
 
-  it('deletes the diary before the credentials', async () => {
+  it('deletes the content before the credentials', async () => {
     await app.request('/account', { method: 'DELETE' });
 
     const firstAuth = calls.order.findIndex((entry) => entry.startsWith('auth:'));
@@ -181,7 +177,7 @@ describe('DELETE /account', () => {
     expect(authCollections.has('user')).toBe(true);
   });
 
-  /* The re-authentication gate. Everything else standing between a tap and an erased diary lives
+  /* The re-authentication gate. Everything else standing between a tap and erased data lives
      in the client, where this endpoint cannot see it and a caller with a session token is not
      obliged to visit it. This is the whole of what the server itself insists on. */
   describe('when the session is not a fresh one', () => {
@@ -206,7 +202,7 @@ describe('DELETE /account', () => {
     it('deletes nothing at all', async () => {
       await staleApp.request('/account', { method: 'DELETE' });
 
-      /* The refusal has to be free. A gate that erased the diary and *then* objected, or that got
+      /* The refusal has to be free. A gate that erased the data and *then* objected, or that got
          halfway, would be worse than no gate — and the client's retry-after-signing-in only works
          because a refused attempt costs nothing. */
       for (const model of Object.values(CONTENT_MODELS)) {
@@ -223,7 +219,7 @@ describe('DELETE /account', () => {
       const res = await freshApp.request('/account', { method: 'DELETE' });
 
       expect(res.status).toBe(204);
-      expect(Entry.deleteMany).toHaveBeenCalledWith({ userId: USER_ID });
+      expect(Item.deleteMany).toHaveBeenCalledWith({ userId: USER_ID });
     });
   });
 
@@ -236,6 +232,6 @@ describe('DELETE /account', () => {
     });
 
     expect(res.status).toBe(204);
-    expect(Entry.deleteMany).toHaveBeenCalledWith({ userId: USER_ID });
+    expect(Item.deleteMany).toHaveBeenCalledWith({ userId: USER_ID });
   });
 });

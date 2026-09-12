@@ -1,5 +1,5 @@
-import { TOMBSTONE_RETENTION_MS, DEFAULT_SETTINGS } from '@diary/shared';
-import type { SyncResponse } from '@diary/shared';
+import { TOMBSTONE_RETENTION_MS, DEFAULT_SETTINGS } from '@rove/shared';
+import type { SyncResponse } from '@rove/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { modelDouble, objectId, query, resetModels } from '../test/mongooseDouble';
 import { routeApp, USER_ID } from '../test/routeApp';
@@ -18,26 +18,22 @@ import { routeApp, USER_ID } from '../test/routeApp';
  * asserting that a boolean it supplied came back.
  */
 
-const Entry = modelDouble();
-const Person = modelDouble();
-const Tag = modelDouble();
-const Thread = modelDouble();
-const PluginRecord = modelDouble();
-const PluginDocument = modelDouble();
+const Item = modelDouble();
+const Snapshot = modelDouble();
+const Review = modelDouble();
+const Impression = modelDouble();
 const Deletion = modelDouble();
 
-const settings = vi.hoisted(() => ({ getSettings: vi.fn(), getProviderKeys: vi.fn() }));
+const settings = vi.hoisted(() => ({ getSettings: vi.fn(), getLlmConfig: vi.fn() }));
 const live = vi.hoisted(() => ({ issueWsTicket: vi.fn(() => 'ticket-123') }));
 const telemetry = vi.hoisted(() => ({
   events: [] as { name: string; fields: Record<string, unknown> }[],
 }));
 
-vi.mock('../models/entry', () => ({ Entry }));
-vi.mock('../models/person', () => ({ Person }));
-vi.mock('../models/tag', () => ({ Tag }));
-vi.mock('../models/thread', () => ({ Thread }));
-vi.mock('../models/pluginRecord', () => ({ PluginRecord }));
-vi.mock('../models/pluginDocument', () => ({ PluginDocument }));
+vi.mock('../models/item', () => ({ Item }));
+vi.mock('../models/snapshot', () => ({ Snapshot }));
+vi.mock('../models/review', () => ({ Review }));
+vi.mock('../models/impression', () => ({ Impression }));
 /* Only the model is replaced; `isCursorStale` stays real. It is the thing being tested, and it is
    pure arithmetic over two dates — there is nothing about it that needs a database. */
 vi.mock('../models/deletion', async (importOriginal) => ({
@@ -66,7 +62,7 @@ const pull = async (search = '') => {
 const event = (name: string) => telemetry.events.find((e) => e.name === name);
 
 beforeEach(() => {
-  resetModels(Entry, Person, Tag, Thread, PluginRecord, PluginDocument, Deletion);
+  resetModels(Item, Snapshot, Review, Impression, Deletion);
   telemetry.events = [];
   settings.getSettings.mockReset();
   settings.getSettings.mockResolvedValue(DEFAULT_SETTINGS);
@@ -82,7 +78,7 @@ describe('GET /sync — choosing a delta or a reset', () => {
        leaves it with one reconciliation path instead of two. */
     expect(body.reset).toBe(true);
     // Every collection is asked for in full — no `updatedAt` filter anywhere.
-    expect(Entry.find).toHaveBeenCalledWith({ userId: USER_ID });
+    expect(Item.find).toHaveBeenCalledWith({ userId: USER_ID });
   });
 
   it('answers a fresh cursor as a delta, filtered on updatedAt', async () => {
@@ -91,7 +87,7 @@ describe('GET /sync — choosing a delta or a reset', () => {
     const { body } = await pull(`?since=${encodeURIComponent(since)}`);
 
     expect(body.reset).toBe(false);
-    for (const model of [Entry, Person, Tag, Thread, PluginRecord, PluginDocument]) {
+    for (const model of [Item, Snapshot, Review, Impression]) {
       expect(model.find).toHaveBeenCalledWith({
         userId: USER_ID,
         updatedAt: { $gt: new Date(since) },
@@ -109,7 +105,7 @@ describe('GET /sync — choosing a delta or a reset', () => {
     /* The failure this prevents is the quietest in the system: answering incrementally would look
        entirely healthy and leave deleted documents on that device forever. */
     expect(body.reset).toBe(true);
-    expect(Entry.find).toHaveBeenCalledWith({ userId: USER_ID });
+    expect(Item.find).toHaveBeenCalledWith({ userId: USER_ID });
   });
 
   it('the server decides staleness, not the client', async () => {
@@ -127,7 +123,7 @@ describe('GET /sync — choosing a delta or a reset', () => {
     const { res } = await pull('?since=yesterday');
 
     expect(res.status).toBe(400);
-    expect(Entry.find).not.toHaveBeenCalled();
+    expect(Item.find).not.toHaveBeenCalled();
   });
 });
 
@@ -144,13 +140,13 @@ describe('GET /sync — what comes back', () => {
   it('sends the tombstones since the cursor with a delta', async () => {
     const since = new Date(NOW.getTime() - 60_000);
     const deletedAt = new Date(NOW.getTime() - 30_000);
-    Deletion.find.mockReturnValue(query([{ coll: 'entry', docId: objectId('e1'), deletedAt }]));
+    Deletion.find.mockReturnValue(query([{ coll: 'item', docId: objectId('i1'), deletedAt }]));
 
     const { body } = await pull(`?since=${encodeURIComponent(since.toISOString())}`);
 
     expect(Deletion.find).toHaveBeenCalledWith({ userId: USER_ID, deletedAt: { $gt: since } });
     expect(body.deletions).toEqual([
-      { coll: 'entry', docId: objectId('e1').toString(), deletedAt: deletedAt.toISOString() },
+      { coll: 'item', docId: objectId('i1').toString(), deletedAt: deletedAt.toISOString() },
     ]);
   });
 
@@ -167,8 +163,8 @@ describe('GET /sync — what comes back', () => {
     await pull();
 
     // The only authorisation model in this endpoint: no id is accepted from the caller at all, and
-    // the session's user is in all six filters.
-    for (const model of [Entry, Person, Tag, Thread, PluginRecord, PluginDocument]) {
+    // the session's user is in all four filters.
+    for (const model of [Item, Snapshot, Review, Impression]) {
       expect(model.find).toHaveBeenCalledWith(expect.objectContaining({ userId: USER_ID }));
     }
     expect(settings.getSettings).toHaveBeenCalledWith(USER_ID);
@@ -188,7 +184,7 @@ describe('GET /sync — what comes back', () => {
 });
 
 /* The endpoint's cost is not proportional to what the caller asked for — a reset is the user's
-   whole diary, populated, chosen by the server rather than requested. So it reports itself. */
+   whole store, snapshots included, chosen by the server rather than requested. So it reports itself. */
 describe('GET /sync — what it reports', () => {
   it('reports a reset with the cursor age that caused it', async () => {
     const stale = new Date(NOW.getTime() - TOMBSTONE_RETENTION_MS - 86_400_000);

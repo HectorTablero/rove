@@ -13,7 +13,7 @@ import type { SyncBlocker } from '@/db/sync';
  *     not be reminded.
  *
  * Neither can silence `offline` or `unreachable`. Those mean writes are not reaching the server for
- * a reason nobody chose, and staying quiet about them is exactly how a diary stops backing itself
+ * a reason nobody chose, and staying quiet about them is exactly how the app stops backing itself
  * up without anyone noticing.
  *
  * This decides what is *shown*. The sync engine's own `blocker` is untouched and still reads

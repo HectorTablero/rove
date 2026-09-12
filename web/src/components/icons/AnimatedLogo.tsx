@@ -4,7 +4,7 @@ import {
   LOGO_COLOR,
   LOGO_STROKE_WIDTH,
   LOGO_VIEWBOX,
-} from '@diary/shared';
+} from '@rove/shared';
 import { cn } from '@/lib/utils';
 
 interface AnimatedLogoProps {

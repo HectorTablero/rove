@@ -7,7 +7,7 @@ export interface CachedUser {
   image?: string | null;
 }
 
-const KEY = 'diary.user';
+const KEY = 'rove.user';
 
 export function getCachedUser(): CachedUser | null {
   try {

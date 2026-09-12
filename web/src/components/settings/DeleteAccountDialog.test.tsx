@@ -65,7 +65,8 @@ vi.mock('@/lib/appLock', () => ({
   verifyPasscode,
   biometryAvailable: () => Promise.resolve(true),
 }));
-vi.mock('@/lib/backup/export', () => ({
+vi.mock('@/lib/backup', () => ({
+  backupFileName: (e: { exportedAt: string }) => `rove-backup-${e.exportedAt.slice(0, 10)}.json`,
   buildBackupEnvelope: () => Promise.resolve({ exportedAt: '2026-08-08T00:00:00.000Z' }),
 }));
 vi.mock('@/lib/fileSave', () => ({ saveTextFile }));
@@ -144,7 +145,9 @@ describe('with no device lock', () => {
 
     expect(deleteButton()).toBeDisabled();
     // The consequences have to be on screen before the control that causes them is reachable.
-    expect(screen.getByText(/Every entry, person, tag and thread is deleted/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Every place, rating, note and saved post is deleted/),
+    ).toBeInTheDocument();
     expect(apiDelete).not.toHaveBeenCalled();
   });
 
@@ -365,7 +368,9 @@ describe('coming back from the web redirect', () => {
 
     /* The user did not navigate here — the page was rebuilt around them — so the dialog has to say
        what is about to happen before offering the button that does it. */
-    expect(screen.getByText(/Every entry, person, tag and thread is deleted/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Every place, rating, note and saved post is deleted/),
+    ).toBeInTheDocument();
     expect(screen.getByText(/last step/)).toBeInTheDocument();
     expect(apiDelete).not.toHaveBeenCalled();
 
@@ -409,7 +414,7 @@ describe('the way out', () => {
     await user.click(screen.getByRole('button', { name: 'Export a backup first' }));
 
     await waitFor(() => expect(saveTextFile).toHaveBeenCalled());
-    expect(saveTextFile.mock.calls[0][0]).toBe('diary-backup-2026-08-08.json');
+    expect(saveTextFile.mock.calls[0][0]).toBe('rove-backup-2026-08-08.json');
     // Still here, still armed, and nothing deleted by having taken the safe route.
     expect(deleteButton()).toBeDisabled();
     expect(apiDelete).not.toHaveBeenCalled();

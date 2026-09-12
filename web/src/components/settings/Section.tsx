@@ -139,6 +139,6 @@ export function SubToggleRow({
 }
 
 /* Theme, language and the week start never reach the server — they describe this device, not the
-   diary. Saying so on every change is what stops "why didn't my phone pick this up?" from being
+   account. Saying so on every change is what stops "why didn't my phone pick this up?" from being
    a mystery, and it is a confirmation the user asked for, so quiet mode does not drop it. */
 export const notifyDeviceSaved = (message: string) => notifySuccess(message, { important: true });

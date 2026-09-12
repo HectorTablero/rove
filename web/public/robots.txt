@@ -1,4 +1,4 @@
-# A single-person diary. Nothing here is meant to be found by anyone who was not sent a link.
+# A single-person app. Nothing here is meant to be found by anyone who was not sent a link.
 #
 # Everything past /login renders client-side behind a session, so a crawler could not read an
 # entry even if it tried — but "unreachable in practice" and "asked not to" are different

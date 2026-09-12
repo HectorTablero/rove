@@ -85,7 +85,7 @@ export async function checkStoragePressure(): Promise<void> {
  *   - `VersionError`    — the user has a *newer* build open in another tab. Nothing to fix; the
  *                         other tab wins and this one is read-only until reloaded.
  *   - `UpgradeError`    — a schema migration in db.ts threw. This is our bug, and it locks the user
- *                         out of their whole diary until it is shipped a fix.
+ *                         out of the whole app until it is shipped a fix.
  *   - `InvalidStateError` — Firefox private browsing, where IndexedDB exists but refuses to open.
  *                         A whole browsing mode in which this app cannot store anything.
  *   - `QuotaExceededError` — no room even to open.

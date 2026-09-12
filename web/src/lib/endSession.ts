@@ -1,13 +1,12 @@
 import { clearLocalData } from '@/db/db';
 import { closeLiveChannel } from '@/db/sync';
-import { syncNativeWidgets } from '@/plugins/nativeWidgets';
 import { signOut } from './authClient';
 import { setAuthToken } from './authToken';
 import { setLocalOnly } from './localOnly';
 import { cacheUser } from './sessionCache';
 
 /**
- * Put the app back to a signed-out state: no session, no local copy of the diary, no live socket.
+ * Put the app back to a signed-out state: no session, no local copy of the data, no live socket.
  *
  * Shared by the two things that end a session — signing out, and deleting the account — because
  * they have to leave the device in exactly the same condition, and the pieces are easy to get
@@ -33,12 +32,4 @@ export async function endSession(options: { serverSessionGone?: boolean } = {}):
   setAuthToken(null);
   cacheUser(null);
   setLocalOnly(false);
-
-  /* Home-screen widgets outlive the app, so they have to be told. A widget is drawn by a native
-     provider from a snapshot in SharedPreferences, which `clearLocalData()` does not touch — it
-     wipes IndexedDB — so without this the home screen would keep showing the previous account's
-     habits, by name, to whoever picks the phone up next. The same reason `clearEnabledMirror` exists
-     for localStorage, one layer further out. Awaited: leaving a signed-out device displaying a
-     diary's contents is not something to let race with whatever the caller does next. */
-  await syncNativeWidgets({ includeDisabled: true });
 }

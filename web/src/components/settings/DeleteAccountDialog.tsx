@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label';
 import { useSyncStatus } from '@/db/useSyncStatus';
 import { ApiError, apiDelete } from '@/lib/apiClient';
 import { biometryAvailable, getLockState, promptBiometrics, verifyPasscode } from '@/lib/appLock';
-import { buildBackupEnvelope } from '@/lib/backup/export';
+import { backupFileName, buildBackupEnvelope } from '@/lib/backup';
 import {
   forgetAccountDeletionResume,
   markAccountDeletionResume,
@@ -124,7 +124,7 @@ export function DeleteAccountDialog({
     try {
       const envelope = await buildBackupEnvelope();
       await saveTextFile(
-        `diary-backup-${envelope.exportedAt.slice(0, 10)}.json`,
+        backupFileName(envelope),
         JSON.stringify(envelope, null, 2),
         'application/json',
       );

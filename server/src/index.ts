@@ -14,8 +14,6 @@ import {
 } from './lib/telemetry';
 import type { AppEnv } from './middleware/session';
 import { ensureTombstoneTtl, tombstoneGauges } from './models/deletion';
-import { ensurePluginDocumentIndexes, pluginDocumentGauges } from './models/pluginDocument';
-import { ensurePluginRecordIndexes, pluginRecordGauges } from './models/pluginRecord';
 import { liveSyncGauges } from './services/liveSync';
 
 async function main() {
@@ -31,22 +29,8 @@ async function main() {
   /* Reported and stepped over rather than awaited into a crash. Without the index tombstones only
      accumulate — every pull stays correct, since the retention window is enforced by the cursor
      check and not by whether the rows are actually gone. An index tweak failing is not a reason to
-     leave someone unable to open their diary. */
+     leave someone unable to open the app. */
   await ensureTombstoneTtl().catch((err) => captureError(err, { scope: 'tombstoneTtl' }));
-  /* Same tolerance, for the same reason: without these indexes plugin sync still answers correctly,
-     it just scans instead of seeking. A slow delta is not a reason to refuse to start. */
-  await ensurePluginRecordIndexes().catch((err) =>
-    captureError(err, { scope: 'pluginRecordIndexes' }),
-  );
-  /* Not quite the same tolerance. One of these indexes is *unique* — the one holding a document to
-     a single revision per day — so failing to build it doesn't merely make a query slow, it lets
-     two devices' same-day writes both land instead of one of them 409ing into the client's
-     convergence path. Still not a reason to refuse to start, since the app is correct on a single
-     device and the client tolerates a duplicate by preferring the newer row; but it is the one to
-     look for if two versions of one day ever appear in a document's history. */
-  await ensurePluginDocumentIndexes().catch((err) =>
-    captureError(err, { scope: 'pluginDocumentIndexes' }),
-  );
   const db = mongoose.connection.getClient().db();
   const auth = buildAuth(db);
 
@@ -56,7 +40,7 @@ async function main() {
   buildApp(app, auth, upgradeWebSocket);
 
   const server = serve({ fetch: app.fetch, port: config.port }, (info) => {
-    console.log(`Diary server v${config.appVersion} listening on http://localhost:${info.port}`);
+    console.log(`Rove server v${config.appVersion} listening on http://localhost:${info.port}`);
     console.log(`Telemetry: ${telemetryEnabled ? 'Better Stack' : 'console only'}`);
   });
   injectWebSocket(server);
@@ -70,8 +54,6 @@ async function main() {
   startRuntimeMetrics(async () => ({
     ...liveSyncGauges(),
     ...(await tombstoneGauges()),
-    ...(await pluginRecordGauges()),
-    ...(await pluginDocumentGauges()),
   }));
 
   // A crash or a container stop shouldn't take buffered telemetry with it.

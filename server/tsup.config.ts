@@ -5,7 +5,7 @@ export default defineConfig({
   format: 'esm',
   platform: 'node',
   target: 'node20',
-  noExternal: ['@diary/shared'],
+  noExternal: ['@rove/shared'],
   clean: true,
   sourcemap: true,
 });

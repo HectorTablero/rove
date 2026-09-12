@@ -37,7 +37,7 @@ const readAppVersion = (): string => {
 
 export const config = {
   port: Number(process.env.PORT ?? 3000),
-  mongodbUri: process.env.MONGODB_URI ?? 'mongodb://127.0.0.1:27017/diary',
+  mongodbUri: process.env.MONGODB_URI ?? 'mongodb://127.0.0.1:27017/rove',
   get googleClientId() {
     return required('GOOGLE_CLIENT_ID');
   },

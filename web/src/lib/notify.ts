@@ -1,5 +1,5 @@
-import type { SettingsDto } from '@diary/shared';
-import { DEFAULT_SETTINGS } from '@diary/shared';
+import type { SettingsDto } from '@rove/shared';
+import { DEFAULT_SETTINGS } from '@rove/shared';
 import { toast, type ExternalToast } from 'sonner';
 import { queryClient } from './queryClient';
 
@@ -12,7 +12,7 @@ const ERROR_DURATION_MS = 3500;
 /**
  * The account's notification preference, read synchronously.
  *
- * It lives in the synced settings rather than in localStorage — it's a choice about the diary,
+ * It lives in the synced settings rather than in localStorage — it's a choice about the account,
  * not about this device — but toasts fire from mutation callbacks and from module scope, where
  * a hook is not available. Every query in this app reads Dexie rather than the network, so the
  * cache is a local snapshot rather than a network one, and consulting it here costs nothing.

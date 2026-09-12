@@ -30,7 +30,7 @@ allprojects {
  * Only Google sign-in is ever used, but @capgo/capacitor-social-login bundles every provider by
  * default and its Facebook path pulls in com.facebook.android:facebook-login, which drags
  * facebook-core behind it and adds four advertising permissions to the merged manifest
- * (ACCESS_ADSERVICES_AD_ID / ATTRIBUTION / CUSTOM_AUDIENCE / TOPICS). In a diary, that is not a
+ * (ACCESS_ADSERVICES_AD_ID / ATTRIBUTION / CUSTOM_AUDIENCE / TOPICS). In a private app, that is not a
  * dependency question — those permissions are on the app's own listing.
  *
  * The plugin does offer an opt-out, and gradle.properties sets it. It does not work on its own:

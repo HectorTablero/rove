@@ -1,4 +1,4 @@
-import { ANDROID_PACKAGE_NAME } from '@diary/shared';
+import { ANDROID_PACKAGE_NAME } from '@rove/shared';
 
 /**
  * The Digital Asset Links statement Android fetches to verify this site's App Links.
@@ -11,7 +11,7 @@ import { ANDROID_PACKAGE_NAME } from '@diary/shared';
  *
  * So this failing is not an outage, which is exactly what makes it easy to miss: the app keeps
  * working and links quietly stop preferring it. `handleAndroidAppLinksVerification` in Play Console
- * and `adb shell pm get-app-links es.tablerus.diary` are the two places the real answer shows up.
+ * and `adb shell pm get-app-links es.tablerus.rove` are the two places the real answer shows up.
  */
 
 /** SHA-256 fingerprints of every signing certificate whose builds should open these links. */

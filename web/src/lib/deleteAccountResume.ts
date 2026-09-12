@@ -23,7 +23,7 @@
  * a render path that StrictMode runs twice, and the second read would find the marker already gone.
  */
 
-const KEY = 'diary.deleteAccountResume';
+const KEY = 'rove.deleteAccountResume';
 
 /**
  * How long a marker stays good for.

@@ -8,7 +8,7 @@
  *
  * Everything here answers "is this definitely metered", never "is this definitely wi-fi". Where
  * the browser won't say, the answer is no: silently withholding sync because we could not identify
- * the connection would mean a diary that quietly stops backing itself up, which is far worse than
+ * the connection would mean an app that quietly stops backing itself up, which is far worse than
  * a few kilobytes of text over cellular.
  */
 

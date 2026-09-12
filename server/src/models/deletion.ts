@@ -1,5 +1,5 @@
-import type { SyncCollection } from '@diary/shared';
-import { TOMBSTONE_RETENTION_MS } from '@diary/shared';
+import type { SyncCollection } from '@rove/shared';
+import { TOMBSTONE_RETENTION_MS } from '@rove/shared';
 import { model, Schema, type Types } from 'mongoose';
 
 /** Tombstones so offline clients learn about deletes on their next sync pull. */
@@ -8,7 +8,7 @@ const deletionSchema = new Schema({
   coll: {
     type: String,
     required: true,
-    enum: ['entry', 'person', 'tag', 'thread', 'pluginRecord', 'pluginDocument'],
+    enum: ['item', 'snapshot', 'review', 'impression'],
   },
   docId: { type: Schema.Types.ObjectId, required: true },
   deletedAt: { type: Date, required: true, default: Date.now },

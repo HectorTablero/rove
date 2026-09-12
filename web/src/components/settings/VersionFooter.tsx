@@ -15,7 +15,5 @@ export function VersionFooter() {
   const parts = [`v${info.version}`];
   if (info.apkVersion && info.apkVersion !== info.version) parts.push(`APK v${info.apkVersion}`);
 
-  return (
-    <p className="mt-6 text-center text-xs text-muted-foreground">Diary {parts.join(' · ')}</p>
-  );
+  return <p className="mt-6 text-center text-xs text-muted-foreground">Rove {parts.join(' · ')}</p>;
 }

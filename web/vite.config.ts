@@ -19,7 +19,7 @@ import { computeNativeFingerprint } from './scripts/nativeFingerprint.mjs';
  */
 function localePlaceholders(): Plugin {
   return {
-    name: 'diary-locale-placeholders',
+    name: 'rove-locale-placeholders',
     transformIndexHtml(html) {
       return html
         .replace(/__APP_DEFAULT_LOCALE__/g, DEFAULT_LOCALE)
@@ -58,7 +58,7 @@ const VENDOR_CHUNKS: Record<string, string[]> = {
      Naming a package can only ever fix half of that, though — see chunkFileNames below for the
      half this table cannot reach. */
   'react-vendor': ['react', 'react-dom', 'scheduler'],
-  // Reached from nearly every route, because @diary/shared's schemas are. Same story as React
+  // Reached from nearly every route, because @rove/shared's schemas are. Same story as React
   // above: Rollup already gives it a shared chunk on its own, this only makes the name stable.
   'schema-vendor': ['zod'],
   'db-vendor': ['dexie'],
@@ -80,25 +80,14 @@ const VENDOR_CHUNKS: Record<string, string[]> = {
     '@capacitor/app',
     '@capacitor/haptics',
     '@capacitor/keyboard',
-    // Pulled in by lib/notifications.ts, which the shell reconciles on every sync.
-    '@capacitor/local-notifications',
     '@capacitor/preferences',
     '@capacitor/splash-screen',
     '@capacitor/status-bar',
     '@capgo/capacitor-updater',
   ],
   'telemetry-vendor': ['@logtail/browser'],
-  // Only the entry tree and the suggestion review dialog drag anything, but both are reached
-  // from lazy routes — so this rides along with them rather than the shell.
-  'dnd-vendor': [
-    '@dnd-kit/core',
-    '@dnd-kit/sortable',
-    '@dnd-kit/utilities',
-    'framer-motion',
-    'motion',
-    'motion-dom',
-    'motion-utils',
-  ],
+  // Framer's runtime packages, named so they land together rather than in the entry chunk.
+  'motion-vendor': ['framer-motion', 'motion', 'motion-dom', 'motion-utils'],
   'query-vendor': ['@tanstack/react-query'],
   'i18n-vendor': ['i18next', 'react-i18next', 'i18next-browser-languagedetector'],
 };
@@ -144,7 +133,7 @@ function manualChunks(id: string): string | undefined {
  * Rolldown hoisted out because more than one route reached it. Those chunks get named after
  * whichever of their modules the bundler happened to see first, and that is a property of the
  * import graph rather than of the contents — so `button-<hash>.js` was 173 kB of db layer, lib
- * utilities, i18n runtime and @diary/shared, carrying the name of the one UI component in it.
+ * utilities, i18n runtime and @rove/shared, carrying the name of the one UI component in it.
  *
  * The name is not cosmetic. The filename is `[name]-[hash]`, so a name that moves changes the URL
  * of a file whose bytes did not change, and a returning visitor re-downloads it — the exact cost
@@ -195,7 +184,7 @@ const PLUGIN_LOCALE_SOURCE =
  * plugin's locale file is a few hundred bytes. The result was the exact inversion of the intent:
  * because the `import.meta.glob` that references them lives in `plugins/i18n.ts`, all five
  * languages of every plugin were inlined into the *day page* chunk — downloaded by everyone with a
- * diary, plugins enabled or not, and growing with every plugin that ships.
+ * plugins enabled or not, and growing with every plugin that ships.
  *
  * Nothing about that is visible in the build output, either. The files simply aren't in `dist`, and
  * the directory this config so carefully routes them to comes out empty. Forcing them to stay
@@ -263,13 +252,24 @@ export default defineConfig(({ mode }) => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.svg'],
         manifest: {
-          name: 'Diary',
-          short_name: 'Diary',
-          description: 'Personal diary with talking points, memories and people',
-          start_url: '/diary',
+          name: 'Rove',
+          short_name: 'Rove',
+          description: 'Places and events worth your time, on one map',
+          start_url: '/map',
           display: 'standalone',
           background_color: '#18181b',
           theme_color: '#18181b',
+          /* The Android share sheet. Once installed, "Share → Rove" from Instagram, Xiaohongshu or
+             the browser opens /add with the shared text in the query string. GET rather than
+             POST so the landing is an ordinary navigation the router already handles, and so it
+             survives the service worker. Android ignores the url/text split and puts the link in
+             `text`; lib/shareTarget.ts coalesces the three. An absolute `action` is deliberate:
+             Chrome on Android has mis-resolved a relative one. */
+          share_target: {
+            action: '/add',
+            method: 'GET',
+            params: { title: 'title', text: 'text', url: 'url' },
+          },
           icons: [
             { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
             { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },

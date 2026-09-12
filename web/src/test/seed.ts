@@ -1,99 +1,39 @@
-import type { EntryDto, PersonDto, SettingsDto, TagDto, ThreadDto } from '@diary/shared';
-import { DEFAULT_SETTINGS } from '@diary/shared';
-import { generateNKeysBetween } from 'fractional-indexing';
-import {
-  bumpLookupVersion,
-  db,
-  entryFromDto,
-  personFromDto,
-  setMeta,
-  type OutboxOp,
-} from '@/db/db';
+import type { ImpressionDto, ItemDto, ReviewDto, SettingsDto, SnapshotDto } from '@rove/shared';
+import { DEFAULT_SETTINGS } from '@rove/shared';
+import { db, setMeta, type OutboxOp } from '@/db/db';
 import { queryClient } from '@/lib/queryClient';
 
 /* Putting data into the real local store, so component tests read it back through the real repo.
  *
- * Not a mock of `@/db/repo` or `@/api/hooks`. Those are where the interesting logic lives —
- * the join maps, the tree building, the talking-point scoring, the order-key healing — and a test
- * that stubs them asserts that a component renders whatever it was handed, which is a fact about
- * the test. fake-indexeddb makes the genuine article cheap enough to use instead; `setup.ts`
- * installs it globally and resets it between tests.
+ * Not a mock of `@/db/repo` or `@/api/hooks`. fake-indexeddb makes the genuine article cheap enough
+ * to use instead; `setup.ts` installs it globally and resets it between tests.
  *
- * Imports `@/db/db` only, never `@/db/outbox` — that reaches the notification reconciler and the
- * sync engine, neither of which a fixture has any business starting. */
+ * Imports `@/db/db` only, never `@/db/outbox` — that reaches the sync engine, which a fixture has no
+ * business starting. */
 
-/**
- * Empty every table and invalidate the read layer's caches.
- *
- * The `bumpLookupVersion()` is not tidiness. repo.ts caches tags, people and threads as id→doc maps
- * keyed on that counter and nothing else invalidates them, so without this the second test in a file
- * joins its entries against the first test's people — producing names that were never seeded and a
- * failure that looks like a component bug.
- */
+/** Empty every table and invalidate the read layer's caches. */
 export async function resetDb(): Promise<void> {
   if (!db.isOpen()) await db.open();
   await Promise.all(db.tables.map((table) => table.clear()));
-  bumpLookupVersion();
   queryClient.clear();
 }
 
-/** Groups siblings the way ordering actually works: per parent, and per day for roots. */
-const siblingGroup = (entry: EntryDto): string => entry.parentId ?? `root:${entry.dateKey}`;
-
-/**
- * Give every unkeyed entry a real fractional index, in the order it was passed.
- *
- * Required, not cosmetic. `repo.ts`'s `ensureOrderKeys` treats a missing `orderKey` as legacy data
- * and heals it on read — which writes to Dexie *and* calls `enqueueBatch`, adding a PATCH per row
- * to the outbox and kicking the sync engine. A test asserting "saving this entry queued exactly one
- * POST" would find several ops it never caused, from a code path it was not testing.
- *
- * Roots are grouped by day as well as by parent, which `ensureOrderKeys` deliberately does not do
- * (it is only ever handed one day at a time). Seeding several days at once would otherwise key every
- * root in the fixture into a single run, and days would interleave.
- */
-function withOrderKeys(entries: EntryDto[]): EntryDto[] {
-  const groups = new Map<string, EntryDto[]>();
-  for (const entry of entries) {
-    const key = siblingGroup(entry);
-    const group = groups.get(key);
-    if (group) group.push(entry);
-    else groups.set(key, [entry]);
-  }
-
-  for (const group of groups.values()) {
-    const unkeyed = group.filter((e) => !e.orderKey);
-    if (!unkeyed.length) continue;
-    const highest = group.reduce<string | null>(
-      (max, e) => (e.orderKey && (!max || e.orderKey > max) ? e.orderKey : max),
-      null,
-    );
-    const keys = generateNKeysBetween(highest, null, unkeyed.length);
-    unkeyed.forEach((entry, i) => {
-      entry.orderKey = keys[i];
-    });
-  }
-  return entries;
-}
-
 export interface SeedData {
-  entries?: EntryDto[];
-  people?: PersonDto[];
-  tags?: TagDto[];
-  threads?: ThreadDto[];
+  items?: ItemDto[];
+  snapshots?: SnapshotDto[];
+  reviews?: ReviewDto[];
+  impressions?: ImpressionDto[];
   settings?: Partial<SettingsDto>;
   /** Pre-existing queued ops, for a test about the sync pill or a backlog. */
   outbox?: OutboxOp[];
 }
 
 export async function seed(data: SeedData): Promise<void> {
-  await db.tags.bulkPut(data.tags ?? []);
-  await db.threads.bulkPut(data.threads ?? []);
-  await db.people.bulkPut((data.people ?? []).map(personFromDto));
-  await db.entries.bulkPut(withOrderKeys(data.entries ?? []).map(entryFromDto));
+  await db.items.bulkPut(data.items ?? []);
+  await db.snapshots.bulkPut(data.snapshots ?? []);
+  await db.reviews.bulkPut(data.reviews ?? []);
+  await db.impressions.bulkPut(data.impressions ?? []);
   if (data.outbox?.length) await db.outbox.bulkAdd(data.outbox);
-  // After the three lookup tables, before anything reads. See resetDb.
-  bumpLookupVersion();
   await seedSettings(data.settings ?? {});
 }
 
@@ -114,3 +54,26 @@ export async function seedSettings(patch: Partial<SettingsDto>): Promise<void> {
 
 /** What the component under test queued for the server. Empty after `resetDb`. */
 export const outboxOps = (): Promise<OutboxOp[]> => db.outbox.orderBy('seq').toArray();
+
+const T = '2026-08-01T09:00:00.000Z';
+
+/** A saved place in Shenzhen, with every field a test rarely cares about filled in. */
+export const aPlace = (patch: Partial<ItemDto> & Pick<ItemDto, 'id' | 'title'>): ItemDto =>
+  ({
+    regionId: 'shenzhen',
+    kind: 'place',
+    altTitles: [],
+    categories: [],
+    status: 'saved',
+    snapshotIds: [],
+    sourceUrls: [],
+    expiresAt: null,
+    location: {
+      point: { lon: 114.0579, lat: 22.5431, datum: 'GCJ02' },
+      address: null,
+      providerRef: null,
+    },
+    createdAt: T,
+    updatedAt: T,
+    ...patch,
+  }) as ItemDto;

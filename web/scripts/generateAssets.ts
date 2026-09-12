@@ -17,7 +17,7 @@ import {
   BRAND_LOGO_PATHS,
   LOGO_STROKE_WIDTH,
   NOTIFICATION_ICON_LOGO,
-} from '@diary/shared';
+} from '@rove/shared';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -337,16 +337,16 @@ async function generateNotificationIcon(): Promise<void> {
       paths: brand ? BRAND_LOGO_PATHS : APP_LOGO_PATHS,
       color: '#FFFFFF',
       sizeDp: 24,
-      comment: `Status-bar notification icon: the ${brand ? 'brand (tab) mark' : 'app (diary) mark'}, per NOTIFICATION_ICON_LOGO.`,
+      comment: `Status-bar notification icon: the ${brand ? 'brand (tab) mark' : 'app mark'}, per NOTIFICATION_ICON_LOGO.`,
     }) + '\n',
     'utf-8',
   );
-  log(`  ✓ drawable/ic_stat_notify.xml (${brand ? 'brand/tab' : 'app/diary'} logo)`);
+  log(`  ✓ drawable/ic_stat_notify.xml (${brand ? 'brand/tab' : 'app'} logo)`);
 }
 
 async function main(): Promise<void> {
   log('═══════════════════════════════════════════════');
-  log('  Diary Asset Generator');
+  log('  Rove Asset Generator');
   log('═══════════════════════════════════════════════');
 
   if (!fs.existsSync(SVG_SOURCE)) {

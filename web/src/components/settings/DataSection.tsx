@@ -1,15 +1,12 @@
-import { Download, FileText, Trash2, Upload } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { Download, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router';
 import { Spinner } from '@/components/common/Spinner';
 import { DeleteAccountDialog } from '@/components/settings/DeleteAccountDialog';
-import { MarkdownExportDialog } from '@/components/settings/MarkdownExportDialog';
 import { Button } from '@/components/ui/button';
 import { useSyncStatus } from '@/db/useSyncStatus';
 import { useSession } from '@/lib/authClient';
-import { buildBackupEnvelope } from '@/lib/backup/export';
-import { backupEnvelopeSchema } from '@/lib/backup/schema';
+import { backupFileName, buildBackupEnvelope } from '@/lib/backup';
 import { resumingAccountDeletion } from '@/lib/deleteAccountResume';
 import { saveTextFile } from '@/lib/fileSave';
 import { notifyError, notifySuccess } from '@/lib/notify';
@@ -17,11 +14,10 @@ import { setPreference, usePreferences } from '@/lib/preferences';
 import { isTelemetryConfigured } from '@/lib/telemetry';
 import { notifyDeviceSaved, Section, ToggleRow } from './Section';
 
-/** Getting the diary out of the app, back into it, and the one switch over what leaves it.
-    Self-contained: the export/import machinery is used nowhere else on the page. */
+/** Getting the data out of the app, and the one switch over what leaves it. Import arrives with
+    the first real data to restore (Phase 1); until then a file can be exported and kept. */
 export function DataSection() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const prefs = usePreferences();
   const { data: session } = useSession();
   /* Deleting the account is the one action on this page that *only* works online — everything else
@@ -30,21 +26,17 @@ export function DataSection() {
   const { blocker } = useSyncStatus();
   const serverUnreachable = blocker === 'offline' || blocker === 'unreachable';
   const [exportingBackup, setExportingBackup] = useState(false);
-  const [markdownDialogOpen, setMarkdownDialogOpen] = useState(false);
   /* Open on arrival when this page load is the far side of a deletion re-authentication — the web
      has to leave for Google to prove who it is, and Settings is where it comes back to (see
-     lib/deleteAccountResume.ts). The dialog reads the same marker to decide which stage to open at;
-     all this has to know is that something is waiting. Native never redirects and always gets
-     `false`. */
+     lib/deleteAccountResume.ts). Native never redirects and always gets `false`. */
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(resumingAccountDeletion);
-  const importFileRef = useRef<HTMLInputElement>(null);
 
   const handleExportBackup = async () => {
     setExportingBackup(true);
     try {
       const envelope = await buildBackupEnvelope();
       await saveTextFile(
-        `diary-backup-${envelope.exportedAt.slice(0, 10)}.json`,
+        backupFileName(envelope),
         JSON.stringify(envelope, null, 2),
         'application/json',
       );
@@ -56,74 +48,26 @@ export function DataSection() {
     }
   };
 
-  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = ''; // clears the input so re-selecting the same file still fires onChange
-    if (!file) return;
-    try {
-      const parsed = backupEnvelopeSchema.parse(JSON.parse(await file.text()));
-      void navigate('/settings/import-backup', { state: { envelope: parsed } });
-    } catch {
-      notifyError(t('settings.data.invalidFile'));
-    }
-  };
-
   return (
     <>
       <Section title={t('settings.data.title')} description={t('settings.data.description')}>
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 h-8"
-                disabled={exportingBackup}
-                onClick={() => void handleExportBackup()}
-              >
-                {exportingBackup ? (
-                  <Spinner className="size-3.5" />
-                ) : (
-                  <Download className="size-3.5" />
-                )}
-                {t('settings.data.export')}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 h-8"
-                onClick={() => importFileRef.current?.click()}
-              >
-                <Upload className="size-3.5" />
-                {t('settings.data.import')}
-              </Button>
-              <input
-                ref={importFileRef}
-                type="file"
-                accept="application/json,.json"
-                className="hidden"
-                onChange={(e) => void handleImportFile(e)}
-              />
-            </div>
-            {/* Was a "include sensitive data" checkbox. There is nothing left for it to
-                include: provider keys never reach this device, and device preferences are not
-                part of a backup — so the honest control is a sentence, not a choice. */}
-            <p className="text-xs text-muted-foreground">{t('settings.data.exportOmits')}</p>
-          </div>
-
-          <div className="flex flex-col gap-1">
             <Button
               variant="outline"
               size="sm"
               className="w-fit gap-1.5 h-8"
-              onClick={() => setMarkdownDialogOpen(true)}
+              disabled={exportingBackup}
+              onClick={() => void handleExportBackup()}
             >
-              <FileText className="size-3.5" />
-              {t('settings.data.exportMarkdown')}
+              {exportingBackup ? (
+                <Spinner className="size-3.5" />
+              ) : (
+                <Download className="size-3.5" />
+              )}
+              {t('settings.data.export')}
             </Button>
-            <p className="text-xs text-muted-foreground">
-              {t('settings.data.exportMarkdownDescription')}
-            </p>
+            <p className="text-xs text-muted-foreground">{t('settings.data.exportOmits')}</p>
           </div>
 
           {/* Only where the build actually reports somewhere. Telemetry used to be a decision
@@ -144,9 +88,6 @@ export function DataSection() {
             </div>
           )}
 
-          {/* Only with an account: there is no server-side copy to erase in local-only mode, and
-              offering to delete one would be offering something this button cannot do. Sitting last
-              and behind a divider is the point — nothing else here destroys anything. */}
           {session?.user && (
             <div className="flex flex-col gap-1 border-t pt-4">
               <Button
@@ -159,9 +100,6 @@ export function DataSection() {
                 <Trash2 className="size-3.5" />
                 {t('settings.data.deleteAccount.action')}
               </Button>
-              {/* Says which of the two it is. A disabled destructive button with no reason beside
-                  it reads as "this feature is broken", and the user is owed the difference between
-                  that and "the server can't be reached right now". */}
               <p className="text-xs text-muted-foreground">
                 {serverUnreachable
                   ? t('settings.data.deleteAccount.needsConnection')
@@ -172,8 +110,9 @@ export function DataSection() {
         </div>
       </Section>
 
-      <MarkdownExportDialog open={markdownDialogOpen} onOpenChange={setMarkdownDialogOpen} />
-      <DeleteAccountDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} />
+      {session?.user && (
+        <DeleteAccountDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} />
+      )}
     </>
   );
 }
