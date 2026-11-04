@@ -66,6 +66,92 @@ function retryDelayMs(res: Response, attempt: number): number {
 
 const MAX_ATTEMPTS = 3;
 
+/* Replies are streamed. A self-hosted model behind Cloudflare is cut off with a 524 when nothing
+   comes back for 100 s, and a non-streamed reply sends nothing until it is done — a minute or
+   more while the GPU is busy. Streamed, the first bytes arrive within seconds. So the limit is on
+   silence, not on length: a stream that stops for IDLE_MS is dead, and TOTAL_MS bounds the rest. */
+const IDLE_MS = 60_000;
+const TOTAL_MS = 300_000;
+
+interface StreamDelta {
+  content?: string | null;
+  tool_calls?: {
+    index: number;
+    id?: string;
+    type?: 'function';
+    function?: { name?: string; arguments?: string };
+  }[];
+}
+
+/** Folds an OpenAI-style SSE stream back into the one completion a non-streamed call returns. */
+export async function readCompletionStream(
+  body: ReadableStream<Uint8Array>,
+  onChunk: () => void = () => {},
+): Promise<ChatCompletionResponse | undefined> {
+  let content = '';
+  let finish = 'stop';
+  let sawChoice = false;
+  const calls: ToolCall[] = [];
+  const decoder = new TextDecoder();
+  let buffer = '';
+  const take = (line: string): boolean => {
+    if (!line.startsWith('data:')) return false;
+    const data = line.slice(5).trim();
+    if (data === '[DONE]') return true;
+    const event = JSON.parse(data) as {
+      error?: unknown;
+      choices?: { delta?: StreamDelta; finish_reason?: string | null }[];
+    };
+    if (event.error) throw new HttpError(502, 'ai.upstream_error');
+    const choice = event.choices?.[0];
+    if (!choice) return false;
+    sawChoice = true;
+    if (choice.finish_reason) finish = choice.finish_reason;
+    const delta = choice.delta ?? {};
+    if (delta.content) content += delta.content;
+    for (const part of delta.tool_calls ?? []) {
+      const call = (calls[part.index] ??= {
+        id: '',
+        type: 'function',
+        function: { name: '', arguments: '' },
+      });
+      if (part.id) call.id = part.id;
+      if (part.function?.name) call.function.name += part.function.name;
+      if (part.function?.arguments) call.function.arguments += part.function.arguments;
+    }
+    return false;
+  };
+  const reader = body.getReader();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    onChunk();
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+    for (const line of lines) if (take(line.trim())) return result();
+  }
+  if (buffer.trim()) take(buffer.trim());
+  return result();
+
+  function result(): ChatCompletionResponse | undefined {
+    if (!sawChoice) return undefined;
+    const toolCalls = calls.filter(Boolean);
+    return {
+      choices: [
+        {
+          message: {
+            role: 'assistant',
+            content: content || null,
+            ...(toolCalls.length ? { tool_calls: toolCalls } : {}),
+          },
+          finish_reason: finish,
+        },
+      ],
+    };
+  }
+}
+
 /**
  * A 200 does not guarantee a completion. Providers occasionally answer OK with an error envelope
  * instead (OpenRouter does this when its own upstream fails), and a body without a usable
@@ -90,6 +176,23 @@ export async function chatCompletion(
 ): Promise<ChatCompletionResponse> {
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     let res: Response;
+    const controller = new AbortController();
+    let idle = setTimeout(() => controller.abort(), IDLE_MS);
+    const total = setTimeout(() => controller.abort(), TOTAL_MS);
+    const alive = () => {
+      clearTimeout(idle);
+      idle = setTimeout(() => controller.abort(), IDLE_MS);
+    };
+    const stop = () => {
+      clearTimeout(idle);
+      clearTimeout(total);
+    };
+    const timedOut = () => {
+      stop();
+      return controller.signal.aborted
+        ? new HttpError(504, 'ai.timeout')
+        : new HttpError(502, 'ai.upstream_error');
+    };
     try {
       res = await fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
@@ -98,17 +201,32 @@ export async function chatCompletion(
           Authorization: `Bearer ${apiKey}`,
           ...extraHeaders,
         },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(60_000),
+        body: JSON.stringify({ ...body, stream: true }),
+        signal: controller.signal,
       });
-    } catch (err) {
-      if (err instanceof Error && err.name === 'TimeoutError')
-        throw new HttpError(504, 'ai.timeout');
-      throw new HttpError(502, 'ai.upstream_error');
+    } catch {
+      throw timedOut();
     }
     if (res.ok) {
-      const payload = await res.json().catch(() => undefined);
-      const completion = asChatCompletion(payload);
+      let payload: unknown;
+      let completion: ChatCompletionResponse | undefined;
+      try {
+        // Some providers answer a streamed request with one JSON body (an error envelope, or a
+        // proxy that does not stream): read whichever came back.
+        if (res.headers.get('content-type')?.includes('text/event-stream') && res.body) {
+          completion = await readCompletionStream(res.body, alive);
+        } else {
+          payload = await res.json().catch(() => undefined);
+          completion = asChatCompletion(payload);
+        }
+      } catch (err) {
+        if (err instanceof HttpError) {
+          stop();
+          throw err;
+        }
+        throw timedOut();
+      }
+      stop();
       if (completion) return completion;
       console.warn(
         `ai chat (${baseUrl}): 200 without usable choices`,
@@ -121,6 +239,7 @@ export async function chatCompletion(
     // can easily have headroom while a single request still gets a 429. Retry a couple of times
     // honoring Retry-After before giving up.
     if (res.status === 429 && attempt < MAX_ATTEMPTS) {
+      stop();
       const detail = await res.text().catch(() => '');
       const wait = retryDelayMs(res, attempt);
       console.warn(
@@ -131,6 +250,7 @@ export async function chatCompletion(
       continue;
     }
 
+    stop();
     const detail = await res.text().catch(() => '');
     if (detail)
       console.warn(`ai chat (${baseUrl}): request failed (${res.status})`, detail.slice(0, 500));

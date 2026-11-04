@@ -16,7 +16,35 @@ const REQUEST = {
 };
 
 const ok = (body: unknown) =>
-  vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => body } as Response);
+  vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    headers: new Headers({ 'content-type': 'application/json' }),
+    json: async () => body,
+  } as Response);
+
+/** An SSE reply, split mid-line the way a network delivers it. */
+const streamed = (events: unknown[]) => {
+  const text = events
+    .map(
+      (e) => `data: ${typeof e === 'string' ? e : JSON.stringify(e)}
+
+`,
+    )
+    .join('');
+  const bytes = new TextEncoder().encode(text);
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (let i = 0; i < bytes.length; i += 17) controller.enqueue(bytes.slice(i, i + 17));
+      controller.close();
+    },
+  });
+  return vi
+    .fn()
+    .mockResolvedValue(
+      new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } }),
+    );
+};
 
 const call = () => chatCompletion('https://api.example.com/v1', 'key', REQUEST);
 
@@ -29,6 +57,55 @@ afterEach(() => {
 });
 
 describe('chatCompletion', () => {
+  it('asks for a stream and folds it back into one completion, tool calls included', async () => {
+    const fetch = streamed([
+      { choices: [{ delta: { role: 'assistant', content: 'Hel' } }] },
+      { choices: [{ delta: { content: 'lo' } }] },
+      {
+        choices: [
+          {
+            delta: {
+              tool_calls: [
+                {
+                  index: 0,
+                  id: 'c1',
+                  type: 'function',
+                  function: { name: 'find', arguments: '{"q":' },
+                },
+              ],
+            },
+          },
+        ],
+      },
+      { choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: '"茶"}' } }] } }] },
+      { choices: [{ delta: {}, finish_reason: 'tool_calls' }] },
+      '[DONE]',
+    ]);
+    vi.stubGlobal('fetch', fetch);
+
+    await expect(call()).resolves.toEqual({
+      choices: [
+        {
+          finish_reason: 'tool_calls',
+          message: {
+            role: 'assistant',
+            content: 'Hello',
+            tool_calls: [
+              { id: 'c1', type: 'function', function: { name: 'find', arguments: '{"q":"茶"}' } },
+            ],
+          },
+        },
+      ],
+    });
+    expect(JSON.parse(fetch.mock.calls[0][1].body as string)).toMatchObject({ stream: true });
+  });
+
+  it('treats an error event inside the stream as a provider failure', async () => {
+    vi.stubGlobal('fetch', streamed([{ error: { message: 'upstream died' } }]));
+    const err = await call().catch((e: unknown) => e);
+    expect(isProviderFailure(err)).toBe(true);
+  });
+
   it('returns a well-formed completion untouched', async () => {
     const body = {
       choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: 'hello' } }],
