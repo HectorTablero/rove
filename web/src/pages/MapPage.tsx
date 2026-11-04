@@ -104,7 +104,10 @@ export default function MapPage() {
   return (
     <div
       className={cn(
-        'relative h-[calc(100dvh-var(--inset-top)-5.5rem-var(--inset-bottom))]',
+        /* Down to the screen's edge, under the translucent tab bar: subtracting the bar's height
+           left a strip wherever the bar's real height differed from the guess (the main's
+           padding is a content allowance, not the bar). The page cannot scroll while it's up. */
+        'relative h-[calc(100dvh-var(--inset-top))]',
         !isNative && 'md:h-dvh',
       )}
     >
