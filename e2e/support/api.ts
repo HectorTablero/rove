@@ -275,6 +275,8 @@ export async function installApiMock(
             snapshotIds: [],
             sourceUrls: [],
             expiresAt: null,
+            price: null,
+            coverUrl: null,
             when: null,
             venue: null,
           },

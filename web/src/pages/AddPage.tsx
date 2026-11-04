@@ -170,6 +170,8 @@ export default function AddPage() {
         snapshotIds: snapshot ? [snapshot.id] : [],
         sourceUrls: canonicalUrl ? [canonicalUrl] : [],
         expiresAt: null,
+        price: null,
+        coverUrl: null,
         location: candidate.location,
       },
       {

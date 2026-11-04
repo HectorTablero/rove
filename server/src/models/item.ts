@@ -60,6 +60,8 @@ const itemSchema = new Schema(
     location: { type: locationSchema, default: null },
     when: { type: whenSchema, default: null },
     venue: { type: String, default: null },
+    price: { type: String, default: null },
+    coverUrl: { type: String, default: null },
   },
   { timestamps: true },
 );

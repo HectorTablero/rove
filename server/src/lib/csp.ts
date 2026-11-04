@@ -146,13 +146,10 @@ export function buildCsp(indexHtmlPath: string): CspDirectives {
     styleSrc: ["'self'", "'unsafe-inline'"],
     // data: for the inlined flag SVGs; the Google host for the signed-in user's profile
     // picture, which is rendered with referrerPolicy="no-referrer".
-    imgSrc: [
-      "'self'",
-      'data:',
-      'blob:',
-      'https://*.googleusercontent.com',
-      ...(amap ? ['https://*.amap.com', 'https://*.autonavi.com'] : []),
-    ],
+    /* Any https image: feed posters come from whichever CDN each site uses this month (doubanio,
+       meituan/pipi, showstart, alicdn…), and an image cannot run anything. Covers the Google
+       avatar and Amap tiles too. */
+    imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
     fontSrc: ["'self'", ...(amap ? ['data:'] : [])], // the SDK's label glyphs are data: woff2
 
     connectSrc: [...connectSrc],

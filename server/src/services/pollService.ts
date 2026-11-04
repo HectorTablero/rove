@@ -11,7 +11,7 @@ import { Item } from '../models/item';
 import { Snapshot } from '../models/snapshot';
 import { SourceRun } from '../models/sourceRun';
 import { UserSettings } from '../models/userSettings';
-import { fetchFeed, pollerById } from '../sources';
+import { fetchFeed, pollerById, type CandidateDraft } from '../sources';
 import { getSettings } from './settingsService';
 
 /* Polling: feed → candidates, per account, per source, each run isolated.
@@ -23,6 +23,29 @@ import { getSettings } from './settingsService';
  *
  * Every failure is recorded as a run and never thrown past one source: a broken Damai route must
  * not stop Douban from being read in the same pass. */
+
+/* A candidate seen again picks up what the feed now says about it: a price, a poster, a venue
+   that was missing or mis-read the first time. Only while it is still a candidate — once kept or
+   dismissed, the row is the user's. Written only on a real change, because every write bumps
+   updatedAt and every bump is a row each device pulls. */
+async function refreshCandidate(
+  known: { _id: Types.ObjectId; status: string; [key: string]: unknown },
+  draft: CandidateDraft,
+): Promise<void> {
+  if (known.status !== 'candidate') return;
+  const next: Record<string, unknown> = {
+    price: draft.price,
+    coverUrl: draft.coverUrl,
+    categories: draft.categories,
+    ...(draft.kind === 'event' ? { venue: draft.venue } : {}),
+  };
+  const changed = Object.fromEntries(
+    Object.entries(next).filter(
+      ([key, value]) => JSON.stringify(known[key] ?? null) !== JSON.stringify(value ?? null),
+    ),
+  );
+  if (Object.keys(changed).length) await Item.updateOne({ _id: known._id }, { $set: changed });
+}
 
 export interface RunSummary {
   sourceId: string;
@@ -57,8 +80,11 @@ export async function pollSource(
     for (const entry of entries.slice(0, MAX_POLL_ITEMS_PER_RUN)) {
       const draft = poller.map(entry, region, now);
       if (!draft) continue;
-      const known = await Item.exists({ userId, sourceUrls: draft.link });
-      if (known) continue;
+      const known = await Item.findOne({ userId, sourceUrls: draft.link }).lean();
+      if (known) {
+        await refreshCandidate(known, draft);
+        continue;
+      }
 
       const snapshot = await Snapshot.create({
         userId,
@@ -78,7 +104,9 @@ export async function pollSource(
         kind: draft.kind,
         title: draft.title,
         altTitles: [],
-        categories: [],
+        categories: draft.categories,
+        price: draft.price,
+        coverUrl: draft.coverUrl,
         status: 'candidate',
         snapshotIds: [snapshot._id as Types.ObjectId],
         sourceUrls: [draft.link],

@@ -129,12 +129,30 @@
   "list": {
     "candidateCount_one": "{{count}} nuovo suggerimento",
     "candidateCount_other": "{{count}} nuovi suggerimenti",
+    "categories": "Etichette",
+    "clearFilters": "Azzera",
     "emptyDescription": "Condividi un post o incolla un link dalla scheda Aggiungi.",
     "emptyTitle": "Ancora niente di salvato",
     "filterAll": "Tutti",
+    "filters": "Filtri",
+    "kinds": {
+      "event": "Eventi",
+      "film": "Film",
+      "place": "Luoghi"
+    },
+    "ranges": {
+      "today": "Oggi",
+      "week": "Prossimi 7 giorni",
+      "weekend": "Questo weekend"
+    },
     "searchPlaceholder": "Cerca luoghi…",
+    "sort": "Ordina",
+    "sorts": {
+      "newest": "Più recenti",
+      "soonest": "Più vicini",
+      "title": "A–Z"
+    },
     "sourcesDown": "Nessuna risposta da {{sources}} nelle ultime due letture. La fonte potrebbe essere cambiata: controlla Impostazioni → Fonti.",
-    "weekend": "Questo weekend",
     "weekendEmpty": "Ancora niente per questo weekend"
   },
   "map": {

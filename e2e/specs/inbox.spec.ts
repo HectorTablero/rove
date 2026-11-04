@@ -21,6 +21,8 @@ const candidate = (id: string, title: string, start: string | null) => ({
   snapshotIds: [],
   sourceUrls: [`https://detail.damai.cn/item.htm?id=${id.slice(-3)}`],
   expiresAt: '2099-01-01T00:00:00.000Z',
+  price: null,
+  coverUrl: null,
   location: null,
   when: start ? { start, end: null, tz: 'Asia/Shanghai', allDay: false } : null,
   venue: '深圳湾体育中心',
@@ -81,4 +83,33 @@ test('a feed that answered nothing twice is announced, by name', async ({ app: p
   await page.goto('/list');
   await expect(page.getByRole('alert')).toContainText('大麦', { timeout: 20_000 });
   await expect(page.getByRole('alert')).not.toContainText('猫眼');
+});
+
+test('the list narrows by a feed tag and shows the price the feed printed', async ({
+  app: page,
+  api,
+}) => {
+  api.state.items = [
+    {
+      ...candidate('507f1f77bcf86cd799439031', '回春丹 深圳站', null),
+      categories: ['摇滚'],
+      price: '¥180-280',
+    },
+    { ...candidate('507f1f77bcf86cd799439032', '城市爵士夜', null), categories: ['爵士'] },
+  ];
+
+  await page.goto('/list');
+  const list = page.getByRole('list', { name: 'List' });
+  await expect(list.getByText('城市爵士夜')).toBeVisible({ timeout: 20_000 });
+  await expect(list.getByText('¥180-280')).toBeVisible();
+
+  await page.getByRole('group', { name: 'Tags' }).getByRole('button', { name: '摇滚' }).click();
+  await expect(list.getByText('回春丹 深圳站')).toBeVisible();
+  await expect(list.getByText('城市爵士夜')).toHaveCount(0);
+
+  // Films filter on top of it: nothing left, and Clear brings everything back.
+  await page.getByRole('button', { name: 'Films' }).click();
+  await expect(page.getByText('No results')).toBeVisible();
+  await page.getByRole('button', { name: 'Clear' }).click();
+  await expect(list.getByText('城市爵士夜')).toBeVisible();
 });

@@ -129,12 +129,30 @@
   "list": {
     "candidateCount_one": "{{count}} sugerencia nueva",
     "candidateCount_other": "{{count}} sugerencias nuevas",
+    "categories": "Etiquetas",
+    "clearFilters": "Quitar",
     "emptyDescription": "Comparte una publicación o pega un enlace desde la pestaña Añadir.",
     "emptyTitle": "Aún no hay nada guardado",
     "filterAll": "Todos",
+    "filters": "Filtros",
+    "kinds": {
+      "event": "Eventos",
+      "film": "Películas",
+      "place": "Lugares"
+    },
+    "ranges": {
+      "today": "Hoy",
+      "week": "Próximos 7 días",
+      "weekend": "Este fin de semana"
+    },
     "searchPlaceholder": "Buscar lugares…",
+    "sort": "Ordenar",
+    "sorts": {
+      "newest": "Más recientes",
+      "soonest": "Más próximos",
+      "title": "A–Z"
+    },
     "sourcesDown": "Sin respuesta de {{sources}} en las dos últimas lecturas. Puede que la fuente haya cambiado: revisa Ajustes → Fuentes.",
-    "weekend": "Este finde",
     "weekendEmpty": "Aún no hay nada para este fin de semana"
   },
   "map": {

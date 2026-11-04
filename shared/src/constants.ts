@@ -99,6 +99,7 @@ export const FILM_TTL_DAYS = 60;
 /** Two empty or failed runs in a row is "the source is down", shown as a banner. */
 export const SOURCE_DOWN_AFTER_RUNS = 2;
 export const MAX_VENUE_LENGTH = 200;
+export const MAX_PRICE_LENGTH = 100;
 
 export const MAX_LLM_BASE_URL_LENGTH = 300;
 export const MAX_LLM_MODEL_LENGTH = 100;

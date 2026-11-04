@@ -109,6 +109,6 @@ describe('buildCsp', () => {
     const { imgSrc } = buildCsp(writeHtml(''));
     // Inlined flag SVGs, and the signed-in user's Google avatar.
     expect(imgSrc).toContain('data:');
-    expect(imgSrc).toContain('https://*.googleusercontent.com');
+    expect(imgSrc).toContain('https:'); // feed posters, the Google avatar, map tiles
   });
 });

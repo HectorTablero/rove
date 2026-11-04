@@ -16,6 +16,7 @@ import {
   MAX_NOTES_LENGTH,
   MAX_POLL_SOURCES,
   MAX_VENUE_LENGTH,
+  MAX_PRICE_LENGTH,
   MAX_PROVIDER_ID_LENGTH,
   MAX_SNAPSHOT_BODY_BYTES,
   MAX_SNAPSHOT_TEXT_LENGTH,
@@ -94,6 +95,8 @@ const itemBaseCreate = {
   snapshotIds: snapshotIdsSchema.default([]),
   sourceUrls: sourceUrlsSchema.default([]),
   expiresAt: isoDateTimeSchema.nullable().default(null),
+  price: z.string().trim().max(MAX_PRICE_LENGTH).nullable().default(null),
+  coverUrl: urlSchema.nullable().default(null),
 };
 
 /**
@@ -131,6 +134,8 @@ export const itemUpdateSchema = z.object({
   location: locationSchema.nullable().optional(),
   when: whenSchema.nullable().optional(),
   venue: z.string().trim().max(MAX_VENUE_LENGTH).nullable().optional(),
+  price: z.string().trim().max(MAX_PRICE_LENGTH).nullable().optional(),
+  coverUrl: urlSchema.nullable().optional(),
 });
 
 // --- Snapshots ---

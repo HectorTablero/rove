@@ -126,12 +126,30 @@
   },
   "list": {
     "candidateCount": "新しい候補 {{count}}件",
+    "categories": "タグ",
+    "clearFilters": "クリア",
     "emptyDescription": "「追加」タブから投稿を共有するか、リンクを貼り付けてください。",
     "emptyTitle": "まだ何も保存されていません",
     "filterAll": "すべて",
+    "filters": "フィルター",
+    "kinds": {
+      "event": "イベント",
+      "film": "映画",
+      "place": "場所"
+    },
+    "ranges": {
+      "today": "今日",
+      "week": "今後7日間",
+      "weekend": "今週末"
+    },
     "searchPlaceholder": "場所を検索…",
+    "sort": "並び替え",
+    "sorts": {
+      "newest": "新しい順",
+      "soonest": "開催が近い順",
+      "title": "名前順"
+    },
     "sourcesDown": "{{sources}} から直近2回の読み込みで応答がありません。フィードが変わった可能性があります。設定→ソースを確認してください。",
-    "weekend": "今週末",
     "weekendEmpty": "今週末の予定はまだありません"
   },
   "map": {

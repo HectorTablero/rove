@@ -30,6 +30,8 @@ const entry = (title: string, link: string) => ({
   text: `演出时间：2026-10-02 20:00\n场馆：B10`,
   html: '',
   pubDate: null,
+  image: null,
+  categories: [],
 });
 
 beforeEach(() => {
@@ -42,8 +44,12 @@ beforeEach(() => {
 describe('pollSource', () => {
   it('creates a candidate with its snapshot for an unknown entry, and skips a known one', async () => {
     rss.fetchFeed.mockResolvedValue([entry('A', 'https://d/1'), entry('B', 'https://d/2')]);
-    Item.exists.mockImplementation(async (filter: unknown) =>
-      (filter as { sourceUrls: string }).sourceUrls === 'https://d/2' ? { _id: 'x' } : null,
+    Item.findOne.mockImplementation((filter: unknown) =>
+      query(
+        (filter as { sourceUrls: string }).sourceUrls === 'https://d/2'
+          ? { _id: 'x', status: 'saved' }
+          : null,
+      ),
     );
 
     const run = await pollSource('u1', 'damai');
@@ -63,6 +69,34 @@ describe('pollSource', () => {
     expect(SourceRun.create).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 'u1', sourceId: 'damai', ok: true, found: 2, created: 1 }),
     );
+  });
+
+  it('refreshes a known candidate with what the feed now says, and leaves a kept item alone', async () => {
+    rss.fetchFeed.mockResolvedValue([
+      { ...entry('A', 'https://d/1'), text: '演出时间：2026-10-02 20:00\n场馆：B10\n票价：380' },
+      { ...entry('B', 'https://d/2'), text: '票价：99' },
+    ]);
+    Item.findOne.mockImplementation((filter: unknown) =>
+      query(
+        (filter as { sourceUrls: string }).sourceUrls === 'https://d/1'
+          ? {
+              _id: 'c1',
+              status: 'candidate',
+              price: null,
+              coverUrl: null,
+              categories: [],
+              venue: 'B10',
+            }
+          : { _id: 's1', status: 'saved', price: null },
+      ),
+    );
+
+    const run = await pollSource('u1', 'damai');
+
+    expect(run.created).toBe(0);
+    // Only the field that changed is written: an unchanged row is not a row to re-sync.
+    expect(Item.updateOne).toHaveBeenCalledTimes(1);
+    expect(Item.updateOne).toHaveBeenCalledWith({ _id: 'c1' }, { $set: { price: '380' } });
   });
 
   it('records a failed feed as a run with its code instead of throwing', async () => {

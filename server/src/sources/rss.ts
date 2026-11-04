@@ -19,14 +19,26 @@ export interface FeedEntry {
   /** The description as it came, for the snapshot body. */
   html: string;
   pubDate: string | null;
+  /** The first `<img>` in the description: every route used here puts its poster there. */
+  image: string | null;
+  /** The item's `<category>` elements (Showstart writes the show's styles there). */
+  categories: string[];
 }
 
 const parser = new XMLParser({
   ignoreAttributes: false,
   cdataPropName: '__cdata',
   // A single <item> must still come back as an array.
-  isArray: (name) => name === 'item',
+  isArray: (name) => name === 'item' || name === 'category',
 });
+
+/** An http(s) URL from the first `<img src>`, or null. Protocol-relative sources become https. */
+export function firstImage(html: string): string | null {
+  const src = /<img\b[^>]*\bsrc\s*=\s*["']([^"']+)["']/i.exec(html)?.[1];
+  if (!src) return null;
+  const url = decodeEntities(src).trim().replace(/^\/\//, 'https://');
+  return /^https?:\/\//i.test(url) ? url : null;
+}
 
 const asText = (value: unknown): string => {
   if (value == null) return '';
@@ -70,6 +82,10 @@ export function parseFeed(xml: string): FeedEntry[] {
         text: htmlToLines(html),
         html,
         pubDate: asText(record.pubDate).trim() || null,
+        image: firstImage(html),
+        categories: (Array.isArray(record.category) ? record.category : [])
+          .map((c) => cleanText(asText(c)))
+          .filter(Boolean),
       };
     })
     .filter((entry) => entry.title && entry.link);

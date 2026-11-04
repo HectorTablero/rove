@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatWhen, overlaps, weekendWindow } from './when';
+import { formatWhen, overlaps, rangeWindow, weekendWindow } from './when';
 
 const TZ = 'Asia/Shanghai';
 
@@ -82,5 +82,21 @@ describe('overlaps', () => {
     expect(
       overlaps({ start: '2026-09-22T11:00:00.000Z', end: null, tz: TZ, allDay: false }, window),
     ).toBe(false);
+  });
+});
+
+describe('rangeWindow', () => {
+  it('today ends at the next midnight in the zone, not the device', () => {
+    const now = new Date('2026-09-16T04:00:00.000Z'); // Wed 12:00 in Shenzhen
+    const { start, end } = rangeWindow('today', now, 'Asia/Shanghai');
+    expect(start).toEqual(now);
+    expect(end.toISOString()).toBe('2026-09-16T16:00:00.000Z'); // Thu 00:00 Shenzhen
+  });
+
+  it('next 7 days is a week from now', () => {
+    const now = new Date('2026-09-16T04:00:00.000Z');
+    expect(rangeWindow('week', now, 'Asia/Shanghai').end.toISOString()).toBe(
+      '2026-09-23T04:00:00.000Z',
+    );
   });
 });

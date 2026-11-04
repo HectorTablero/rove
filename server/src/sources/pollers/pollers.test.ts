@@ -117,3 +117,70 @@ describe('maoyan', () => {
     expect(draft.expiresAt).toBe('2026-11-11T00:00:00.000Z');
   });
 });
+
+/* Shaped like the routes' own description templates (RSSHub lib/routes/showstart/service.ts,
+   douban/event/hot.ts, maoyan/hot.ts): poster first, then the fields. */
+describe('details: price, cover, categories', () => {
+  const withExtras = (title: string, link: string, description: string, extra: string) =>
+    `<item><title><![CDATA[${title}]]></title><link>${link}</link><description><![CDATA[${description}]]></description>${extra}</item>`;
+
+  it('showstart: price, poster, styles, and the venue without its city', () => {
+    const [entry] = parseFeed(
+      feed(
+        withExtras(
+          '回春丹 深圳站',
+          'https://www.showstart.com/event/7',
+          '<img src="https://s2.showstart.com/poster.jpg" /><p>演出时间：2026-10-02 20:00</p><p>地址：深圳 - HOU Live</p><p>艺人：回春丹</p><p>票价：¥180-280</p>',
+          '<category>摇滚</category><category>独立</category>',
+        ),
+      ),
+    );
+    const draft = showstartPoller.map(entry, region, now)!;
+    expect(draft.venue).toBe('HOU Live');
+    expect(draft.price).toBe('¥180-280');
+    expect(draft.coverUrl).toBe('https://s2.showstart.com/poster.jpg');
+    expect(draft.categories).toEqual(['摇滚', '独立']);
+  });
+
+  it('douban: price and type read by position from the info line', () => {
+    const [entry] = parseFeed(
+      feed(
+        item(
+          '城市爵士夜',
+          'https://www.douban.com/event/10',
+          '<img src="//img1.doubanio.com/cover.jpg"><br>\n 2026-10-04 19:30 福田 某某live/音乐/80-120元',
+        ),
+      ),
+    );
+    const draft = doubanEventsPoller.map(entry, region, now)!;
+    expect(draft.price).toBe('80-120元');
+    expect(draft.categories).toEqual(['音乐']);
+    expect(draft.coverUrl).toBe('https://img1.doubanio.com/cover.jpg');
+    expect(draft.when?.start).toBe('2026-10-04T11:30:00.000Z');
+  });
+
+  it('maoyan: release date from pubDate, poster from the description', () => {
+    const [entry] = parseFeed(
+      feed(
+        withExtras(
+          '[9.1分] 某电影',
+          'https://www.maoyan.com/films/2',
+          '<img src="https://p0.pipi.cn/poster.jpg" /><p><strong>某电影</strong></p><p>主演：某人</p>',
+          '<pubDate>Fri, 18 Sep 2026 16:00:00 GMT</pubDate>',
+        ),
+      ),
+    );
+    const draft = maoyanPoller.map(entry, region, now)!;
+    expect(draft.coverUrl).toBe('https://p0.pipi.cn/poster.jpg');
+    // 16:00 UTC on the 18th is midnight on the 19th in Shenzhen: that is the release day.
+    expect(draft.when?.start).toBe('2026-09-18T16:00:00.000Z');
+    expect(draft.when?.allDay).toBe(true);
+  });
+
+  it('ignores an image that is not http(s)', () => {
+    const [entry] = parseFeed(
+      feed(item('x', 'https://e/1', '<img src="data:image/png;base64,AA">')),
+    );
+    expect(entry.image).toBeNull();
+  });
+});

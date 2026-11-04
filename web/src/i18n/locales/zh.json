@@ -126,12 +126,30 @@
   },
   "list": {
     "candidateCount": "{{count}} 条新推荐",
+    "categories": "标签",
+    "clearFilters": "清除",
     "emptyDescription": "在“添加”标签中分享帖子或粘贴链接。",
     "emptyTitle": "还没有保存任何内容",
     "filterAll": "全部",
+    "filters": "筛选",
+    "kinds": {
+      "event": "活动",
+      "film": "电影",
+      "place": "地点"
+    },
+    "ranges": {
+      "today": "今天",
+      "week": "未来 7 天",
+      "weekend": "本周末"
+    },
     "searchPlaceholder": "搜索地点…",
+    "sort": "排序",
+    "sorts": {
+      "newest": "最新",
+      "soonest": "最近开始",
+      "title": "按名称"
+    },
     "sourcesDown": "{{sources}} 在最近两次读取中都没有响应。来源可能已变动，请检查设置 → 来源。",
-    "weekend": "本周末",
     "weekendEmpty": "本周末还没有安排"
   },
   "map": {

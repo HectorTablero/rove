@@ -45,6 +45,9 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
   const region = useRegion();
   const { data: item } = useItem(itemId);
   const [locating, setLocating] = useState(false);
+  // A broken poster hides itself; reset per item so one bad URL does not hide the next item's.
+  const [coverFailed, setCoverFailed] = useState(false);
+  useEffect(() => setCoverFailed(false), [itemId]);
   const { data: review } = useReview(itemId);
   const updateItem = useUpdateItem();
   const upsertReview = useUpsertReview();
@@ -170,12 +173,31 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
       </DialogHeader>
 
       <div className="flex flex-col gap-4">
-        {(when || venue || location?.address) && (
+        {item.coverUrl && !coverFailed && (
+          <img
+            src={item.coverUrl}
+            alt=""
+            referrerPolicy="no-referrer"
+            onError={() => setCoverFailed(true)}
+            className="max-h-56 w-full rounded-lg bg-muted object-cover"
+          />
+        )}
+        {(when || venue || location?.address || item.price) && (
           <div className="flex flex-col gap-0.5 text-sm text-muted-foreground">
             {when && <p>{when}</p>}
             {item.kind !== 'place' && !item.when && <p>{t('items.timeUnknown')}</p>}
             {venue && <p>{venue}</p>}
             {location?.address && <p>{location.address}</p>}
+            {item.price && <p className="font-medium text-foreground">{item.price}</p>}
+          </div>
+        )}
+        {item.categories.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {item.categories.map((name) => (
+              <Badge key={name} variant="outline">
+                {name}
+              </Badge>
+            ))}
           </div>
         )}
 

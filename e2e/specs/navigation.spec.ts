@@ -55,6 +55,8 @@ test('the pull populates the list, newest first', async ({ app: page, api }) => 
     snapshotIds: [],
     sourceUrls: [],
     expiresAt: null,
+    price: null,
+    coverUrl: null,
     location: {
       point: { lon: 114.05, lat: 22.54, datum: 'GCJ02' as const },
       address: null,

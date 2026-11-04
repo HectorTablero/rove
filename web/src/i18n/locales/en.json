@@ -129,12 +129,30 @@
   "list": {
     "candidateCount_one": "{{count}} new suggestion",
     "candidateCount_other": "{{count}} new suggestions",
+    "categories": "Tags",
+    "clearFilters": "Clear",
     "emptyDescription": "Share a post or paste a link from the Add tab.",
     "emptyTitle": "Nothing saved yet",
     "filterAll": "All",
+    "filters": "Filters",
+    "kinds": {
+      "event": "Events",
+      "film": "Films",
+      "place": "Places"
+    },
+    "ranges": {
+      "today": "Today",
+      "week": "Next 7 days",
+      "weekend": "This weekend"
+    },
     "searchPlaceholder": "Search places…",
+    "sort": "Sort",
+    "sorts": {
+      "newest": "Newest",
+      "soonest": "Soonest",
+      "title": "A–Z"
+    },
     "sourcesDown": "No answer from {{sources}} in the last two runs. The feed may have changed — check Settings → Sources.",
-    "weekend": "This weekend",
     "weekendEmpty": "Nothing on this weekend yet"
   },
   "map": {

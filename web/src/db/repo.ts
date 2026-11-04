@@ -1,6 +1,6 @@
 import type { ImpressionDto, ItemDto, ReviewDto, SettingsDto, SnapshotDto } from '@rove/shared';
 import { DEFAULT_SETTINGS } from '@rove/shared';
-import { overlaps, weekendWindow } from '@/lib/when';
+import { overlaps, rangeWindow, type WhenRange } from '@/lib/when';
 import { db, getMeta } from './db';
 
 /* Every read the UI makes, against the local store. Nothing here touches the network. */
@@ -10,9 +10,19 @@ export interface ItemFilter {
   kind?: ItemDto['kind'][];
   /** Case-folded substring match over title, alt titles and categories. */
   query?: string;
-  /** Only items with a time window overlapping the coming weekend in the region's zone. */
-  weekend?: { now: Date; tz: string };
+  /** Only items with a time window overlapping today / the coming weekend / the next 7 days,
+      in the region's zone. */
+  when?: { range: WhenRange; now: Date; tz: string };
+  /** Only items carrying this category, compared folded. */
+  category?: string;
+  /** Newest first (default), soonest time window first, or by title. */
+  sort?: ItemSort;
 }
+
+export type ItemSort = 'newest' | 'soonest' | 'title';
+
+const startOf = (item: ItemDto): string | null =>
+  item.kind !== 'place' && item.when ? item.when.start : null;
 
 /** Fold for matching: NFKC so full-width and half-width forms compare equal, then case. Not
     ASCII-only, and not stripping anything — `文和友` must match `文和友`. */
@@ -28,8 +38,8 @@ export async function getItems(filter: ItemFilter = {}): Promise<ItemDto[]> {
     (item) => !(item.status === 'candidate' && item.expiresAt !== null && item.expiresAt < now),
   );
   if (filter.status?.length) items = items.filter((item) => filter.status!.includes(item.status));
-  if (filter.weekend) {
-    const window = weekendWindow(filter.weekend.now, filter.weekend.tz);
+  if (filter.when) {
+    const window = rangeWindow(filter.when.range, filter.when.now, filter.when.tz);
     items = items.filter(
       (item) => item.kind !== 'place' && item.when && overlaps(item.when, window),
     );
@@ -42,6 +52,21 @@ export async function getItems(filter: ItemFilter = {}): Promise<ItemDto[]> {
         foldText(text).includes(query),
       ),
     );
+  }
+  if (filter.category) {
+    const category = foldText(filter.category);
+    items = items.filter((item) => item.categories.some((c) => foldText(c) === category));
+  }
+  if (filter.sort === 'title') return items.sort((a, b) => a.title.localeCompare(b.title));
+  if (filter.sort === 'soonest') {
+    // Dated items by start, then undated ones newest first: "time unknown" is not "soon".
+    return items.sort((a, b) => {
+      const sa = startOf(a);
+      const sb = startOf(b);
+      if (sa && sb) return sa < sb ? -1 : sa > sb ? 1 : 0;
+      if (sa || sb) return sa ? -1 : 1;
+      return a.createdAt < b.createdAt ? 1 : -1;
+    });
   }
   // Newest first: the thing you just saved is the thing you are looking for.
   return items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));

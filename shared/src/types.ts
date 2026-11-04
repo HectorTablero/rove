@@ -57,6 +57,10 @@ interface ItemBaseDto {
   snapshotIds: string[];
   /** Every URL this item was seen at, de-duplicated. */
   sourceUrls: string[];
+  /** The price as the source printed it (`¥80-180`, `免费`). Text, never parsed into a number. */
+  price: string | null;
+  /** A poster or cover image URL from the source. Never proxied; the browser loads it directly. */
+  coverUrl: string | null;
   /** When the item stops being worth showing. Null for a place. */
   expiresAt: string | null;
   createdAt: string;

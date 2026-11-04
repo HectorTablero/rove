@@ -48,6 +48,8 @@ export interface LeanItem {
   location?: LeanLocation | null;
   when?: LeanWhen | null;
   venue?: string | null;
+  price?: string | null;
+  coverUrl?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -85,6 +87,8 @@ export const itemToDto = (item: LeanItem): ItemDto => {
     snapshotIds: (item.snapshotIds ?? []).map(idString),
     sourceUrls: item.sourceUrls ?? [],
     expiresAt: item.expiresAt ? iso(item.expiresAt) : null,
+    price: item.price ?? null,
+    coverUrl: item.coverUrl ?? null,
     createdAt: iso(item.createdAt),
     updatedAt: iso(item.updatedAt),
   };

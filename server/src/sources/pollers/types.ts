@@ -15,6 +15,11 @@ export interface CandidateDraft {
   text: string;
   when: WhenDto | null;
   venue: string | null;
+  /** The price line as printed, or null. */
+  price: string | null;
+  coverUrl: string | null;
+  /** Genre or style tags from the source; become the item's categories. */
+  categories: string[];
   /** When to drop the candidate from the inbox if nothing is done with it. */
   expiresAt: string;
   entry: FeedEntry;

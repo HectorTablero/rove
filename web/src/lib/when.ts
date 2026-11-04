@@ -97,3 +97,13 @@ export function overlaps(when: WhenDto, window: Window): boolean {
   const end = when.end ? Date.parse(when.end) : start;
   return start <= window.end.getTime() && end >= window.start.getTime();
 }
+
+export type WhenRange = 'today' | 'weekend' | 'week';
+
+/** "Today": now until midnight in the region's zone. "Next 7 days": now plus a week. */
+export function rangeWindow(range: WhenRange, now: Date, tz: string): Window {
+  if (range === 'weekend') return weekendWindow(now, tz);
+  if (range === 'week') return { start: now, end: new Date(now.getTime() + 7 * 86_400_000) };
+  const midnight = zonedInstant(zonedParts(now, tz).ymd, 0, tz);
+  return { start: now, end: new Date(midnight.getTime() + 86_400_000) };
+}
