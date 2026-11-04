@@ -47,7 +47,7 @@ const NOTES_DEBOUNCE_MS = 600;
 export function ItemSheet({ itemId, onClose }: { itemId: string | null; onClose: () => void }) {
   return (
     <Dialog open={itemId !== null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         {itemId && <ItemSheetBody itemId={itemId} onClose={onClose} />}
       </DialogContent>
     </Dialog>
