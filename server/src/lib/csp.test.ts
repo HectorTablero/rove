@@ -45,7 +45,20 @@ describe('buildCsp', () => {
     expect(scriptSrc.join(' ')).not.toContain('index-abc123');
   });
 
-  it('never emits unsafe-inline or unsafe-eval for scripts', () => {
+  it('grants the Amap SDK eval and data: fonts only when the map is configured', async () => {
+    const { config } = await import('../config');
+    config.amapJsKey = 'k';
+    try {
+      const csp = buildCsp(writeHtml(''));
+      expect(csp.scriptSrc).toContain("'unsafe-eval'");
+      expect(csp.fontSrc).toContain('data:');
+      expect(csp.scriptSrc).not.toContain("'unsafe-inline'");
+    } finally {
+      config.amapJsKey = '';
+    }
+  });
+
+  it('never emits unsafe-inline or unsafe-eval for scripts without a map', () => {
     const { scriptSrc } = buildCsp(writeHtml('<script>void 0</script>'));
     expect(scriptSrc).not.toContain("'unsafe-inline'");
     expect(scriptSrc).not.toContain("'unsafe-eval'");

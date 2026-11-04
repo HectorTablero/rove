@@ -83,7 +83,14 @@ export function buildCsp(indexHtmlPath: string): CspDirectives {
      proxy, which 'self' already covers. Renderer-specific by nature: a MapLibre renderer would add
      its own tile host here instead. */
   const amap = Boolean(config.amapJsKey);
-  const scriptSrc = ["'self'", ...(hashes ?? []), ...(amap ? ['https://webapi.amap.com'] : [])];
+  /* 'unsafe-eval' is the SDK's price, not ours: JS API 2.0 assembles its WebGL renderer from
+     strings at runtime, and without it the map dies with "WebGLRender is not a constructor".
+     Only granted when the map is configured; the app itself still has no eval. */
+  const scriptSrc = [
+    "'self'",
+    ...(hashes ?? []),
+    ...(amap ? ['https://webapi.amap.com', "'unsafe-eval'"] : []),
+  ];
 
   const connectSrc = new Set(["'self'"]);
   // The live-sync socket is same-origin, but ws: is a different scheme and 'self' does not cover it.
@@ -146,7 +153,8 @@ export function buildCsp(indexHtmlPath: string): CspDirectives {
       'https://*.googleusercontent.com',
       ...(amap ? ['https://*.amap.com', 'https://*.autonavi.com'] : []),
     ],
-    fontSrc: ["'self'"],
+    fontSrc: ["'self'", ...(amap ? ['data:'] : [])], // the SDK's label glyphs are data: woff2
+
     connectSrc: [...connectSrc],
     workerSrc: ["'self'", ...(amap ? ['blob:'] : [])], // the PWA service worker; Amap's tile workers
     manifestSrc: ["'self'"],
