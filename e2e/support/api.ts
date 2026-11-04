@@ -206,6 +206,19 @@ export async function installApiMock(
     const call = record(route);
     if (unreachable) return route.abort('connectionfailed');
     const { url } = call.body as { url: string };
+    // Instagram as it answers now: the post is there, its text is not.
+    if (url.includes('/p/UNREADABLE')) {
+      return json(route, {
+        sourceId: 'instagram-oembed',
+        fetchedAt: new Date().toISOString(),
+        canonicalUrl: url,
+        contentType: 'text/html',
+        body: '',
+        text: '',
+        error: 'caption_missing',
+        title: null,
+      });
+    }
     await json(route, {
       sourceId: url.includes('xhslink') ? 'xiaohongshu-share' : 'generic-og',
       fetchedAt: new Date().toISOString(),

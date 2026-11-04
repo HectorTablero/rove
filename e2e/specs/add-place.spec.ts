@@ -86,3 +86,20 @@ test('sharing the same place twice merges into one item', async ({ app: page, ap
   ]);
   expect(api.calls.filter((c) => c.method === 'POST' && c.path === '/api/items')).toHaveLength(1);
 });
+
+test('a post whose text cannot be read takes a pasted caption instead', async ({
+  app: page,
+  api,
+}) => {
+  await page.goto(`/add?text=${encodeURIComponent('https://www.instagram.com/p/UNREADABLE/')}`);
+
+  await expect(page.getByText('caption_missing')).toBeVisible({ timeout: 20_000 });
+  await page.getByLabel('Paste the caption').fill(api.fixtures.caption);
+  await page.getByRole('button', { name: 'Use this text' }).click();
+
+  // The caption now reads like one the link carried, and is kept on the link's snapshot.
+  await expect(page.getByText(api.fixtures.caption)).toBeVisible();
+  await expect(page.getByText('caption_missing')).toBeHidden();
+  const patch = await api.waitForCall('PATCH', /^\/api\/snapshots\//, 20_000);
+  expect((patch.body as { text: string }).text).toBe(api.fixtures.caption);
+});

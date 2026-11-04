@@ -1,4 +1,4 @@
-import type { MentionDto, SnapshotDto } from '@rove/shared';
+import { MAX_SNAPSHOT_TEXT_LENGTH, type MentionDto, type SnapshotDto } from '@rove/shared';
 import { AlertTriangle, Link2, MapPin, Sparkles } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -11,6 +11,7 @@ import { MapView } from '@/components/map/MapView';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { createSnapshot, updateSnapshot } from '@/db/mutations';
 import { getSnapshotByUrl } from '@/db/repo';
 import { ApiError } from '@/lib/apiClient';
@@ -35,8 +36,10 @@ import { cn } from '@/lib/utils';
  *   3. a name, with the geocoder's suggestions as you type                 → a candidate
  *   4. the candidate on a small map, then Save                            → dedupe, then an item
  *
- * A link that cannot be read still leaves the caption area saying why, and step 3 works with no
- * link at all. The snapshot is written to the local store the moment the link resolves, so an
+ * A link that cannot be read still leaves the caption area saying why, and offers a box to paste
+ * the caption into (Instagram no longer lets a server read a post's text; one long-press there
+ * copies it), after which steps 2–4 run on it as on any read caption. Step 3 works with no link
+ * at all. The snapshot is written to the local store the moment the link resolves, so an
  * abandoned add still keeps the raw post for a later re-run. */
 
 const SUGGEST_DEBOUNCE_MS = 300;
@@ -64,6 +67,7 @@ export default function AddPage() {
   const [debouncedName, setDebouncedName] = useState('');
   const [candidate, setCandidate] = useState<GeocodeCandidate | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
+  const [pasted, setPasted] = useState('');
   const nameInput = useRef<HTMLInputElement>(null);
 
   const suggestions = useSuggestions(debouncedName, region.id);
@@ -124,6 +128,20 @@ export default function AddPage() {
     } finally {
       setExtracting(false);
     }
+  }
+
+  /* The caption the user copied by hand, kept on the link's snapshot like a read one, so a later
+     re-run of the extractor finds it there. */
+  async function applyPasted(row: SnapshotDto) {
+    const text = pasted.trim().slice(0, MAX_SNAPSHOT_TEXT_LENGTH);
+    if (!text) return;
+    const next = { ...row, text, error: null };
+    await updateSnapshot(row.id, { text, error: null });
+    setSnapshot(next);
+    setResolveError(null);
+    setPasted('');
+    if (canExtract) void extract(next);
+    else nameInput.current?.focus();
   }
 
   const pickMention = (mention: MentionDto) => {
@@ -193,6 +211,7 @@ export default function AddPage() {
     setName('');
     setCandidate(null);
     setSavedId(null);
+    setPasted('');
   };
 
   return (
@@ -279,6 +298,29 @@ export default function AddPage() {
                   )}
                 </div>
               </>
+            ) : snapshot ? (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="add-paste" className="text-xs font-medium">
+                  {t('add.pasteLabel')}
+                </Label>
+                <p className="text-xs text-muted-foreground">{t('add.pasteHint')}</p>
+                <Textarea
+                  id="add-paste"
+                  rows={4}
+                  value={pasted}
+                  onChange={(e) => setPasted(e.target.value)}
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="gap-1.5 self-start"
+                  disabled={!pasted.trim()}
+                  onClick={() => void applyPasted(snapshot)}
+                >
+                  <Sparkles className="size-3.5" />
+                  {canExtract ? t('add.pasteFind') : t('add.pasteUse')}
+                </Button>
+              </div>
             ) : (
               <p className="text-xs text-muted-foreground">{t('add.noCaption')}</p>
             )}

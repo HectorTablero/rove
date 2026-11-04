@@ -15,7 +15,12 @@ import { failed, type Resolved, type Resolver } from './types';
  *
  * Order: embed page first (it has the caption), oEmbed second (author and a sanity check that the
  * post is public), Open Graph on the post page last. Each is optional; `error` says which fell
- * through. */
+ * through.
+ *
+ * As of 2026-11 none of the three carries the caption any more: the embed page is a script shell
+ * with no `.Caption`, oEmbed returns bare markup, and the post page is behind the login wall. The
+ * resolver is kept for when that changes; meanwhile `caption_missing` is what the Add screen
+ * answers with a box to paste the caption into. Nothing here goes around the login wall. */
 
 const OEMBED = 'https://graph.facebook.com/v25.0/instagram_oembed';
 
