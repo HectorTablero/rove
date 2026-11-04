@@ -5,13 +5,15 @@
 # resolve on the Docker network the shared containers live on, so this file joins that network
 # instead of creating its own: set DOCKER_NETWORK in .env to its name (`docker network ls`, or
 # `docker inspect redis --format '{{range $k,$_ := .NetworkSettings.Networks}}{{$k}}{{end}}'`).
-# Start with `docker compose up -d --build`.
+# Deploy with `docker compose pull app && docker compose up -d` (the image CI publishes to GHCR
+# on every push to main), or build on the host instead with `docker compose up -d --build`.
 #
 # RSSHub is pinned rather than `latest`: its routes are the moving part of this whole system, and
 # an unplanned upgrade is the likeliest way for a feed to change shape on a Tuesday. Bump the tag
 # on purpose, then check Settings → Sources still reports "found > 0" for each feed.
 services:
   app:
+    image: ghcr.io/hectortablero/rove:main
     build:
       context: .
       args:
