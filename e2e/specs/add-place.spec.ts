@@ -91,11 +91,18 @@ test('a post whose text cannot be read takes a pasted caption instead', async ({
   app: page,
   api,
 }) => {
+  // With a model configured: a failed read must still not be sent to it.
+  api.state.settings = {
+    ...api.state.settings,
+    llmBaseUrl: 'https://llm.example/v1',
+    llmModel: 'm',
+  };
   await page.goto(`/add?text=${encodeURIComponent('https://www.instagram.com/p/UNREADABLE/')}`);
 
   await expect(page.getByText('caption_missing')).toBeVisible({ timeout: 20_000 });
+  expect(api.calls.some((call) => call.path.includes('/ingest/extract'))).toBe(false);
   await page.getByLabel('Paste the caption').fill(api.fixtures.caption);
-  await page.getByRole('button', { name: 'Use this text' }).click();
+  await page.getByRole('button', { name: 'Find places in it' }).click();
 
   // The caption now reads like one the link carried, and is kept on the link's snapshot.
   await expect(page.getByText(api.fixtures.caption)).toBeVisible();

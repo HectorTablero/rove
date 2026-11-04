@@ -214,7 +214,8 @@ export async function installApiMock(
         canonicalUrl: url,
         contentType: 'text/html',
         body: '',
-        text: '',
+        // What the Open Graph fallback finds on the login wall: the page title, nothing more.
+        text: 'Instagram',
         error: 'caption_missing',
         title: null,
       });

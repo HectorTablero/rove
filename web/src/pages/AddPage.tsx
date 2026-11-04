@@ -71,6 +71,7 @@ export default function AddPage() {
   const [candidate, setCandidate] = useState<GeocodeCandidate | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [pasted, setPasted] = useState('');
+  const [pasteOpen, setPasteOpen] = useState(false);
   const nameInput = useRef<HTMLInputElement>(null);
 
   const suggestions = useSuggestions(debouncedQuery, region.id);
@@ -101,7 +102,9 @@ export default function AddPage() {
       setSnapshot(row);
       setResolveError(row.error);
       setPhase('resolved');
-      if (row.text && canExtract) void extract(row);
+      /* Only a clean read goes to the model on its own. A read with an error carries at best a
+         fallback — Instagram's page title, "Instagram" — and is answered with the paste box. */
+      if (row.text && !row.error && canExtract) void extract(row);
       else if (!row.text) nameInput.current?.focus();
     } catch (err) {
       setPhase('resolved');
@@ -143,6 +146,7 @@ export default function AddPage() {
     setSnapshot(next);
     setResolveError(null);
     setPasted('');
+    setPasteOpen(false);
     if (canExtract) void extract(next);
     else nameInput.current?.focus();
   }
@@ -217,6 +221,7 @@ export default function AddPage() {
     setCandidate(null);
     setSavedId(null);
     setPasted('');
+    setPasteOpen(false);
   };
 
   return (
@@ -264,7 +269,7 @@ export default function AddPage() {
                 </span>
               </p>
             )}
-            {snapshot?.text ? (
+            {snapshot?.text && !resolveError && (
               <>
                 <p className="text-xs font-medium text-muted-foreground">
                   {t('add.captionFrom', { source: snapshot.sourceId })}
@@ -302,8 +307,19 @@ export default function AddPage() {
                     </Button>
                   )}
                 </div>
+                {!pasteOpen && (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="h-auto self-start p-0 text-xs"
+                    onClick={() => setPasteOpen(true)}
+                  >
+                    {t('add.pasteInstead')}
+                  </Button>
+                )}
               </>
-            ) : snapshot ? (
+            )}
+            {snapshot && (!snapshot.text || resolveError || pasteOpen) ? (
               <div className="flex flex-col gap-2">
                 <Label htmlFor="add-paste" className="text-xs font-medium">
                   {t('add.pasteLabel')}
@@ -327,7 +343,7 @@ export default function AddPage() {
                 </Button>
               </div>
             ) : (
-              <p className="text-xs text-muted-foreground">{t('add.noCaption')}</p>
+              !snapshot && <p className="text-xs text-muted-foreground">{t('add.noCaption')}</p>
             )}
           </section>
         )}
