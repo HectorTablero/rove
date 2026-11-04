@@ -60,7 +60,7 @@ const markerHtml = (
   const fill = status === 'visited' ? 'var(--primary)' : 'var(--background)';
   const stroke = status === 'candidate' ? 'var(--muted-foreground)' : 'var(--primary)';
   const size = selected ? 18 : 14;
-  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${fill};border:2.5px solid ${stroke};box-shadow:0 1px 3px rgba(0,0,0,.35);transform:translate(-50%,-50%)"></div>`;
+  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${fill};border:2.5px solid ${stroke};box-shadow:0 1px 3px rgba(0,0,0,.35)"></div>`;
 };
 
 export function AmapView({
