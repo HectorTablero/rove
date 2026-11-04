@@ -8,6 +8,9 @@ import { MapView } from '@/components/map/MapView';
 import { useShown } from '@/lib/impressions';
 import { isNative } from '@/lib/native';
 import type { MapMarker } from '@/providers';
+import { coverSrc } from '@/lib/cover';
+import { formatPrice } from '@/lib/price';
+import { useRegion } from '@/lib/region';
 import { cn } from '@/lib/utils';
 import { formatWhen } from '@/lib/when';
 
@@ -17,7 +20,13 @@ const NOTE_SNIPPET = 90;
 
 /* The hover card's lines, all plain text (the renderer escapes them): what it is and where it
    stands, then when, where, what it costs and its tags, then what you made of it. */
-function tooltipFor(item: ItemDto, review: ReviewDto | undefined, t: TFunction, lng: string) {
+function tooltipFor(
+  item: ItemDto,
+  review: ReviewDto | undefined,
+  t: TFunction,
+  lng: string,
+  currency: string,
+) {
   const stars = review?.rating ? '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating) : null;
   const meta = [t(`items.kind.${item.kind}`), t(`items.status.${item.status}`), stars]
     .filter(Boolean)
@@ -35,12 +44,12 @@ function tooltipFor(item: ItemDto, review: ReviewDto | undefined, t: TFunction, 
   const details = [
     when,
     where,
-    item.price,
+    formatPrice(item.price, t, lng, currency),
     item.categories.slice(0, TOOLTIP_TAGS).join(' · ') || null,
     visits > 0 ? t('map.visits', { count: visits }) : null,
     note ? `“${note.length > NOTE_SNIPPET ? `${note.slice(0, NOTE_SNIPPET)}…` : note}”` : null,
   ].filter((line): line is string => Boolean(line));
-  return { meta, details, coverUrl: item.coverUrl ?? null };
+  return { meta, details, coverUrl: coverSrc(item.coverUrl) };
 }
 
 /* The home screen: every saved place as a marker, visited ones filled in. Full-bleed under the
@@ -50,6 +59,7 @@ export default function MapPage() {
   const { t, i18n } = useTranslation();
   const { data: items = [] } = useItems({ status: ['saved', 'visited'] });
   const { data: reviews = [] } = useReviews();
+  const region = useRegion();
   const [selected, setSelected] = useState<string | null>(null);
 
   const markers = useMemo<MapMarker[]>(
@@ -67,12 +77,13 @@ export default function MapPage() {
                   reviews.find((r) => r.itemId === item.id),
                   t,
                   i18n.language,
+                  region.currency,
                 ),
               },
             ]
           : [],
       ),
-    [items, reviews, t, i18n.language],
+    [items, reviews, t, i18n.language, region.currency],
   );
   useShown(
     markers.map((m) => m.id),

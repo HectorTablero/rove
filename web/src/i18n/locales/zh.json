@@ -139,11 +139,13 @@
       "film": "电影",
       "place": "地点"
     },
+    "noDate": "日期待定",
     "ranges": {
       "today": "今天",
       "week": "未来 7 天",
       "weekend": "本周末"
     },
+    "rated_other": "评分 {{count}} 星",
     "searchPlaceholder": "搜索地点…",
     "sort": "排序",
     "sorts": {
@@ -168,6 +170,10 @@
     "list": "列表",
     "map": "地图",
     "settings": "设置"
+  },
+  "price": {
+    "free": "免费",
+    "from": "{{price}}起"
   },
   "security": {
     "biometrics": "使用生物识别解锁",

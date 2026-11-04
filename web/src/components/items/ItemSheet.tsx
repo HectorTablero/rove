@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDeleteItem, useItem, useReview, useUpdateItem, useUpsertReview } from '@/api/hooks';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { TranslatedText } from '@/components/common/TranslatedText';
 import { StarRating } from '@/components/items/StarRating';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,8 @@ import { ApiError } from '@/lib/apiClient';
 import { formatWhen } from '@/lib/when';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { useRegion } from '@/lib/region';
+import { coverSrc } from '@/lib/cover';
+import { formatPrice } from '@/lib/price';
 import { detectSource, useTranslatedText } from '@/lib/translate';
 
 /* One item, and everything you can do to it: navigate there, mark it visited, rate it, write a
@@ -209,7 +212,7 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
       <div className="flex flex-col gap-4">
         {item.coverUrl && !coverFailed && (
           <img
-            src={item.coverUrl}
+            src={coverSrc(item.coverUrl) ?? undefined}
             alt=""
             referrerPolicy="no-referrer"
             onError={() => setCoverFailed(true)}
@@ -222,14 +225,18 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
             {item.kind !== 'place' && !item.when && <p>{t('items.timeUnknown')}</p>}
             {venue && <p>{venue}</p>}
             {location?.address && <p>{location.address}</p>}
-            {item.price && <p className="font-medium text-foreground">{item.price}</p>}
+            {item.price && (
+              <p className="font-medium text-foreground">
+                {formatPrice(item.price, t, i18n.language, region.currency)}
+              </p>
+            )}
           </div>
         )}
         {item.categories.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {item.categories.map((name) => (
               <Badge key={name} variant="outline">
-                {name}
+                <TranslatedText text={name} />
               </Badge>
             ))}
           </div>

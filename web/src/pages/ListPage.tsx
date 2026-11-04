@@ -1,13 +1,14 @@
-import type { ItemDto, ItemKind, ItemStatus } from '@rove/shared';
+import type { ItemKind, ItemStatus } from '@rove/shared';
 import { sourceById } from '@rove/shared';
 import { AlertTriangle, CalendarDays, ListChecks, Search, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useItems } from '@/api/hooks';
+import { useItems, useReviews } from '@/api/hooks';
 import { EmptyState } from '@/components/common/EmptyState';
+import { TranslatedText } from '@/components/common/TranslatedText';
 import { ItemSheet } from '@/components/items/ItemSheet';
+import { ListRows } from '@/components/items/ListRows';
 import { PageContainer, PageHeader } from '@/components/layout/PageHeader';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -23,8 +24,7 @@ import { useSession } from '@/lib/authClient';
 import { recordAction, useShown } from '@/lib/impressions';
 import { useRegion } from '@/lib/region';
 import { useSourceStatus } from '@/lib/sources';
-import { detectSource, useTranslatedText } from '@/lib/translate';
-import { formatWhen, type WhenRange } from '@/lib/when';
+import type { WhenRange } from '@/lib/when';
 import { cn } from '@/lib/utils';
 
 /* Everything saved, and everything the feeds suggested, in one list. "Suggested" is the inbox:
@@ -105,6 +105,8 @@ export default function ListPage() {
       .slice(0, MAX_CATEGORY_CHIPS)
       .map(([name]) => name);
   }, [pool]);
+  const { data: reviews = [] } = useReviews();
+  const reviewsById = useMemo(() => new Map(reviews.map((r) => [r.itemId, r])), [reviews]);
   const status = useSourceStatus(Boolean(session?.user));
   const down = (status.data ?? []).filter((s) => s.down);
   useShown(
@@ -228,7 +230,7 @@ export default function ListPage() {
                 active={category === name}
                 onClick={() => setCategory((on) => (on === name ? null : name))}
               >
-                {name}
+                <TranslatedText text={name} />
               </Chip>
             ))}
           </div>
@@ -248,87 +250,16 @@ export default function ListPage() {
           description={filtered ? undefined : t('list.emptyDescription')}
         />
       ) : (
-        <ul aria-label={t('nav.list')} className="flex flex-col gap-2">
-          {items.map((item) => (
-            <li key={item.id}>
-              <button
-                type="button"
-                onClick={() => open(item.id)}
-                className="flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left transition-colors hover:bg-accent/50"
-              >
-                <Cover item={item} />
-                <span className="min-w-0 flex-1">
-                  <RowTitle title={item.title} />
-                  <span className="block truncate text-xs text-muted-foreground">
-                    {subtitle(item, i18n.language)}
-                  </span>
-                </span>
-                <span className="flex shrink-0 flex-col items-end gap-1">
-                  <Badge variant={item.status === 'visited' ? 'default' : 'outline'}>
-                    {t(`items.status.${item.status}`)}
-                  </Badge>
-                  {item.price ? (
-                    <span className="max-w-24 truncate text-[11px] text-muted-foreground">
-                      {item.price}
-                    </span>
-                  ) : (
-                    item.kind !== 'place' && (
-                      <span className="text-[10px] text-muted-foreground">
-                        {t(`items.kind.${item.kind}`)}
-                      </span>
-                    )
-                  )}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
+        <ListRows
+          items={items}
+          reviews={reviewsById}
+          grouped={!kind}
+          tz={region.tz}
+          onOpen={open}
+        />
       )}
 
       <ItemSheet itemId={selected} onClose={() => setSelected(null)} />
     </PageContainer>
   );
-}
-
-/** The title in the UI language when translation is on, with the original underneath. */
-function RowTitle({ title }: { title: string }) {
-  const translated = useTranslatedText(title);
-  return (
-    <>
-      <span className="block truncate font-medium">{translated ?? title}</span>
-      {translated && (
-        <span
-          lang={detectSource(title) ?? undefined}
-          className="block truncate text-xs text-muted-foreground/80"
-        >
-          {title}
-        </span>
-      )}
-    </>
-  );
-}
-
-/* A poster thumbnail when the source gave one. `no-referrer` because Douban's image CDN refuses
-   hotlinks that carry a foreign Referer; a broken image hides itself rather than showing an icon. */
-function Cover({ item }: { item: ItemDto }) {
-  const [failed, setFailed] = useState(false);
-  if (!item.coverUrl || failed) return null;
-  return (
-    <img
-      src={item.coverUrl}
-      alt=""
-      loading="lazy"
-      referrerPolicy="no-referrer"
-      onError={() => setFailed(true)}
-      className="size-12 shrink-0 rounded-md bg-muted object-cover"
-    />
-  );
-}
-
-/** The one line under a title: address for a place, time and venue for an event, release for a film. */
-function subtitle(item: ItemDto, lng: string): string {
-  if (item.kind === 'place') return item.location.address ?? '';
-  const when = item.when ? formatWhen(item.when, lng) : null;
-  if (item.kind === 'film') return when ?? '';
-  return [when, item.venue ?? item.location?.address ?? null].filter(Boolean).join(' · ');
 }

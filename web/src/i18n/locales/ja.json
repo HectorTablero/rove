@@ -139,11 +139,13 @@
       "film": "映画",
       "place": "場所"
     },
+    "noDate": "日付未定",
     "ranges": {
       "today": "今日",
       "week": "今後7日間",
       "weekend": "今週末"
     },
+    "rated_other": "評価 {{count}}",
     "searchPlaceholder": "場所を検索…",
     "sort": "並び替え",
     "sorts": {
@@ -168,6 +170,10 @@
     "list": "リスト",
     "map": "地図",
     "settings": "設定"
+  },
+  "price": {
+    "free": "無料",
+    "from": "{{price}}〜"
   },
   "security": {
     "biometrics": "生体認証で解除する",

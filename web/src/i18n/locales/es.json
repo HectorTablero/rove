@@ -142,11 +142,14 @@
       "film": "Películas",
       "place": "Lugares"
     },
+    "noDate": "Sin fecha",
     "ranges": {
       "today": "Hoy",
       "week": "Próximos 7 días",
       "weekend": "Este fin de semana"
     },
+    "rated_one": "{{count}} estrella",
+    "rated_other": "{{count}} estrellas",
     "searchPlaceholder": "Buscar lugares…",
     "sort": "Ordenar",
     "sorts": {
@@ -174,6 +177,10 @@
     "list": "Lista",
     "map": "Mapa",
     "settings": "Ajustes"
+  },
+  "price": {
+    "free": "Gratis",
+    "from": "Desde {{price}}"
   },
   "security": {
     "biometrics": "Desbloquear con biometría",

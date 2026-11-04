@@ -21,6 +21,7 @@ import {
 import { requireTrustedOrigin } from './middleware/origin';
 import { requireAuth, type AppEnv } from './middleware/session';
 import { accountRouter } from './routes/account';
+import { coverRouter } from './routes/cover';
 import {
   impressionsRouter,
   itemsRouter,
@@ -107,6 +108,8 @@ export const buildApp = (app: Hono<AppEnv>, auth: Auth, upgradeWebSocket?: Upgra
   app.use('/api/*', requireTrustedOrigin(trustedOrigins));
 
   app.get('/api/health', (c) => c.json({ ok: true }));
+  // Posters from CDNs that refuse hotlinks (Douban). Public and host-allowlisted; see the route.
+  app.route('/api/cover', coverRouter);
   app.on(['GET', 'POST'], '/api/auth/*', (c) => auth.handler(c.req.raw));
 
   // Live-sync channel. The upgrade URL carries only a single-use short-lived

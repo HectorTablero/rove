@@ -54,7 +54,10 @@ test('a shared link becomes a saved, geocoded place', async ({ app: page, api })
   // 5. Closing lands on the list, where the place is, marked visited.
   await sheet.getByRole('button', { name: 'Close' }).click();
   await expect(page).toHaveURL(/\/list$/);
-  const row = page.getByRole('list', { name: 'List' }).locator('li').filter({ hasText: 'bionic' });
+  const row = page
+    .getByRole('list', { name: 'List' })
+    .getByRole('button')
+    .filter({ hasText: 'bionic' });
   await expect(row).toBeVisible();
   await expect(row.getByText('Visited')).toBeVisible();
 });

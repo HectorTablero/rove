@@ -142,11 +142,14 @@
       "film": "Films",
       "place": "Places"
     },
+    "noDate": "No date",
     "ranges": {
       "today": "Today",
       "week": "Next 7 days",
       "weekend": "This weekend"
     },
+    "rated_one": "Rated {{count}} star",
+    "rated_other": "Rated {{count}} stars",
     "searchPlaceholder": "Search places…",
     "sort": "Sort",
     "sorts": {
@@ -174,6 +177,10 @@
     "list": "List",
     "map": "Map",
     "settings": "Settings"
+  },
+  "price": {
+    "free": "Free",
+    "from": "From {{price}}"
   },
   "security": {
     "biometrics": "Unlock with biometrics",

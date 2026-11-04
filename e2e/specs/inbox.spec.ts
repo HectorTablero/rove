@@ -101,7 +101,8 @@ test('the list narrows by a feed tag and shows the price the feed printed', asyn
   await page.goto('/list');
   const list = page.getByRole('list', { name: 'List' });
   await expect(list.getByText('城市爵士夜')).toBeVisible({ timeout: 20_000 });
-  await expect(list.getByText('¥180-280')).toBeVisible();
+  // Shown normalised: the feed's hyphen becomes an en dash, the symbol leads.
+  await expect(list.getByText('¥180–280')).toBeVisible();
 
   await page.getByRole('group', { name: 'Tags' }).getByRole('button', { name: '摇滚' }).click();
   await expect(list.getByText('回春丹 深圳站')).toBeVisible();

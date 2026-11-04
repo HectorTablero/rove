@@ -128,6 +128,13 @@
     },
     "security": {
       "where": "Settings > Security, and the full-screen lock that replaces the whole app when a passcode is set. \"Passcode\" is the code the user chooses for this app, never the device PIN; \"biometrics\" is the phone fingerprint/face unlock."
+    },
+    "price": {
+      "where": "How a ticket price from the feeds is shown: in list rows, the item sheet and the map hover card. The amount is already formatted with its currency symbol.",
+      "keys": {
+        "free": "The event costs nothing. One word, as on a ticket listing.",
+        "from": "The cheapest tier, with dearer ones above it — Chinese listings write 起 after the amount. {{price}} is the formatted amount, e.g. ¥39; place it where your language puts \"from\" (zh: ¥39起, ja: ¥39〜)."
+      }
     }
   },
   "languageNotes": {

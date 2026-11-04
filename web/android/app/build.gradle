@@ -30,6 +30,13 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode appVersionCode
         versionName appVersionNameValue
+        /* arm64 only. ML Kit's translator ships a ~16 MB native library per ABI, and the other
+           three (32-bit ARM, x86, x86_64) only serve phones from before 2017 and emulators —
+           together they took the APK from 21 MB to 67 MB. Emulator images since Android 11
+           translate arm64 apps, so testing still works. */
+        ndk {
+            abiFilters 'arm64-v8a'
+        }
         manifestPlaceholders = [appHost: appHostValue]
         /* The same host, reachable from code. The habits widget builds the https:// link it opens
            the app with, and it has to be the host the App Links intent-filter above claims or the
