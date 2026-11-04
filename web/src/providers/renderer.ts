@@ -1,4 +1,4 @@
-import type { GeoPoint, ItemStatus } from '@rove/shared';
+import type { GeoPoint, ItemKind, ItemStatus } from '@rove/shared';
 import type { ComponentType } from 'react';
 
 /* The map renderer interface — the one provider surface that needs a DOM, so it lives in the web
@@ -6,14 +6,30 @@ import type { ComponentType } from 'react';
    described by a datum-tagged point and a status, selection reports an item id, and the renderer
    converts to its own datum internally (the only place a web file may call `toDatum`). */
 
+export interface MapTooltip {
+  kind: ItemKind;
+  kindLabel: string;
+  /** Shown as a chip for 'candidate' (new) and 'visited'; nothing for plain saved. */
+  statusLabel: string | null;
+  rating: number | null;
+  ratingLabel: string | null;
+  when: string | null;
+  where: string | null;
+  price: string | null;
+  tags: string[];
+  visits: string | null;
+  note: string | null;
+  coverUrl: string | null;
+}
+
 export interface MapMarker {
   id: string;
   point: GeoPoint;
   title: string;
   status: ItemStatus;
-  /** For the hover card on devices with a mouse: one muted line under the title, then detail
-      lines, and a poster. All plain text; the renderer escapes it. */
-  tooltip?: { meta: string; details: string[]; coverUrl: string | null };
+  /** For the hover card on devices with a mouse. Every string is plain text, already in the
+      reader's language; the renderer escapes it and decides the markup. */
+  tooltip?: MapTooltip;
 }
 
 export interface MapViewProps {

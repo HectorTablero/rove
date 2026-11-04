@@ -7,7 +7,7 @@ import { ItemSheet } from '@/components/items/ItemSheet';
 import { MapView } from '@/components/map/MapView';
 import { useShown } from '@/lib/impressions';
 import { isNative } from '@/lib/native';
-import type { MapMarker } from '@/providers';
+import type { MapMarker, MapTooltip } from '@/providers';
 import { coverSrc } from '@/lib/cover';
 import { formatPrice } from '@/lib/price';
 import { useRegion } from '@/lib/region';
@@ -27,10 +27,6 @@ function tooltipFor(
   lng: string,
   currency: string,
 ) {
-  const stars = review?.rating ? '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating) : null;
-  const meta = [t(`items.kind.${item.kind}`), t(`items.status.${item.status}`), stars]
-    .filter(Boolean)
-    .join(' · ');
   const when =
     item.kind === 'place' ? null : item.when ? formatWhen(item.when, lng) : t('items.timeUnknown');
   const where =
@@ -41,15 +37,24 @@ function tooltipFor(
         : null;
   const visits = review?.visits.length ?? 0;
   const note = review?.notes.trim().split('\n')[0] ?? '';
-  const details = [
+  const rating = review?.rating ?? null;
+  return {
+    kind: item.kind,
+    kindLabel: t(`items.kind.${item.kind}`),
+    statusLabel:
+      item.status === 'candidate' || item.status === 'visited'
+        ? t(`items.status.${item.status}`)
+        : null,
+    rating,
+    ratingLabel: rating ? t('list.rated', { count: rating }) : null,
     when,
     where,
-    formatPrice(item.price, t, lng, currency),
-    item.categories.slice(0, TOOLTIP_TAGS).join(' · ') || null,
-    visits > 0 ? t('map.visits', { count: visits }) : null,
-    note ? `“${note.length > NOTE_SNIPPET ? `${note.slice(0, NOTE_SNIPPET)}…` : note}”` : null,
-  ].filter((line): line is string => Boolean(line));
-  return { meta, details, coverUrl: coverSrc(item.coverUrl) };
+    price: formatPrice(item.price, t, lng, currency),
+    tags: item.categories.slice(0, TOOLTIP_TAGS),
+    visits: visits > 0 ? t('map.visits', { count: visits }) : null,
+    note: note ? (note.length > NOTE_SNIPPET ? `${note.slice(0, NOTE_SNIPPET)}…` : note) : null,
+    coverUrl: coverSrc(item.coverUrl),
+  } satisfies MapTooltip;
 }
 
 /* The home screen: every saved place as a marker, visited ones filled in. Full-bleed under the

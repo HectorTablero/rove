@@ -438,34 +438,44 @@ html[data-fullbleed] {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
   cursor: pointer;
 }
-/* A small card above the dot, pointing at it: popover colours so it reads as the app's own UI over
-   any map style, a poster when the source had one, and nothing interactive — pointer-events off,
-   so moving onto it never fights the marker's hover. */
+/* The hover card above a dot (providers/amap/renderer.tsx builds the markup).
+ *
+ * Each kind has its own accent, taken from the app's existing palette: the card's top edge and its
+ * kind chip carry it, so an event and a place read differently before a word is read. Stars are
+ * the one warm colour; everything else stays muted so the title and poster lead. No hover state
+ * of its own — pointer-events are off, so moving onto it never fights the marker's hover. */
 .rove-marker-tip {
+  --tip-accent: var(--color-importance-4);
   display: none;
   position: absolute;
   bottom: calc(100% + 10px);
   left: 50%;
   transform: translateX(-50%);
+  flex-direction: column;
   gap: 0.625rem;
   width: max-content;
-  min-width: 11rem;
-  max-width: 18rem;
-  padding: 0.625rem 0.75rem;
+  min-width: 12rem;
+  max-width: 19rem;
+  padding: 0.75rem 0.875rem 0.8125rem;
   border: 1px solid var(--border);
+  border-top: 3px solid var(--tip-accent);
   border-radius: var(--radius-lg);
   background: var(--popover);
   color: var(--popover-foreground);
-  box-shadow:
-    0 10px 24px -8px rgb(0 0 0 / 0.35),
-    0 2px 6px rgb(0 0 0 / 0.12);
+  box-shadow: 0 12px 28px -10px rgb(0 0 0 / 0.4);
   font-size: 0.75rem;
   line-height: 1.1rem;
   text-align: left;
   white-space: normal;
   pointer-events: none;
 }
-/* The arrow: a square turned 45°, half of it tucked under the card, sharing its border. */
+.rove-marker-tip[data-kind='event'] {
+  --tip-accent: var(--color-importance-2);
+}
+.rove-marker-tip[data-kind='film'] {
+  --tip-accent: var(--color-importance-1);
+}
+/* The arrow: a square turned 45°, half under the card, sharing its border. */
 .rove-marker-tip::after {
   content: '';
   position: absolute;
@@ -478,39 +488,134 @@ html[data-fullbleed] {
   border-bottom: 1px solid var(--border);
   transform: translate(-50%, -50%) rotate(45deg);
 }
+.rove-tip-head {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
 .rove-tip-cover {
   flex-shrink: 0;
-  width: 3.25rem;
-  height: 4.25rem;
+  width: 3.5rem;
+  height: 4.75rem;
   border-radius: var(--radius-sm);
   background: var(--muted);
   object-fit: cover;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.06);
 }
-.rove-tip-body {
+.rove-tip-heading {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 0.125rem;
+  gap: 0.3125rem;
+}
+.rove-tip-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+.rove-tip-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1875rem;
+  border-radius: 999px;
+  padding: 0.0625rem 0.4375rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1rem;
+}
+.rove-tip-kind {
+  background: color-mix(in oklab, var(--tip-accent) 16%, transparent);
+  color: color-mix(in oklab, var(--tip-accent) 80%, var(--popover-foreground));
+}
+.rove-tip-status {
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+.rove-tip-status[data-status='visited'] {
+  background: color-mix(in oklab, var(--color-importance-4) 16%, transparent);
+  color: color-mix(in oklab, var(--color-importance-4) 80%, var(--popover-foreground));
+}
+.rove-tip-chip-icon {
+  width: 0.6875rem;
+  height: 0.6875rem;
+  stroke-width: 3;
 }
 .rove-tip-title {
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  line-height: 1.15rem;
+  line-height: 1.2rem;
   overflow-wrap: anywhere;
 }
-.rove-tip-meta {
-  margin-bottom: 0.125rem;
+.rove-tip-stars {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+.rove-tip-star {
+  width: 0.8125rem;
+  height: 0.8125rem;
+  fill: var(--muted);
+  stroke: color-mix(in oklab, var(--muted-foreground) 45%, transparent);
+  stroke-width: 1.5;
+}
+.rove-tip-star.is-on {
+  fill: var(--color-importance-3);
+  stroke: color-mix(in oklab, var(--color-importance-3) 70%, black);
+}
+.rove-tip-score {
+  margin-left: 0.3125rem;
   color: var(--muted-foreground);
   font-size: 0.6875rem;
-  text-transform: none;
+  font-variant-numeric: tabular-nums;
 }
-.rove-tip-line {
+.rove-tip-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+.rove-tip-fact {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4375rem;
   color: var(--muted-foreground);
+}
+.rove-tip-fact > span {
   overflow: hidden;
-  text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+}
+.rove-tip-fact-price {
+  color: var(--popover-foreground);
+  font-weight: 500;
+}
+.rove-tip-icon {
+  flex-shrink: 0;
+  width: 0.8125rem;
+  height: 0.8125rem;
+  margin-top: 0.15rem;
+  color: var(--tip-accent);
+}
+.rove-tip-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+.rove-tip-tag {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 0.4375rem;
+  color: var(--muted-foreground);
+  font-size: 0.6875rem;
+  line-height: 1.125rem;
+}
+.rove-tip-note {
+  border-left: 2px solid var(--border);
+  padding-left: 0.5rem;
+  color: var(--muted-foreground);
+  font-style: italic;
 }
 @keyframes rove-tip-in {
   from {

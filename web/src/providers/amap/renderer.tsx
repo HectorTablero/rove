@@ -76,17 +76,58 @@ if (typeof document !== 'undefined') {
   );
 }
 
-const tooltipHtml = ({ title, tooltip }: Marker): string => {
-  const cover = tooltip?.coverUrl
+/* Lucide's paths (the app's icon set), inlined: the card is an HTML string, not React. */
+const svg = (paths: string, cls: string) =>
+  `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+const ICON = {
+  when: '<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  where:
+    '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+  price:
+    '<path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2M13 17v2M13 11v2"/>',
+  visits: '<path d="M20 6 9 17l-5-5"/>',
+};
+const STAR =
+  '<path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>';
+
+const fact = (icon: keyof typeof ICON, text: string | null) =>
+  text
+    ? `<span class="rove-tip-fact rove-tip-fact-${icon}">${svg(ICON[icon], 'rove-tip-icon')}<span>${escapeHtml(text)}</span></span>`
+    : '';
+
+/* The hover card: a kind-coloured top edge and chip, poster beside the title, your stars in
+   amber, then one line per fact with its icon, the source's tags as chips, and your note set off
+   like a quote. Everything here was already translated by the page; this only lays it out. */
+export const tooltipHtml = ({ title, status, tooltip }: Marker): string => {
+  if (!tooltip)
+    return `<span class="rove-marker-tip" role="tooltip"><span class="rove-tip-title">${escapeHtml(title)}</span></span>`;
+  const cover = tooltip.coverUrl
     ? `<img class="rove-tip-cover" src="${escapeHtml(tooltip.coverUrl)}" alt="" referrerpolicy="no-referrer" loading="lazy">`
     : '';
-  const meta = tooltip?.meta
-    ? `<span class="rove-tip-meta">${escapeHtml(tooltip.meta)}</span>`
+  const chips = [
+    `<span class="rove-tip-chip rove-tip-kind">${escapeHtml(tooltip.kindLabel)}</span>`,
+    tooltip.statusLabel
+      ? `<span class="rove-tip-chip rove-tip-status" data-status="${status}">${status === 'visited' ? svg(ICON.visits, 'rove-tip-chip-icon') : ''}${escapeHtml(tooltip.statusLabel)}</span>`
+      : '',
+  ].join('');
+  const stars = tooltip.rating
+    ? `<span class="rove-tip-stars" aria-label="${escapeHtml(tooltip.ratingLabel ?? '')}">${[
+        1, 2, 3, 4, 5,
+      ]
+        .map((n) => svg(STAR, n <= tooltip.rating! ? 'rove-tip-star is-on' : 'rove-tip-star'))
+        .join('')}<span class="rove-tip-score">${tooltip.rating}</span></span>`
     : '';
-  const details = (tooltip?.details ?? [])
-    .map((line) => `<span class="rove-tip-line">${escapeHtml(line)}</span>`)
-    .join('');
-  return `<span class="rove-marker-tip" role="tooltip">${cover}<span class="rove-tip-body"><span class="rove-tip-title">${escapeHtml(title)}</span>${meta}${details}</span></span>`;
+  const facts = [
+    fact('when', tooltip.when),
+    fact('where', tooltip.where),
+    fact('price', tooltip.price),
+    fact('visits', tooltip.visits),
+  ].join('');
+  const tags = tooltip.tags.length
+    ? `<span class="rove-tip-tags">${tooltip.tags.map((tag) => `<span class="rove-tip-tag">${escapeHtml(tag)}</span>`).join('')}</span>`
+    : '';
+  const note = tooltip.note ? `<span class="rove-tip-note">${escapeHtml(tooltip.note)}</span>` : '';
+  return `<span class="rove-marker-tip" role="tooltip" data-kind="${tooltip.kind}"><span class="rove-tip-head">${cover}<span class="rove-tip-heading"><span class="rove-tip-chips">${chips}</span><span class="rove-tip-title">${escapeHtml(title)}</span>${stars}</span></span>${facts ? `<span class="rove-tip-facts">${facts}</span>` : ''}${tags}${note}</span>`;
 };
 
 const markerHtml = (marker: Marker, selected: boolean): string => {

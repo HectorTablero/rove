@@ -3,7 +3,7 @@ import type { MapRenderer } from './renderer';
 /* The web app's provider registry: map renderers by id, loaded lazily. Core reaches a renderer
    only through here, by the id the region names. */
 
-export type { MapMarker, MapRenderer, MapViewProps } from './renderer';
+export type { MapMarker, MapRenderer, MapTooltip, MapViewProps } from './renderer';
 
 const amapRenderer: MapRenderer = {
   id: 'amap',
