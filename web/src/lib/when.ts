@@ -106,6 +106,12 @@ export function overlaps(when: WhenDto, window: Window): boolean {
   return start <= window.end.getTime() && end >= window.start.getTime();
 }
 
+/** Over by the end of the window — whenever it began. Such an event belongs to the window; one
+    that runs on past it (a months-long exhibition) is merely open during it. */
+export function endsWithin(when: WhenDto, window: Window): boolean {
+  return Date.parse(when.end ?? when.start) <= window.end.getTime();
+}
+
 export type WhenRange = 'today' | 'weekend' | 'week';
 
 /** "Today": now until midnight in the region's zone. "Next 7 days": now plus a week. */

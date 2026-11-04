@@ -144,6 +144,7 @@
     },
     "noDate": "No date",
     "now": "Now",
+    "runningThrough": "Also running",
     "ranges": {
       "today": "Today",
       "week": "Next 7 days",
@@ -155,8 +156,7 @@
     "sort": "Sort",
     "sorts": {
       "newest": "Newest",
-      "soonest": "Soonest",
-      "title": "A–Z"
+      "soonest": "Soonest"
     },
     "sourcesDown": "No answer from {{sources}} in the last two runs. The feed may have changed — check Settings → Sources.",
     "weekendEmpty": "Nothing on this weekend yet"

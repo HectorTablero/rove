@@ -144,6 +144,7 @@
     },
     "noDate": "Senza data",
     "now": "Ora",
+    "runningThrough": "Anche in corso",
     "ranges": {
       "today": "Oggi",
       "week": "Prossimi 7 giorni",
@@ -155,8 +156,7 @@
     "sort": "Ordina",
     "sorts": {
       "newest": "Più recenti",
-      "soonest": "Più vicini",
-      "title": "A–Z"
+      "soonest": "Più vicini"
     },
     "sourcesDown": "Nessuna risposta da {{sources}} nelle ultime due letture. La fonte potrebbe essere cambiata: controlla Impostazioni → Fonti.",
     "weekendEmpty": "Ancora niente per questo weekend"

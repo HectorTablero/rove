@@ -7,7 +7,7 @@ import { formatPrice } from '@/lib/price';
 import { useRegion } from '@/lib/region';
 import { detectSource, useTranslatedText } from '@/lib/translate';
 import { cn } from '@/lib/utils';
-import { otherYear } from '@/lib/when';
+import { endsWithin, otherYear, type Window } from '@/lib/when';
 
 /* The list, one shape per kind rather than one card for everything.
  *
@@ -24,10 +24,12 @@ export interface ListRowsProps {
   /** Group by kind under headings; off when the list is already filtered to one kind. */
   grouped: boolean;
   tz: string;
+  /** The date filter's window, when one is on: events still running after it go below the rest. */
+  window?: Window;
   onOpen: (id: string) => void;
 }
 
-export function ListRows({ items, reviews, grouped, tz, onOpen }: ListRowsProps) {
+export function ListRows({ items, reviews, grouped, tz, window, onOpen }: ListRowsProps) {
   const { t } = useTranslation();
   const groups = GROUP_ORDER.map((kind) => ({
     kind,
@@ -67,15 +69,7 @@ export function ListRows({ items, reviews, grouped, tz, onOpen }: ListRowsProps)
                 )}
               </ul>
             ) : kind === 'event' ? (
-              <ul className="flex flex-col gap-2">
-                {rows.map((item) =>
-                  item.kind !== 'event' ? null : (
-                    <li key={item.id}>
-                      <EventRow item={item} review={reviews.get(item.id)} tz={tz} onOpen={onOpen} />
-                    </li>
-                  ),
-                )}
-              </ul>
+              <EventList rows={rows} reviews={reviews} tz={tz} window={window} onOpen={onOpen} />
             ) : (
               <ul className="flex flex-col divide-y overflow-hidden rounded-xl border">
                 {rows.map((item) =>
@@ -149,6 +143,56 @@ function Stars({ rating }: { rating: number | null | undefined }) {
       ))}
       <span className="sr-only">{t('list.rated', { count: rating })}</span>
     </span>
+  );
+}
+
+/* Inside a date filter, what happens in the window first; then, under a quieter heading, the
+   long runs that are merely open during it (an exhibition through December). A range over by the
+   window's end — begun before it or not — is in the first group: it is this window's to see. */
+function EventList({
+  rows,
+  reviews,
+  tz,
+  window,
+  onOpen,
+}: {
+  rows: ItemDto[];
+  reviews: Map<string, ReviewDto>;
+  tz: string;
+  window: Window | undefined;
+  onOpen: (id: string) => void;
+}) {
+  const { t } = useTranslation();
+  const events = rows.filter(
+    (item): item is Extract<ItemDto, { kind: 'event' }> => item.kind === 'event',
+  );
+  const inside = window ? events.filter((e) => !e.when || endsWithin(e.when, window)) : events;
+  const through = window ? events.filter((e) => e.when && !endsWithin(e.when, window)) : [];
+  const list = (part: typeof events) => (
+    <ul className="flex flex-col gap-2">
+      {part.map((item) => (
+        <li key={item.id}>
+          <EventRow item={item} review={reviews.get(item.id)} tz={tz} onOpen={onOpen} />
+        </li>
+      ))}
+    </ul>
+  );
+  return (
+    <>
+      {inside.length > 0 && list(inside)}
+      {through.length > 0 && (
+        <section aria-labelledby="list-running-through" className={cn(inside.length > 0 && 'mt-5')}>
+          <h3
+            id="list-running-through"
+            className="mb-2 flex items-baseline gap-2 text-xs font-medium text-muted-foreground"
+          >
+            {t('list.runningThrough')}
+            <span className="tabular-nums opacity-80">{through.length}</span>
+          </h3>
+          {list(through)}
+        </section>
+      )}
+    </>
   );
 }
 
@@ -241,11 +285,13 @@ function EventRow({
     item.when && isMultiDay(item.when, tz)
       ? rangeText(item.when, tz, i18n.language)
       : item.when && !item.when.allDay
-        ? zoned(item.when.start, tz, i18n.language, {
+        ? // "Sat 19:30 – 21:30" when the source gave an end, else just the start.
+          new Intl.DateTimeFormat(i18n.language, {
+            timeZone: tz,
             weekday: 'short',
             hour: '2-digit',
             minute: '2-digit',
-          })
+          }).formatRange(new Date(item.when.start), new Date(item.when.end ?? item.when.start))
         : item.when
           ? zoned(item.when.start, tz, i18n.language, { weekday: 'long' })
           : null;

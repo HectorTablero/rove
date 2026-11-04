@@ -19,7 +19,7 @@ export interface ItemFilter {
   sort?: ItemSort;
 }
 
-export type ItemSort = 'newest' | 'soonest' | 'title';
+export type ItemSort = 'newest' | 'soonest';
 
 /** Fold for matching: NFKC so full-width and half-width forms compare equal, then case. Not
     ASCII-only, and not stripping anything — `文和友` must match `文和友`. */
@@ -54,7 +54,6 @@ export async function getItems(filter: ItemFilter = {}): Promise<ItemDto[]> {
     const category = foldText(filter.category);
     items = items.filter((item) => item.categories.some((c) => foldText(c) === category));
   }
-  if (filter.sort === 'title') return items.sort((a, b) => a.title.localeCompare(b.title));
   if (filter.sort === 'soonest') {
     return items.sort(bySoonest(now));
   }

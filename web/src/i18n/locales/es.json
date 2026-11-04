@@ -144,6 +144,7 @@
     },
     "noDate": "Sin fecha",
     "now": "Ahora",
+    "runningThrough": "También en curso",
     "ranges": {
       "today": "Hoy",
       "week": "Próximos 7 días",
@@ -155,8 +156,7 @@
     "sort": "Ordenar",
     "sorts": {
       "newest": "Más recientes",
-      "soonest": "Más próximos",
-      "title": "A–Z"
+      "soonest": "Más próximos"
     },
     "sourcesDown": "Sin respuesta de {{sources}} en las dos últimas lecturas. Puede que la fuente haya cambiado: revisa Ajustes → Fuentes.",
     "weekendEmpty": "Aún no hay nada para este fin de semana"

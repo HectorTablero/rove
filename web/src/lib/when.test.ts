@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { ItemDto } from '@rove/shared';
-import { bySoonest, formatWhen, otherYear, overlaps, rangeWindow, weekendWindow } from './when';
+import {
+  bySoonest,
+  endsWithin,
+  formatWhen,
+  otherYear,
+  overlaps,
+  rangeWindow,
+  weekendWindow,
+} from './when';
 
 const TZ = 'Asia/Shanghai';
 
@@ -47,6 +55,22 @@ describe('otherYear', () => {
     // 31 Dec 16:00Z is already 1 Jan in Shenzhen.
     expect(otherYear('2026-12-31T16:00:00.000Z', TZ, now)).toBe(true);
     expect(otherYear('2025-06-01T00:00:00.000Z', TZ, now)).toBe(true);
+  });
+});
+
+describe('endsWithin', () => {
+  // Next 7 days from Wed 4 Nov 2026.
+  const week = { start: new Date('2026-11-04T08:00:00Z'), end: new Date('2026-11-11T08:00:00Z') };
+  const w = (start: string, end: string | null) => ({ start, end, tz: TZ, allDay: false });
+
+  it('puts a weekend run, and one begun before but over within the week, in the window', () => {
+    expect(endsWithin(w('2026-11-06T16:00:00Z', '2026-11-08T15:59:00Z'), week)).toBe(true);
+    expect(endsWithin(w('2025-09-01T00:00:00Z', '2026-11-08T15:59:00Z'), week)).toBe(true);
+    expect(endsWithin(w('2026-11-07T11:30:00Z', null), week)).toBe(true);
+  });
+
+  it('leaves a run that goes on past the window to the second group', () => {
+    expect(endsWithin(w('2025-08-31T16:00:00Z', '2026-12-31T15:59:00Z'), week)).toBe(false);
   });
 });
 

@@ -141,6 +141,7 @@
     },
     "noDate": "日期待定",
     "now": "进行中",
+    "runningThrough": "期间持续进行",
     "ranges": {
       "today": "今天",
       "week": "未来 7 天",
@@ -151,8 +152,7 @@
     "sort": "排序",
     "sorts": {
       "newest": "最新",
-      "soonest": "最近开始",
-      "title": "按名称"
+      "soonest": "最近开始"
     },
     "sourcesDown": "{{sources}} 在最近两次读取中都没有响应。来源可能已变动，请检查设置 → 来源。",
     "weekendEmpty": "本周末还没有安排"

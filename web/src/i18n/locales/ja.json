@@ -141,6 +141,7 @@
     },
     "noDate": "日付未定",
     "now": "開催中",
+    "runningThrough": "開催期間中",
     "ranges": {
       "today": "今日",
       "week": "今後7日間",
@@ -151,8 +152,7 @@
     "sort": "並び替え",
     "sorts": {
       "newest": "新しい順",
-      "soonest": "開催が近い順",
-      "title": "名前順"
+      "soonest": "開催が近い順"
     },
     "sourcesDown": "{{sources}} から直近2回の読み込みで応答がありません。フィードが変わった可能性があります。設定→ソースを確認してください。",
     "weekendEmpty": "今週末の予定はまだありません"

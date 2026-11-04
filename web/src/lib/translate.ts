@@ -74,8 +74,7 @@ const nativeEngine = (): Engine => {
   type Plugin = Awaited<ReturnType<typeof loadModule>>['Translation'];
   const withPlugin = async <T>(use: (plugin: Plugin) => Promise<T>): Promise<T> =>
     use((await loadModule()).Translation);
-  const asLanguage = (code: string) =>
-    code as Parameters<Plugin['translate']>[0]['sourceLanguage'];
+  const asLanguage = (code: string) => code as Parameters<Plugin['translate']>[0]['sourceLanguage'];
   return {
     async availability(source, target) {
       try {
@@ -97,7 +96,11 @@ const nativeEngine = (): Engine => {
     },
     async translate(text, source, target) {
       const result = await withPlugin((p) =>
-        p.translate({ text, sourceLanguage: asLanguage(source), targetLanguage: asLanguage(target) }),
+        p.translate({
+          text,
+          sourceLanguage: asLanguage(source),
+          targetLanguage: asLanguage(target),
+        }),
       );
       return result.text;
     },

@@ -24,7 +24,7 @@ import { useSession } from '@/lib/authClient';
 import { recordAction, useShown } from '@/lib/impressions';
 import { useRegion } from '@/lib/region';
 import { useSourceStatus } from '@/lib/sources';
-import type { WhenRange } from '@/lib/when';
+import { rangeWindow, type WhenRange } from '@/lib/when';
 import { cn } from '@/lib/utils';
 
 /* Everything saved, and everything the feeds suggested, in one list. "Suggested" is the inbox:
@@ -43,7 +43,7 @@ const STATUSES: Record<Filter, ItemStatus[]> = {
 };
 const KINDS: ItemKind[] = ['place', 'event', 'film'];
 const RANGES: WhenRange[] = ['today', 'weekend', 'week'];
-const SORTS: ItemSort[] = ['newest', 'soonest', 'title'];
+const SORTS: ItemSort[] = ['soonest', 'newest'];
 /** Enough tags to be useful on a phone without becoming a second page. */
 const MAX_CATEGORY_CHIPS = 12;
 
@@ -81,7 +81,7 @@ export default function ListPage() {
   const [kind, setKind] = useState<ItemKind | null>(null);
   const [range, setRange] = useState<WhenRange | null>(null);
   const [category, setCategory] = useState<string | null>(null);
-  const [sort, setSort] = useState<ItemSort>('newest');
+  const [sort, setSort] = useState<ItemSort>('soonest');
   const [selected, setSelected] = useState<string | null>(null);
   // Re-evaluated when the page mounts; a weekend does not change under a screen someone is reading.
   const now = useMemo(() => new Date(), []);
@@ -255,6 +255,7 @@ export default function ListPage() {
           reviews={reviewsById}
           grouped={!kind}
           tz={region.tz}
+          window={range ? rangeWindow(range, now, region.tz) : undefined}
           onOpen={open}
         />
       )}
