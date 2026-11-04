@@ -159,6 +159,24 @@ describe('details: price, cover, categories', () => {
     expect(draft.when?.start).toBe('2026-10-04T11:30:00.000Z');
   });
 
+  it('douban: a live item — date, venue, type and price from the one line', () => {
+    // Captured from a self-hosted RSSHub on 2026-11-04 (entity-encoded, not CDATA).
+    const xml = feed(
+      `<item><title>2026第七届谷雨艺术节“稍安勿躁”主题展览</title><description>&lt;img src=&quot;https://img3.doubanio.com/pview/event_poster/plarge/public/d62f0edcf8e2c12.jpg&quot; referrerpolicy=&quot;no-referrer&quot;&gt;&lt;br&gt;
+              2026-10-23/南山区 舒心堂生空间 龙大新路198号创新大厦A座9楼舒心堂生空间/展览/39.0元起
+            </description><link>https://www.douban.com/event/38089231/</link><pubDate>Fri, 23 Oct 2026 00:00:00 GMT</pubDate></item>`,
+    );
+    const draft = doubanEventsPoller.map(parseFeed(xml)[0], region, now)!;
+    expect(draft.price).toBe('39.0元起');
+    expect(draft.categories).toEqual(['展览']);
+    expect(draft.venue).toBe('南山区 舒心堂生空间 龙大新路198号创新大厦A座9楼舒心堂生空间');
+    expect(draft.coverUrl).toBe(
+      'https://img3.doubanio.com/pview/event_poster/plarge/public/d62f0edcf8e2c12.jpg',
+    );
+    expect(draft.when?.start).toBe('2026-10-22T16:00:00.000Z');
+    expect(draft.when?.allDay).toBe(true);
+  });
+
   it('maoyan: release date from pubDate, poster from the description', () => {
     const [entry] = parseFeed(
       feed(

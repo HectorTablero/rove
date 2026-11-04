@@ -73,7 +73,8 @@ export const showstartPoller: Poller = {
 };
 
 /** `/douban/event/hot/:locationId`. The route writes the cover and then one unlabelled line,
-    `info/subtype/price_range`, so price and type are read by position from the end. */
+    `date/venue/subtype/price` (`2026-10-23/南山区 某空间 某路198号/展览/39.0元起`), so price and
+    type are read from the end and the venue is whatever sits between them and the date. */
 export const doubanEventsPoller: Poller = {
   id: 'douban-events',
   route: (region) =>
@@ -87,9 +88,10 @@ export const doubanEventsPoller: Poller = {
     const parts = line?.split('/').map((part) => part.trim()) ?? [];
     const price = parts.length >= 3 ? parts[parts.length - 1] : null;
     const subtype = parts.length >= 3 ? parts[parts.length - 2] : null;
+    const venue = parts.length >= 4 ? parts.slice(1, -2).join('/').trim() || null : null;
     return eventDraft(entry, now, {
       when: parseWhen(labelled(entry.text, ['时间', 'time']) ?? entry.text, region.tz),
-      venue: labelled(entry.text, ['地点', '地址', 'address']),
+      venue: labelled(entry.text, ['地点', '地址', 'address']) ?? venue,
       price: price || null,
       categories: subtype ? [subtype] : entry.categories,
     });
