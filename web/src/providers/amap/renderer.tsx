@@ -51,16 +51,23 @@ function loadAMap(): Promise<AMapNamespace> {
   return loading;
 }
 
+const escapeHtml = (text: string): string =>
+  text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
 /* One marker glyph per status, drawn as HTML so the colour comes from the app's own palette rather
-   than a PNG per theme. Visited is filled, saved is outlined, a candidate is faint. */
+   than a PNG per theme. Visited is filled, saved is outlined, a candidate is faint.
+   The name rides along as a hidden child that CSS reveals on hover, on devices with a mouse only
+   (see .rove-marker in index.css) — a styled tooltip instead of the browser's `title` one, and no
+   hover state to fake on a phone. */
 const markerHtml = (
   status: MapViewProps['markers'][number]['status'],
   selected: boolean,
+  title: string,
 ): string => {
   const fill = status === 'visited' ? 'var(--primary)' : 'var(--background)';
   const stroke = status === 'candidate' ? 'var(--muted-foreground)' : 'var(--primary)';
   const size = selected ? 18 : 14;
-  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${fill};border:2.5px solid ${stroke};box-shadow:0 1px 3px rgba(0,0,0,.35)"></div>`;
+  return `<div class="rove-marker" style="width:${size}px;height:${size}px;background:${fill};border-color:${stroke}"><span class="rove-marker-tip">${escapeHtml(title)}</span></div>`;
 };
 
 export function AmapView({
@@ -120,13 +127,16 @@ export function AmapView({
       const p = toDatum(marker.point, 'GCJ02');
       const overlay = new AMap.Marker({
         position: [p.lon, p.lat],
-        content: markerHtml(marker.status, marker.id === selectedId),
+        content: markerHtml(marker.status, marker.id === selectedId, marker.title),
         anchor: 'center',
-        title: marker.title,
         extData: marker.id,
       });
       overlay.on('click', () => onSelectRef.current?.(marker.id));
-      if (marker.id === selectedId) overlay.setzIndex(200);
+      // Hovered on top, so its tooltip is not drawn under the neighbouring dots.
+      const z = marker.id === selectedId ? 200 : 100;
+      overlay.setzIndex(z);
+      overlay.on('mouseover', () => overlay.setzIndex(300));
+      overlay.on('mouseout', () => overlay.setzIndex(z));
       return overlay;
     });
     m.add(overlays.current);

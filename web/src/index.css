@@ -427,3 +427,37 @@ html[data-fullbleed] {
   transition-duration: 0.01ms !important;
   scroll-behavior: auto !important;
 }
+
+/* Map markers (providers/amap/renderer.tsx). The name tooltip appears on hover only where there is
+   a real pointer to hover with; on touch, tapping opens the sheet, which names the place anyway. */
+.rove-marker {
+  position: relative;
+  border-radius: 50%;
+  border-width: 2.5px;
+  border-style: solid;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+}
+.rove-marker-tip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: var(--radius-md);
+  background: var(--foreground);
+  color: var(--background);
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  pointer-events: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .rove-marker:hover .rove-marker-tip {
+    display: block;
+  }
+}
