@@ -1,6 +1,16 @@
 import type { ItemDto } from '@rove/shared';
 import { navigationById } from '@rove/shared';
-import { Bookmark, Check, ExternalLink, MapPin, Navigation, Trash2, Undo2, X } from 'lucide-react';
+import {
+  Bookmark,
+  Check,
+  Copy,
+  ExternalLink,
+  MapPin,
+  Navigation,
+  Trash2,
+  Undo2,
+  X,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDeleteItem, useItem, useReview, useUpdateItem, useUpsertReview } from '@/api/hooks';
@@ -23,6 +33,7 @@ import { ApiError } from '@/lib/apiClient';
 import { formatWhen } from '@/lib/when';
 import { notifyError, notifySuccess } from '@/lib/notify';
 import { useRegion } from '@/lib/region';
+import { detectSource, useTranslatedText } from '@/lib/translate';
 
 /* One item, and everything you can do to it: navigate there, mark it visited, rate it, write a
    note, delete it. Opened from the map and the list alike. Notes save on a short debounce and on
@@ -48,6 +59,7 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
   // A broken poster hides itself; reset per item so one bad URL does not hide the next item's.
   const [coverFailed, setCoverFailed] = useState(false);
   useEffect(() => setCoverFailed(false), [itemId]);
+  const translatedTitle = useTranslatedText(item?.title ?? '');
   const { data: review } = useReview(itemId);
   const updateItem = useUpdateItem();
   const upsertReview = useUpsertReview();
@@ -160,7 +172,29 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
   return (
     <>
       <DialogHeader>
-        <DialogTitle className="pr-6">{item.title}</DialogTitle>
+        <DialogTitle className="pr-6">{translatedTitle ?? item.title}</DialogTitle>
+        {/* The original stays one glance and one tap away: a translated name is no use at the
+            venue's door or in a search box on another app. */}
+        {translatedTitle && (
+          <p className="-mt-1 flex items-center gap-1 pr-6 text-xs text-muted-foreground">
+            <span lang={detectSource(item.title) ?? undefined} className="select-text">
+              {item.title}
+            </span>
+            <button
+              type="button"
+              aria-label={t('items.copyOriginal')}
+              className="shrink-0 rounded p-1 hover:bg-accent hover:text-foreground"
+              onClick={() =>
+                void navigator.clipboard
+                  .writeText(item.title)
+                  .then(() => notifySuccess(t('items.copied')))
+                  .catch(() => notifyError(t('errors.unknown')))
+              }
+            >
+              <Copy className="size-3.5" />
+            </button>
+          </p>
+        )}
         <DialogDescription className="flex flex-wrap items-center gap-1.5">
           <Badge variant="secondary">{t(`items.kind.${item.kind}`)}</Badge>
           <Badge variant={visited ? 'default' : 'outline'}>

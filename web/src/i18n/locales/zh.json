@@ -93,6 +93,8 @@
     "unknown": "出错了"
   },
   "items": {
+    "copied": "已复制",
+    "copyOriginal": "复制原名",
     "deleted": "已删除",
     "deleteDescription": "评分和笔记会一起删除。已保存的帖子会保留。",
     "deleteTitle": "删除这个地点？",
@@ -278,6 +280,11 @@
       "timeFormat24": "24 小时制",
       "timeFormatAuto": "自动（{{format}}）",
       "title": "常规",
+      "translate": "翻译标题",
+      "translateDescription": "在此设备上以你的语言显示名称，原文保留在下方。",
+      "translateDescriptionDownload": "在此设备上以你的语言显示名称，原文保留在下方。开启时会下载一次翻译模型。",
+      "translateDownloading": "正在下载翻译模型…",
+      "translateFailed": "无法下载翻译模型。",
       "weekStart": "每周第一天",
       "weekStartAuto": "自动（{{day}}）"
     },

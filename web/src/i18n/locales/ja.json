@@ -93,6 +93,8 @@
     "unknown": "問題が発生しました"
   },
   "items": {
+    "copied": "コピーしました",
+    "copyOriginal": "元の名前をコピー",
     "deleted": "削除しました",
     "deleteDescription": "評価とメモも一緒に削除されます。保存した投稿は残ります。",
     "deleteTitle": "この場所を削除しますか？",
@@ -278,6 +280,11 @@
       "timeFormat24": "24時間制",
       "timeFormatAuto": "自動（{{format}}）",
       "title": "一般",
+      "translate": "タイトルを翻訳",
+      "translateDescription": "この端末で名前をあなたの言語で表示し、原文を下に残します。",
+      "translateDescriptionDownload": "この端末で名前をあなたの言語で表示し、原文を下に残します。オンにすると翻訳モデルを一度ダウンロードします。",
+      "translateDownloading": "翻訳モデルをダウンロード中…",
+      "translateFailed": "翻訳モデルをダウンロードできませんでした。",
       "weekStart": "週の始まり",
       "weekStartAuto": "自動（{{day}}）"
     },

@@ -12,6 +12,7 @@ import { SourcesSection } from '@/components/settings/SourcesSection';
 import { notifyDeviceSaved, Section, SubToggleRow, ToggleRow } from '@/components/settings/Section';
 import { VersionFooter } from '@/components/settings/VersionFooter';
 import { LanguageSetting } from '@/components/settings/deviceSettings';
+import { TranslationSetting } from '@/components/settings/TranslationSetting';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -225,6 +226,7 @@ export default function SettingsPage() {
             </div>
             <LanguageSetting />
           </div>
+          <TranslationSetting />
         </Section>
 
         <Section title={t('settings.region.title')} description={t('settings.region.description')}>

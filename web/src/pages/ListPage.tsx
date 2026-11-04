@@ -23,6 +23,7 @@ import { useSession } from '@/lib/authClient';
 import { recordAction, useShown } from '@/lib/impressions';
 import { useRegion } from '@/lib/region';
 import { useSourceStatus } from '@/lib/sources';
+import { detectSource, useTranslatedText } from '@/lib/translate';
 import { formatWhen, type WhenRange } from '@/lib/when';
 import { cn } from '@/lib/utils';
 
@@ -257,7 +258,7 @@ export default function ListPage() {
               >
                 <Cover item={item} />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium">{item.title}</span>
+                  <RowTitle title={item.title} />
                   <span className="block truncate text-xs text-muted-foreground">
                     {subtitle(item, i18n.language)}
                   </span>
@@ -286,6 +287,24 @@ export default function ListPage() {
 
       <ItemSheet itemId={selected} onClose={() => setSelected(null)} />
     </PageContainer>
+  );
+}
+
+/** The title in the UI language when translation is on, with the original underneath. */
+function RowTitle({ title }: { title: string }) {
+  const translated = useTranslatedText(title);
+  return (
+    <>
+      <span className="block truncate font-medium">{translated ?? title}</span>
+      {translated && (
+        <span
+          lang={detectSource(title) ?? undefined}
+          className="block truncate text-xs text-muted-foreground/80"
+        >
+          {title}
+        </span>
+      )}
+    </>
   );
 }
 

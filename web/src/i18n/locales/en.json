@@ -93,6 +93,8 @@
     "unknown": "Something went wrong"
   },
   "items": {
+    "copied": "Copied",
+    "copyOriginal": "Copy original name",
     "deleted": "Deleted",
     "deleteDescription": "Its rating and notes go with it. The saved post is kept.",
     "deleteTitle": "Delete this place?",
@@ -287,6 +289,11 @@
       "timeFormat24": "24-hour",
       "timeFormatAuto": "Automatic ({{format}})",
       "title": "General",
+      "translate": "Translate titles",
+      "translateDescription": "Shows names in your language on this device, with the original underneath.",
+      "translateDescriptionDownload": "Shows names in your language on this device, with the original underneath. Turning it on downloads a translation model once.",
+      "translateDownloading": "Downloading the translation model…",
+      "translateFailed": "The translation model could not be downloaded.",
       "weekStart": "First day of the week",
       "weekStartAuto": "Automatic ({{day}})"
     },

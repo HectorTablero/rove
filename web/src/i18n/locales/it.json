@@ -93,6 +93,8 @@
     "unknown": "Qualcosa è andato storto"
   },
   "items": {
+    "copied": "Copiato",
+    "copyOriginal": "Copia il nome originale",
     "deleted": "Eliminato",
     "deleteDescription": "Voto e note se ne vanno con lui. Il post salvato resta.",
     "deleteTitle": "Eliminare questo luogo?",
@@ -290,6 +292,11 @@
       "timeFormat24": "24 ore",
       "timeFormatAuto": "Automatico ({{format}})",
       "title": "Generale",
+      "translate": "Traduci i titoli",
+      "translateDescription": "Mostra i nomi nella tua lingua su questo dispositivo, con l’originale sotto.",
+      "translateDescriptionDownload": "Mostra i nomi nella tua lingua su questo dispositivo, con l’originale sotto. Attivandolo si scarica una volta un modello di traduzione.",
+      "translateDownloading": "Download del modello di traduzione…",
+      "translateFailed": "Impossibile scaricare il modello di traduzione.",
       "weekStart": "Primo giorno della settimana",
       "weekStartAuto": "Automatico ({{day}})"
     },

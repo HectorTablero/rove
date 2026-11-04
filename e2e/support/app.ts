@@ -32,7 +32,12 @@ export async function seedBrowserState(
 
       localStorage.setItem('theme', theme);
       localStorage.setItem('lang', 'en');
-      if (!firstRun) localStorage.setItem('preferences', JSON.stringify({ onboardingSeen: true }));
+      // Merged, not replaced: this runs on every navigation, and a preference a spec set on one
+      // page must still be there on the next.
+      if (!firstRun) {
+        const stored = JSON.parse(localStorage.getItem('preferences') ?? '{}') as object;
+        localStorage.setItem('preferences', JSON.stringify({ ...stored, onboardingSeen: true }));
+      }
       if (firstRun) {
         localStorage.removeItem('rove.user');
         localStorage.removeItem('rove.localOnly');

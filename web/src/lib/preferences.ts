@@ -37,6 +37,9 @@ export interface Preferences {
       settings because signing out runs clearLocalData(), so a synced flag would reset and greet
       a long-time user as a new one. Set on reaching AppLayout as well. */
   onboardingSeen: boolean;
+  /** Translate item titles into the UI language on the device (lib/translate.ts). Off by
+      default: turning it on downloads a translation model, which should be a choice. */
+  autoTranslate: boolean;
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -52,6 +55,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   telemetry: true,
   // False: a device that has never stored a preference blob has, by definition, never run the app.
   onboardingSeen: false,
+  autoTranslate: false,
 };
 
 const STORAGE_KEY = 'preferences';
