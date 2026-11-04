@@ -67,6 +67,16 @@ export const buildApp = (app: Hono<AppEnv>, auth: Auth, upgradeWebSocket?: Upgra
   app.use(requestTelemetry());
   app.onError(handleError);
 
+  /* Resources the Android app embeds from this origin while its own page is https://localhost:
+     posters through the cover proxy and the map SDK's script-loaded service calls. The default
+     CORP `same-origin` below would make the webview refuse them (the web app, same-origin, never
+     notices). Registered first so it runs last — secureHeaders writes its headers after `next`. */
+  for (const path of ['/api/cover', '/_AMapService/*'])
+    app.use(path, async (c, next) => {
+      await next();
+      c.res.headers.set('Cross-Origin-Resource-Policy', 'cross-origin');
+    });
+
   /* Security headers, on every response including the API's.
 
      The CSP is built once at startup rather than per request — it reads the built index.html to

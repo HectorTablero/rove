@@ -96,6 +96,14 @@ describe('the API surface', () => {
     expect(await res.json()).toEqual({ ok: true });
   });
 
+  it('lets the app (another origin) embed posters, and nothing else', async () => {
+    // A refused URL is enough: the header is about who may embed the response, whatever it is.
+    const cover = await app.request('/api/cover?url=https://example.com/x.jpg');
+    expect(cover.headers.get('cross-origin-resource-policy')).toBe('cross-origin');
+    const health = await app.request('/api/health');
+    expect(health.headers.get('cross-origin-resource-policy')).toBe('same-origin');
+  });
+
   it('refuses every API route without a session', async () => {
     session.value = null;
 
