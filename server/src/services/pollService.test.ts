@@ -86,6 +86,13 @@ describe('pollSource', () => {
               coverUrl: null,
               categories: [],
               venue: 'B10',
+              // As Mongo hands it back: Dates, schema key order.
+              when: {
+                start: new Date('2026-10-02T12:00:00.000Z'),
+                end: null,
+                tz: 'Asia/Shanghai',
+                allDay: false,
+              },
             }
           : { _id: 's1', status: 'saved', price: null },
       ),
@@ -97,6 +104,39 @@ describe('pollSource', () => {
     // Only the field that changed is written: an unchanged row is not a row to re-sync.
     expect(Item.updateOne).toHaveBeenCalledTimes(1);
     expect(Item.updateOne).toHaveBeenCalledWith({ _id: 'c1' }, { $set: { price: '380' } });
+  });
+
+  it('replaces a candidate time window that was read wrong, and moves its expiry with it', async () => {
+    rss.fetchFeed.mockResolvedValue([entry('A', 'https://d/1')]);
+    // Stored by the old parser: a year off.
+    Item.findOne.mockImplementation(() =>
+      query({
+        _id: 'c1',
+        status: 'candidate',
+        price: null,
+        coverUrl: null,
+        categories: [],
+        venue: 'B10',
+        when: {
+          start: new Date('2027-10-02T12:00:00.000Z'),
+          end: null,
+          tz: 'Asia/Shanghai',
+          allDay: false,
+        },
+      }),
+    );
+
+    await pollSource('u1', 'damai');
+
+    expect(Item.updateOne).toHaveBeenCalledWith(
+      { _id: 'c1' },
+      {
+        $set: expect.objectContaining({
+          when: expect.objectContaining({ start: new Date('2026-10-02T12:00:00.000Z') }),
+          expiresAt: expect.any(Date),
+        }),
+      },
+    );
   });
 
   it('records a failed feed as a run with its code instead of throwing', async () => {

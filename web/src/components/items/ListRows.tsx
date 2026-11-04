@@ -158,8 +158,33 @@ const zoned = (iso: string, tz: string, lng: string, opts: Intl.DateTimeFormatOp
   new Intl.DateTimeFormat(lng, { timeZone: tz, ...opts }).format(new Date(iso));
 
 /** The stub: day large, month small, in the region's clock. A dashed edge tears it off the ticket. */
+/** The calendar day of an instant in a zone, for "is this one day or several". */
+const dayKey = (iso: string, tz: string) => zoned(iso, tz, 'en-CA', { dateStyle: 'short' });
+
+/** A window spanning more than one calendar day in the region's clock. */
+const isMultiDay = (when: WhenDto, tz: string) =>
+  when.end !== null && dayKey(when.start, tz) !== dayKey(when.end, tz);
+
+/** "Nov 5 – Feb 28, 2027": the year only when the ends fall in different years. */
+function rangeText(when: WhenDto, tz: string, lng: string): string {
+  const start = new Date(when.start);
+  const end = new Date(when.end!);
+  const crossesYear =
+    zoned(when.start, tz, 'en', { year: 'numeric' }) !==
+    zoned(when.end!, tz, 'en', { year: 'numeric' });
+  return new Intl.DateTimeFormat(lng, {
+    timeZone: tz,
+    month: 'short',
+    day: 'numeric',
+    ...(crossesYear ? { year: 'numeric' } : {}),
+  }).formatRange(start, end);
+}
+
 function DateStub({ when, tz }: { when: WhenDto | null; tz: string }) {
   const { t, i18n } = useTranslation();
+  const now = new Date().toISOString();
+  // Running already: "Now", and when it ends — a start date from June would only mislead.
+  const ongoing = when !== null && when.start < now && isMultiDay(when, tz) && when.end! >= now;
   return (
     <span
       className={cn(
@@ -167,7 +192,14 @@ function DateStub({ when, tz }: { when: WhenDto | null; tz: string }) {
         when ? 'text-primary' : 'text-muted-foreground',
       )}
     >
-      {when ? (
+      {when && ongoing ? (
+        <>
+          <span className="text-sm leading-none font-semibold">{t('list.now')}</span>
+          <span className="mt-1.5 text-center text-[11px] leading-none">
+            {zoned(when.end!, tz, i18n.language, { month: 'short', day: 'numeric' })}
+          </span>
+        </>
+      ) : when ? (
         <>
           <span className="text-xl leading-none font-semibold tabular-nums">
             {zoned(when.start, tz, i18n.language, { day: 'numeric' })}
@@ -197,15 +229,17 @@ function EventRow({
   const { t, i18n } = useTranslation();
   const region = useRegion();
   const time =
-    item.when && !item.when.allDay
-      ? zoned(item.when.start, tz, i18n.language, {
-          weekday: 'short',
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-      : item.when
-        ? zoned(item.when.start, tz, i18n.language, { weekday: 'long' })
-        : null;
+    item.when && isMultiDay(item.when, tz)
+      ? rangeText(item.when, tz, i18n.language)
+      : item.when && !item.when.allDay
+        ? zoned(item.when.start, tz, i18n.language, {
+            weekday: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : item.when
+          ? zoned(item.when.start, tz, i18n.language, { weekday: 'long' })
+          : null;
   const where = item.venue ?? item.location?.address ?? null;
   const price = formatPrice(item.price, t, i18n.language, region.currency);
   return (

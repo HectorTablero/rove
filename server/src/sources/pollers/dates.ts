@@ -5,11 +5,19 @@ import { CANDIDATE_UNDATED_TTL_DAYS } from '@rove/shared';
  *
  * `2026.09.20`, `2026-09-20`, `2026/09/20`, `2026年9月20日`, optionally followed by a weekday and
  * a `19:30`, optionally followed by a second date after `-`, `~`, `至` or `到`. Anything else is
- * `null`, which the UI shows as "time unknown" — the brief would rather see that than a guess. */
+ * `null`, which the UI shows as "time unknown" — the brief would rather see that than a guess.
+ *
+ * Douban writes the start of a range without its year — `11月05日 周四 00:00 ~ 2027年02月28日` —
+ * so a date may omit the year, but only in the `MM月DD日` form: a bare `1-2` or `39.0` is a count
+ * or a price, never a date. A missing year comes from the other end of the range, or else is the
+ * one that puts the date nearest the poll without being more than four months behind it. */
 
-const DATE = String.raw`(\d{4})[.\-/年](\d{1,2})[.\-/月](\d{1,2})日?`;
+// Five groups: year, month, day with a year; or month, day in the 月日 form without one.
+const DATE = String.raw`(?:(\d{4})[.\-/年](\d{1,2})[.\-/月](\d{1,2})日?|(\d{1,2})月(\d{1,2})日)`;
 const TIME = String.raw`(?:\s*(?:周[一二三四五六日天]|星期[一二三四五六日天]|[A-Za-z]{3})?\s*(\d{1,2}):(\d{2}))?`;
-const RANGE = new RegExp(`${DATE}${TIME}(?:\\s*[-~至到–]\\s*${DATE}${TIME})?`);
+const RANGE = new RegExp(`${DATE}${TIME}(?:\\s*[-~至到–]\\s*${DATE}${TIME})?`, 'g');
+/** Groups per end of a range: five for the date, two for the time. */
+const END_GROUPS = 7;
 
 interface Stamp {
   year: number;
@@ -18,18 +26,35 @@ interface Stamp {
   hour: number | null;
   minute: number | null;
 }
+type Loose = Omit<Stamp, 'year'> & { year: number | null };
 
-const stamp = (m: (string | undefined)[], offset: number): Stamp | null => {
-  const [year, month, day, hour, minute] = m.slice(offset, offset + 5);
-  if (!year || !month || !day) return null;
+/** One end of a match, or null when that end is absent or not a real calendar day. */
+const stamp = (m: (string | undefined)[], offset: number): Loose | null => {
+  const [year, month, day, bareMonth, bareDay, hour, minute] = m.slice(offset, offset + END_GROUPS);
+  const mo = Number(month ?? bareMonth);
+  const d = Number(day ?? bareDay);
+  if (!mo || !d || mo > 12 || d > 31) return null;
   return {
-    year: Number(year),
-    month: Number(month),
-    day: Number(day),
+    year: year ? Number(year) : null,
+    month: mo,
+    day: d,
     hour: hour !== undefined ? Number(hour) : null,
     minute: minute !== undefined ? Number(minute) : null,
   };
 };
+
+const monthDay = (s: { month: number; day: number }) => s.month * 100 + s.day;
+
+/** The year that puts a month-day nearest `now` without falling more than ~4 months behind it. */
+function nearestYear(s: { month: number; day: number }, now: Date, tz: string): number {
+  const current = Number(
+    new Intl.DateTimeFormat('en-US', { timeZone: tz, year: 'numeric' }).format(now),
+  );
+  const floor = now.getTime() - 120 * 86_400_000;
+  for (const year of [current - 1, current, current + 1])
+    if (Date.UTC(year, s.month - 1, s.day) >= floor) return year;
+  return current + 1;
+}
 
 /** A wall-clock instant in a zone, as an ISO string. Only correct for zones without DST offsets
     that vary across the year — Asia/Shanghai is UTC+8 year-round, which is the region that exists.
@@ -58,12 +83,32 @@ export function zoneOffsetMinutes(tz: string, at: Date): number {
 }
 
 /** The first date or date range in a piece of text, as a time window in the region's zone. */
-export function parseWhen(text: string, tz: string): WhenDto | null {
-  const m = text.match(RANGE);
-  if (!m) return null;
-  const start = stamp(m, 1);
-  if (!start) return null;
-  const end = stamp(m, 6);
+export function parseWhen(text: string, tz: string, now: Date = new Date()): WhenDto | null {
+  /* A date that states its year beats one that leaves it out: `9月27日晚（2026-09-27 19:30）`
+     means the second, which also carries the time. Yearless dates are the fallback. */
+  let fallback: WhenDto | null = null;
+  for (const m of text.matchAll(RANGE)) {
+    const first = stamp(m, 1);
+    if (!first) continue;
+    const second = stamp(m, 1 + END_GROUPS);
+    const when = toWindow(first, second, tz, now);
+    if (first.year !== null || second?.year != null) return when;
+    fallback ??= when;
+  }
+  return fallback;
+}
+
+function toWindow(first: Loose, second: Loose | null, tz: string, now: Date): WhenDto {
+  // A missing year comes from the other end of the range, else from the poll date.
+  const startYear =
+    first.year ??
+    (second?.year != null
+      ? second.year - (monthDay(first) > monthDay(second) ? 1 : 0)
+      : nearestYear(first, now, tz));
+  const start: Stamp = { ...first, year: startYear };
+  const end: Stamp | null = second
+    ? { ...second, year: second.year ?? startYear + (monthDay(second) < monthDay(start) ? 1 : 0) }
+    : null;
   const allDay = start.hour === null;
   const startIso = zonedIso(start, tz);
   let endIso: string | null = null;

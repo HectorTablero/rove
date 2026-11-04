@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { formatWhen, overlaps, rangeWindow, weekendWindow } from './when';
+import type { ItemDto } from '@rove/shared';
+import { bySoonest, formatWhen, overlaps, rangeWindow, weekendWindow } from './when';
 
 const TZ = 'Asia/Shanghai';
 
@@ -98,5 +99,33 @@ describe('rangeWindow', () => {
     expect(rangeWindow('week', now, 'Asia/Shanghai').end.toISOString()).toBe(
       '2026-09-23T04:00:00.000Z',
     );
+  });
+});
+
+describe('bySoonest', () => {
+  const now = '2026-11-04T08:00:00.000Z';
+  const event = (title: string, start: string | null, end: string | null = null) =>
+    ({
+      kind: 'event',
+      title,
+      createdAt: '2026-11-01T00:00:00.000Z',
+      when: start ? { start, end, tz: 'Asia/Shanghai', allDay: false } : null,
+    }) as unknown as ItemDto;
+
+  it('treats a running event as now, then upcoming, undated, and finished last', () => {
+    const items = [
+      event('finished', '2026-06-01T00:00:00.000Z', '2026-06-30T00:00:00.000Z'),
+      event('undated', null),
+      event('next week', '2026-11-11T00:00:00.000Z'),
+      event('open since June', '2026-06-15T00:00:00.000Z', '2027-02-28T00:00:00.000Z'),
+      event('tomorrow', '2026-11-05T00:00:00.000Z'),
+    ];
+    expect(items.sort(bySoonest(now)).map((i) => (i as { title: string }).title)).toEqual([
+      'open since June',
+      'tomorrow',
+      'next week',
+      'undated',
+      'finished',
+    ]);
   });
 });

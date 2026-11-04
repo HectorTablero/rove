@@ -1,4 +1,4 @@
-import type { WhenDto } from '@rove/shared';
+import type { ItemDto, WhenDto } from '@rove/shared';
 
 /* Time windows, rendered and reasoned about in the region's zone — never the device's. A phone
    in Madrid looking at a Shenzhen concert should read the Shenzhen clock. */
@@ -106,4 +106,27 @@ export function rangeWindow(range: WhenRange, now: Date, tz: string): Window {
   if (range === 'week') return { start: now, end: new Date(now.getTime() + 7 * 86_400_000) };
   const midnight = zonedInstant(zonedParts(now, tz).ymd, 0, tz);
   return { start: now, end: new Date(midnight.getTime() + 86_400_000) };
+}
+
+/**
+ * "Soonest": what you could go to first. An event already running counts as now (an exhibition
+ * that opened in June is not "before" one opening tomorrow), upcoming ones by start, then undated
+ * ones newest first — "time unknown" is not "soon" — and finished ones last, latest first.
+ * `now` is an ISO string, compared as text like every stored time.
+ */
+export function bySoonest(now: string): (a: ItemDto, b: ItemDto) => number {
+  const rank = (item: ItemDto): [number, string] => {
+    const when = item.kind !== 'place' ? item.when : null;
+    if (!when) return [1, item.createdAt];
+    const end = when.end ?? when.start;
+    if (end < now) return [2, end];
+    return [0, when.start < now ? now : when.start];
+  };
+  return (a, b) => {
+    const [ga, ka] = rank(a);
+    const [gb, kb] = rank(b);
+    if (ga !== gb) return ga - gb;
+    const order = ka < kb ? -1 : ka > kb ? 1 : 0;
+    return ga === 0 ? order : -order;
+  };
 }

@@ -25,6 +25,32 @@ describe('parseWhen', () => {
     expect(parseWhen('2026年10月1日 20:00', TZ)?.start).toBe('2026-10-01T12:00:00.000Z');
   });
 
+  it('takes a yearless start from the end of its range (Douban, live 2026-11-04)', () => {
+    const when = parseWhen(
+      '11月05日 周四 00:00 ~ 2027年02月28日 周日 23:59',
+      TZ,
+      new Date('2026-11-04T08:00:00Z'),
+    );
+    expect(when?.start).toBe('2026-11-04T16:00:00.000Z'); // 5 Nov 00:00 in Shenzhen
+    expect(when?.end).toBe('2027-02-28T15:59:00.000Z');
+  });
+
+  it('puts a yearless date in the year nearest the poll, never months behind it', () => {
+    const november = new Date('2026-11-04T08:00:00Z');
+    expect(parseWhen('11月20日 19:30', TZ, november)?.start).toBe('2026-11-20T11:30:00.000Z');
+    // January seen in November is next January, not ten months ago.
+    expect(parseWhen('1月10日', TZ, november)?.start).toBe('2027-01-09T16:00:00.000Z');
+    // A range without years that crosses New Year ends in the next year.
+    const when = parseWhen('12月20日 ~ 1月5日', TZ, november);
+    expect(when?.start).toBe('2026-12-19T16:00:00.000Z');
+    expect(when?.end).toBe('2027-01-05T15:59:00.000Z');
+  });
+
+  it('never reads counts or prices as yearless dates', () => {
+    expect(parseWhen('1-2人 39.0元起', TZ)).toBeNull();
+    expect(parseWhen('10:30 - 20:00', TZ)).toBeNull();
+  });
+
   it('is null rather than a guess for text with no date', () => {
     expect(parseWhen('周末见', TZ)).toBeNull();
     expect(parseWhen('票价 80 元', TZ)).toBeNull();

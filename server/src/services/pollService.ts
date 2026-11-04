@@ -44,6 +44,21 @@ async function refreshCandidate(
       ([key, value]) => JSON.stringify(known[key] ?? null) !== JSON.stringify(value ?? null),
     ),
   );
+  /* A re-read time window (a parser fix, a date the site corrected) replaces the stored one, in
+     the stored shape so an unchanged window compares equal. The expiry moves with it — and only
+     with it: an undated candidate's expiry is "a month from now", which differs on every poll. */
+  const when = draft.when
+    ? {
+        start: new Date(draft.when.start),
+        end: draft.when.end ? new Date(draft.when.end) : null,
+        tz: draft.when.tz,
+        allDay: draft.when.allDay,
+      }
+    : null;
+  if (JSON.stringify(known.when ?? null) !== JSON.stringify(when)) {
+    changed.when = when;
+    changed.expiresAt = new Date(draft.expiresAt);
+  }
   if (Object.keys(changed).length) await Item.updateOne({ _id: known._id }, { $set: changed });
 }
 

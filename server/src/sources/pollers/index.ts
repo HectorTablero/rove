@@ -47,7 +47,7 @@ export const damaiPoller: Poller = {
   map(entry, region, now) {
     const showtime = labelled(entry.text, ['演出时间', '时间', 'showtime']);
     return eventDraft(entry, now, {
-      when: parseWhen(showtime ?? entry.text, region.tz),
+      when: parseWhen(showtime ?? entry.text, region.tz, now),
       venue: labelled(entry.text, ['场馆', '演出场馆', '地点', 'venue']),
       price: labelled(entry.text, ['票价', '价格', 'price']),
     });
@@ -64,7 +64,7 @@ export const showstartPoller: Poller = {
     const showtime = labelled(entry.text, ['演出时间', '时间', 'showTime']);
     const address = labelled(entry.text, ['地址', '场地', '演出场馆', '场馆', '地点', 'siteName']);
     return eventDraft(entry, now, {
-      when: parseWhen(showtime ?? entry.text, region.tz),
+      when: parseWhen(showtime ?? entry.text, region.tz, now),
       // "深圳 - HOU Live" → "HOU Live": the city is the region, the site is what geocodes.
       venue: address ? address.replace(/^[^-–]+\s+[-–]\s+/, '').trim() || address : null,
       price: labelled(entry.text, ['票价', '价格']),
@@ -90,7 +90,7 @@ export const doubanEventsPoller: Poller = {
     const subtype = parts.length >= 3 ? parts[parts.length - 2] : null;
     const venue = parts.length >= 4 ? parts.slice(1, -2).join('/').trim() || null : null;
     return eventDraft(entry, now, {
-      when: parseWhen(labelled(entry.text, ['时间', 'time']) ?? entry.text, region.tz),
+      when: parseWhen(labelled(entry.text, ['时间', 'time']) ?? entry.text, region.tz, now),
       venue: labelled(entry.text, ['地点', '地址', 'address']) ?? venue,
       price: price || null,
       categories: subtype ? [subtype] : entry.categories,
@@ -120,7 +120,7 @@ export const maoyanPoller: Poller = {
     const release =
       labelled(entry.text, ['上映时间', '上映日期', 'release']) ??
       (released && !Number.isNaN(released.getTime()) ? ymdIn(released, region.tz) : null);
-    const when = release ? parseWhen(release, region.tz) : null;
+    const when = release ? parseWhen(release, region.tz, now) : null;
     const releaseMs = when ? Date.parse(when.start) : now.getTime();
     return {
       kind: 'film',

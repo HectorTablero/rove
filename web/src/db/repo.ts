@@ -1,6 +1,6 @@
 import type { ImpressionDto, ItemDto, ReviewDto, SettingsDto, SnapshotDto } from '@rove/shared';
 import { DEFAULT_SETTINGS } from '@rove/shared';
-import { overlaps, rangeWindow, type WhenRange } from '@/lib/when';
+import { bySoonest, overlaps, rangeWindow, type WhenRange } from '@/lib/when';
 import { db, getMeta } from './db';
 
 /* Every read the UI makes, against the local store. Nothing here touches the network. */
@@ -20,9 +20,6 @@ export interface ItemFilter {
 }
 
 export type ItemSort = 'newest' | 'soonest' | 'title';
-
-const startOf = (item: ItemDto): string | null =>
-  item.kind !== 'place' && item.when ? item.when.start : null;
 
 /** Fold for matching: NFKC so full-width and half-width forms compare equal, then case. Not
     ASCII-only, and not stripping anything — `文和友` must match `文和友`. */
@@ -59,14 +56,7 @@ export async function getItems(filter: ItemFilter = {}): Promise<ItemDto[]> {
   }
   if (filter.sort === 'title') return items.sort((a, b) => a.title.localeCompare(b.title));
   if (filter.sort === 'soonest') {
-    // Dated items by start, then undated ones newest first: "time unknown" is not "soon".
-    return items.sort((a, b) => {
-      const sa = startOf(a);
-      const sb = startOf(b);
-      if (sa && sb) return sa < sb ? -1 : sa > sb ? 1 : 0;
-      if (sa || sb) return sa ? -1 : 1;
-      return a.createdAt < b.createdAt ? 1 : -1;
-    });
+    return items.sort(bySoonest(now));
   }
   // Newest first: the thing you just saved is the thing you are looking for.
   return items.sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : 0));
