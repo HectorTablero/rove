@@ -7,6 +7,7 @@ import { formatPrice } from '@/lib/price';
 import { useRegion } from '@/lib/region';
 import { detectSource, useTranslatedText } from '@/lib/translate';
 import { cn } from '@/lib/utils';
+import { otherYear } from '@/lib/when';
 
 /* The list, one shape per kind rather than one card for everything.
  *
@@ -165,19 +166,25 @@ const dayKey = (iso: string, tz: string) => zoned(iso, tz, 'en-CA', { dateStyle:
 const isMultiDay = (when: WhenDto, tz: string) =>
   when.end !== null && dayKey(when.start, tz) !== dayKey(when.end, tz);
 
-/** "Nov 5 – Feb 28, 2027": the year only when the ends fall in different years. */
+/** "Nov 5 – Feb 28, 2027": the year only when an end falls outside this year. */
 function rangeText(when: WhenDto, tz: string, lng: string): string {
-  const start = new Date(when.start);
-  const end = new Date(when.end!);
-  const crossesYear =
-    zoned(when.start, tz, 'en', { year: 'numeric' }) !==
-    zoned(when.end!, tz, 'en', { year: 'numeric' });
+  const withYear = otherYear(when.start, tz) || otherYear(when.end!, tz);
   return new Intl.DateTimeFormat(lng, {
     timeZone: tz,
     month: 'short',
     day: 'numeric',
-    ...(crossesYear ? { year: 'numeric' } : {}),
-  }).formatRange(start, end);
+    ...(withYear ? { year: 'numeric' } : {}),
+  }).formatRange(new Date(when.start), new Date(when.end!));
+}
+
+/** The stub's third line: the year, only when it is not this one. */
+function StubYear({ iso, tz }: { iso: string; tz: string }) {
+  if (!otherYear(iso, tz)) return null;
+  return (
+    <span className="mt-1 text-[10px] leading-none tabular-nums opacity-80">
+      {zoned(iso, tz, 'en', { year: 'numeric' })}
+    </span>
+  );
 }
 
 function DateStub({ when, tz }: { when: WhenDto | null; tz: string }) {
@@ -198,6 +205,7 @@ function DateStub({ when, tz }: { when: WhenDto | null; tz: string }) {
           <span className="mt-1.5 text-center text-[11px] leading-none">
             {zoned(when.end!, tz, i18n.language, { month: 'short', day: 'numeric' })}
           </span>
+          <StubYear iso={when.end!} tz={tz} />
         </>
       ) : when ? (
         <>
@@ -207,6 +215,7 @@ function DateStub({ when, tz }: { when: WhenDto | null; tz: string }) {
           <span className="mt-1 text-[11px] leading-none">
             {zoned(when.start, tz, i18n.language, { month: 'short' })}
           </span>
+          <StubYear iso={when.start} tz={tz} />
         </>
       ) : (
         <span className="px-1 text-center text-[11px] leading-tight">{t('list.noDate')}</span>
@@ -318,7 +327,11 @@ function FilmCard({
       )}
       {item.when && (
         <span className="-mt-1 text-[11px] text-muted-foreground">
-          {zoned(item.when.start, tz, i18n.language, { day: 'numeric', month: 'short' })}
+          {zoned(item.when.start, tz, i18n.language, {
+            day: 'numeric',
+            month: 'short',
+            ...(otherYear(item.when.start, tz) ? { year: 'numeric' } : {}),
+          })}
         </span>
       )}
     </button>

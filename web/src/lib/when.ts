@@ -3,12 +3,20 @@ import type { ItemDto, WhenDto } from '@rove/shared';
 /* Time windows, rendered and reasoned about in the region's zone — never the device's. A phone
    in Madrid looking at a Shenzhen concert should read the Shenzhen clock. */
 
+const yearIn = (at: Date, tz: string) =>
+  new Intl.DateTimeFormat('en', { timeZone: tz, year: 'numeric' }).format(at);
+
+/** An instant outside the current year in the zone — the one case a date must say its year. */
+export const otherYear = (iso: string, tz: string, now: Date = new Date()): boolean =>
+  yearIn(new Date(iso), tz) !== yearIn(now, tz);
+
 const day = (iso: string, tz: string, lng: string): string =>
   new Intl.DateTimeFormat(lng, {
     timeZone: tz,
     weekday: 'short',
     day: 'numeric',
     month: 'short',
+    ...(otherYear(iso, tz) ? { year: 'numeric' } : {}),
   }).format(new Date(iso));
 
 const time = (iso: string, tz: string, lng: string): string =>

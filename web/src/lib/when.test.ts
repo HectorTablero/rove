@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ItemDto } from '@rove/shared';
-import { bySoonest, formatWhen, overlaps, rangeWindow, weekendWindow } from './when';
+import { bySoonest, formatWhen, otherYear, overlaps, rangeWindow, weekendWindow } from './when';
 
 const TZ = 'Asia/Shanghai';
 
@@ -37,6 +37,16 @@ describe('formatWhen', () => {
         'en-GB',
       ),
     ).not.toContain('–');
+  });
+});
+
+describe('otherYear', () => {
+  it("is true only outside this year, in the region's clock", () => {
+    const now = new Date('2026-11-04T08:00:00Z');
+    expect(otherYear('2026-12-31T15:00:00.000Z', TZ, now)).toBe(false);
+    // 31 Dec 16:00Z is already 1 Jan in Shenzhen.
+    expect(otherYear('2026-12-31T16:00:00.000Z', TZ, now)).toBe(true);
+    expect(otherYear('2025-06-01T00:00:00.000Z', TZ, now)).toBe(true);
   });
 });
 
