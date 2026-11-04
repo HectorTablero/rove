@@ -6,12 +6,13 @@ import {
   urlSchema,
 } from '@rove/shared';
 import { Hono } from 'hono';
+import { stream } from 'hono/streaming';
 import { z } from 'zod';
-import { badRequest } from '../errors';
+import { badRequest, HttpError } from '../errors';
 import type { AppEnv } from '../middleware/session';
 import { rateLimit } from '../middleware/rateLimit';
 import { jsonValidator } from '../middleware/validate';
-import { trackEvent } from '../lib/telemetry';
+import { captureError, trackEvent } from '../lib/telemetry';
 import { extractMentions } from '../services/extractService';
 import { resolveUrl } from '../sources';
 
@@ -55,8 +56,33 @@ export const ingestRouter = new Hono<AppEnv>()
       ...result.resolved,
     });
   })
-  .post('/extract', jsonValidator(extractSchema), async (c) => {
+  /* The model can take minutes (a self-hosted GPU busy with other work), and every proxy on the
+     way has a read timeout: nginx gives up after 60 s of silence, Cloudflare after 100 s. So the
+     answer is streamed — a space at once and every few seconds, then the JSON. Leading whitespace
+     is still valid JSON. The status is committed by then, so a failure is a 200 carrying
+     `{ error }`, which the client turns back into an ordinary API error. */
+  .post('/extract', jsonValidator(extractSchema), (c) => {
     const { text } = c.req.valid('json');
-    const { model, mentions } = await extractMentions(c.get('userId'), text);
-    return c.json({ model, at: new Date().toISOString(), mentions });
+    const userId = c.get('userId');
+    c.header('Content-Type', 'application/json; charset=utf-8');
+    c.header('Cache-Control', 'no-store');
+    // nginx otherwise buffers the response and the spaces never leave it.
+    c.header('X-Accel-Buffering', 'no');
+    return stream(c, async (out) => {
+      await out.write(' ');
+      const beat = setInterval(() => void out.write(' ').catch(() => {}), KEEPALIVE_MS);
+      try {
+        const { model, mentions } = await extractMentions(userId, text);
+        await out.write(JSON.stringify({ model, at: new Date().toISOString(), mentions }));
+      } catch (err) {
+        if (!(err instanceof HttpError)) captureError(err, { scope: 'extract' });
+        await out.write(
+          JSON.stringify({ error: err instanceof HttpError ? err.code : 'errors.unknown' }),
+        );
+      } finally {
+        clearInterval(beat);
+      }
+    });
   });
+
+const KEEPALIVE_MS = 10_000;

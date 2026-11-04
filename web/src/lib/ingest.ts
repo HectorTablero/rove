@@ -1,6 +1,6 @@
 import type { ExtractionDto, MentionDto } from '@rove/shared';
 import { useQuery } from '@tanstack/react-query';
-import { apiGet, apiPost } from './apiClient';
+import { ApiError, apiGet, apiPost } from './apiClient';
 
 /* The client side of a paste: the two server calls a browser cannot make itself, and the
    geocoder behind its key. All three are plain requests — nothing here touches the local store,
@@ -20,8 +20,16 @@ export interface ResolvedSnapshot {
 export const resolveUrl = (url: string, region: string) =>
   apiPost<ResolvedSnapshot>('/ingest/resolve', { url, region });
 
-export const extractMentions = (text: string) =>
-  apiPost<ExtractionDto & { mentions: MentionDto[] }>('/ingest/extract', { text });
+/* Streamed by the server to outlast proxy timeouts (see routes/ingest.ts), so a failure arrives
+   as a 200 with `{ error }` and is turned back into the ApiError every caller expects. */
+export async function extractMentions(text: string) {
+  const reply = await apiPost<(ExtractionDto & { mentions: MentionDto[] }) | { error: string }>(
+    '/ingest/extract',
+    { text },
+  );
+  if ('error' in reply) throw new ApiError(502, reply.error);
+  return reply;
+}
 
 export interface GeocodeCandidate {
   name: string;
