@@ -19,6 +19,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- In the share sheet for shared text (a post's caption and link), as the PWA's
+                 share_target is on the web. MainActivity.openShared takes it to /add. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+
             <!-- App Links: open rove.tablerus.es URLs in the app instead of the browser.
                  The host comes from a manifest placeholder (see app/build.gradle) so a fork or a
                  self-hosted deployment changes it in one place.
