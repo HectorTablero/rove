@@ -67,14 +67,19 @@ const browserEngine = (): Engine => {
 };
 
 const nativeEngine = (): Engine => {
-  // Imported on first use so the web bundle never carries the plugin's proxy.
-  const plugin = () => import('@capacitor-mlkit/translation').then((m) => m.Translation);
+  /* Imported on first use so the web bundle never carries the plugin's proxy. The module is what
+     the promise resolves to, never the plugin: a Capacitor proxy answers every property, `then`
+     included, so awaiting it calls a native "Translation.then()" that rejects on Android. */
+  const loadModule = () => import('@capacitor-mlkit/translation');
+  type Plugin = Awaited<ReturnType<typeof loadModule>>['Translation'];
+  const withPlugin = async <T>(use: (plugin: Plugin) => Promise<T>): Promise<T> =>
+    use((await loadModule()).Translation);
   const asLanguage = (code: string) =>
-    code as Parameters<Awaited<ReturnType<typeof plugin>>['translate']>[0]['sourceLanguage'];
+    code as Parameters<Plugin['translate']>[0]['sourceLanguage'];
   return {
     async availability(source, target) {
       try {
-        const { languages } = await (await plugin()).getDownloadedModels();
+        const { languages } = await withPlugin((p) => p.getDownloadedModels());
         const have = new Set<string>(languages);
         return have.has(source) && have.has(target) ? 'available' : 'downloadable';
       } catch (err) {
@@ -85,14 +90,15 @@ const nativeEngine = (): Engine => {
       }
     },
     async prepare(source, target) {
-      const Translation = await plugin();
-      for (const language of [source, target])
-        await Translation.downloadModel({ language: asLanguage(language) });
+      await withPlugin(async (p) => {
+        for (const language of [source, target])
+          await p.downloadModel({ language: asLanguage(language) });
+      });
     },
     async translate(text, source, target) {
-      const result = await (
-        await plugin()
-      ).translate({ text, sourceLanguage: asLanguage(source), targetLanguage: asLanguage(target) });
+      const result = await withPlugin((p) =>
+        p.translate({ text, sourceLanguage: asLanguage(source), targetLanguage: asLanguage(target) }),
+      );
       return result.text;
     },
   };
