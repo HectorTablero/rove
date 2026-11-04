@@ -165,7 +165,9 @@
     "markerCount_one": "{{count}} lugar",
     "markerCount_other": "{{count}} lugares",
     "unavailableDescription": "La clave del mapa no estaba configurada al compilar la app. La lista sigue funcionando.",
-    "unavailableTitle": "Esta compilación no tiene mapa"
+    "unavailableTitle": "Esta compilación no tiene mapa",
+    "visits_one": "{{count}} visita",
+    "visits_other": "{{count}} visitas"
   },
   "nav": {
     "add": "Añadir",

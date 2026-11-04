@@ -1,29 +1,78 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useItems } from '@/api/hooks';
+import type { ItemDto, ReviewDto } from '@rove/shared';
+import type { TFunction } from 'i18next';
+import { useItems, useReviews } from '@/api/hooks';
 import { ItemSheet } from '@/components/items/ItemSheet';
 import { MapView } from '@/components/map/MapView';
 import { useShown } from '@/lib/impressions';
 import { isNative } from '@/lib/native';
 import type { MapMarker } from '@/providers';
 import { cn } from '@/lib/utils';
+import { formatWhen } from '@/lib/when';
+
+/** How many tags the hover card lists before it stops. */
+const TOOLTIP_TAGS = 4;
+const NOTE_SNIPPET = 90;
+
+/* The hover card's lines, all plain text (the renderer escapes them): what it is and where it
+   stands, then when, where, what it costs and its tags, then what you made of it. */
+function tooltipFor(item: ItemDto, review: ReviewDto | undefined, t: TFunction, lng: string) {
+  const stars = review?.rating ? '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating) : null;
+  const meta = [t(`items.kind.${item.kind}`), t(`items.status.${item.status}`), stars]
+    .filter(Boolean)
+    .join(' · ');
+  const when =
+    item.kind === 'place' ? null : item.when ? formatWhen(item.when, lng) : t('items.timeUnknown');
+  const where =
+    item.kind === 'event'
+      ? (item.venue ?? item.location?.address ?? null)
+      : item.kind === 'place'
+        ? item.location.address
+        : null;
+  const visits = review?.visits.length ?? 0;
+  const note = review?.notes.trim().split('\n')[0] ?? '';
+  const details = [
+    when,
+    where,
+    item.price,
+    item.categories.slice(0, TOOLTIP_TAGS).join(' · ') || null,
+    visits > 0 ? t('map.visits', { count: visits }) : null,
+    note ? `“${note.length > NOTE_SNIPPET ? `${note.slice(0, NOTE_SNIPPET)}…` : note}”` : null,
+  ].filter((line): line is string => Boolean(line));
+  return { meta, details, coverUrl: item.coverUrl ?? null };
+}
 
 /* The home screen: every saved place as a marker, visited ones filled in. Full-bleed under the
    tab bar; the only chrome is the count in a corner, which doubles as the "is anything here"
    answer when the map is still loading tiles. */
 export default function MapPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { data: items = [] } = useItems({ status: ['saved', 'visited'] });
+  const { data: reviews = [] } = useReviews();
   const [selected, setSelected] = useState<string | null>(null);
 
   const markers = useMemo<MapMarker[]>(
     () =>
       items.flatMap((item) =>
         item.kind !== 'film' && item.location
-          ? [{ id: item.id, point: item.location.point, title: item.title, status: item.status }]
+          ? [
+              {
+                id: item.id,
+                point: item.location.point,
+                title: item.title,
+                status: item.status,
+                tooltip: tooltipFor(
+                  item,
+                  reviews.find((r) => r.itemId === item.id),
+                  t,
+                  i18n.language,
+                ),
+              },
+            ]
           : [],
       ),
-    [items],
+    [items, reviews, t, i18n.language],
   );
   useShown(
     markers.map((m) => m.id),

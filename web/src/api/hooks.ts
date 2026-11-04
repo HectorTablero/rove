@@ -56,6 +56,13 @@ export function useDeleteItem() {
 
 // --- Reviews ---
 
+/** Every review on the device, for surfaces that show many items at once (the map's tooltips). */
+export const useReviews = () =>
+  useQuery({
+    queryKey: ['reviews'],
+    queryFn: () => repo.getReviews(),
+  });
+
 export const useReview = (itemId: string) =>
   useQuery({
     queryKey: ['reviews', itemId],
@@ -67,7 +74,8 @@ export function useUpsertReview() {
   return useMutation({
     mutationFn: ({ itemId, input }: { itemId: string; input: ReviewUpdateInput }) =>
       mutations.upsertReview(itemId, input),
-    onSuccess: (_review, { itemId }) => qc.invalidateQueries({ queryKey: ['reviews', itemId] }),
+    // The whole prefix: the one review, and the all-reviews query the map reads.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['reviews'] }),
   });
 }
 

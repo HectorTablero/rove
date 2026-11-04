@@ -165,7 +165,9 @@
     "markerCount_one": "{{count}} place",
     "markerCount_other": "{{count}} places",
     "unavailableDescription": "The map key was not set when the app was built. The list still works.",
-    "unavailableTitle": "No map in this build"
+    "unavailableTitle": "No map in this build",
+    "visits_one": "{{count}} visit",
+    "visits_other": "{{count}} visits"
   },
   "nav": {
     "add": "Add",

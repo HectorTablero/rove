@@ -160,7 +160,8 @@
     "loadFailed": "地図を読み込めませんでした。接続を確認してもう一度お試しください。",
     "markerCount": "{{count}}件",
     "unavailableDescription": "アプリのビルド時に地図のキーが設定されていませんでした。リストは使えます。",
-    "unavailableTitle": "このビルドには地図がありません"
+    "unavailableTitle": "このビルドには地図がありません",
+    "visits_other": "{{count}} 回訪問"
   },
   "nav": {
     "add": "追加",

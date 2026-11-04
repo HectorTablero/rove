@@ -165,7 +165,9 @@
     "markerCount_one": "{{count}} luogo",
     "markerCount_other": "{{count}} luoghi",
     "unavailableDescription": "La chiave della mappa non era impostata quando l'app è stata compilata. L'elenco funziona comunque.",
-    "unavailableTitle": "Nessuna mappa in questa build"
+    "unavailableTitle": "Nessuna mappa in questa build",
+    "visits_one": "{{count}} visita",
+    "visits_other": "{{count}} visite"
   },
   "nav": {
     "add": "Aggiungi",

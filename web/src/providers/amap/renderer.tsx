@@ -59,15 +59,41 @@ const escapeHtml = (text: string): string =>
    The name rides along as a hidden child that CSS reveals on hover, on devices with a mouse only
    (see .rove-marker in index.css) — a styled tooltip instead of the browser's `title` one, and no
    hover state to fake on a phone. */
-const markerHtml = (
-  status: MapViewProps['markers'][number]['status'],
-  selected: boolean,
-  title: string,
-): string => {
-  const fill = status === 'visited' ? 'var(--primary)' : 'var(--background)';
-  const stroke = status === 'candidate' ? 'var(--muted-foreground)' : 'var(--primary)';
+type Marker = MapViewProps['markers'][number];
+
+/* A poster that fails to load is removed rather than drawn as a broken-image icon. One capture
+   listener for every card, because the CSP (rightly) refuses inline onerror attributes and image
+   errors do not bubble. */
+if (typeof document !== 'undefined') {
+  document.addEventListener(
+    'error',
+    (event) => {
+      const target = event.target as Element | null;
+      if (target instanceof HTMLImageElement && target.classList.contains('rove-tip-cover'))
+        target.remove();
+    },
+    true,
+  );
+}
+
+const tooltipHtml = ({ title, tooltip }: Marker): string => {
+  const cover = tooltip?.coverUrl
+    ? `<img class="rove-tip-cover" src="${escapeHtml(tooltip.coverUrl)}" alt="" referrerpolicy="no-referrer" loading="lazy">`
+    : '';
+  const meta = tooltip?.meta
+    ? `<span class="rove-tip-meta">${escapeHtml(tooltip.meta)}</span>`
+    : '';
+  const details = (tooltip?.details ?? [])
+    .map((line) => `<span class="rove-tip-line">${escapeHtml(line)}</span>`)
+    .join('');
+  return `<span class="rove-marker-tip" role="tooltip">${cover}<span class="rove-tip-body"><span class="rove-tip-title">${escapeHtml(title)}</span>${meta}${details}</span></span>`;
+};
+
+const markerHtml = (marker: Marker, selected: boolean): string => {
+  const fill = marker.status === 'visited' ? 'var(--primary)' : 'var(--background)';
+  const stroke = marker.status === 'candidate' ? 'var(--muted-foreground)' : 'var(--primary)';
   const size = selected ? 18 : 14;
-  return `<div class="rove-marker" style="width:${size}px;height:${size}px;background:${fill};border-color:${stroke}"><span class="rove-marker-tip">${escapeHtml(title)}</span></div>`;
+  return `<div class="rove-marker" style="width:${size}px;height:${size}px;background:${fill};border-color:${stroke}">${tooltipHtml(marker)}</div>`;
 };
 
 export function AmapView({
@@ -127,7 +153,7 @@ export function AmapView({
       const p = toDatum(marker.point, 'GCJ02');
       const overlay = new AMap.Marker({
         position: [p.lon, p.lat],
-        content: markerHtml(marker.status, marker.id === selectedId, marker.title),
+        content: markerHtml(marker, marker.id === selectedId),
         anchor: 'center',
         extData: marker.id,
       });

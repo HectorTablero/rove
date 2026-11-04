@@ -11,6 +11,9 @@ export interface MapMarker {
   point: GeoPoint;
   title: string;
   status: ItemStatus;
+  /** For the hover card on devices with a mouse: one muted line under the title, then detail
+      lines, and a poster. All plain text; the renderer escapes it. */
+  tooltip?: { meta: string; details: string[]; coverUrl: string | null };
 }
 
 export interface MapViewProps {

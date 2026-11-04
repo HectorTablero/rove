@@ -74,6 +74,8 @@ export async function getItems(filter: ItemFilter = {}): Promise<ItemDto[]> {
 
 export const getItem = (id: string): Promise<ItemDto | undefined> => db.items.get(id);
 
+export const getReviews = (): Promise<ReviewDto[]> => db.reviews.toArray();
+
 export const getReview = (itemId: string): Promise<ReviewDto | undefined> =>
   db.reviews.where('itemId').equals(itemId).first();
 

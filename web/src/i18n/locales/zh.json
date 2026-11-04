@@ -160,7 +160,8 @@
     "loadFailed": "地图加载失败。请检查网络后重试。",
     "markerCount": "{{count}} 个地点",
     "unavailableDescription": "构建应用时没有设置地图密钥。列表仍然可用。",
-    "unavailableTitle": "此版本没有地图"
+    "unavailableTitle": "此版本没有地图",
+    "visits_other": "去过 {{count}} 次"
   },
   "nav": {
     "add": "添加",
