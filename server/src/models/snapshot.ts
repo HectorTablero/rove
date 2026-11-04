@@ -5,6 +5,7 @@ const mentionSchema = new Schema(
   {
     nameText: { type: String, required: true },
     addressText: { type: String, default: null },
+    searchText: { type: String, default: null },
     evidence: { type: String, required: true },
   },
   { _id: false },

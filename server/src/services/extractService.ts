@@ -14,14 +14,26 @@ import { getLlmConfig } from './settingsService';
  * the model can propose, and it can only propose things that are literally in the post. Addresses
  * and coordinates come from the geocoder afterwards, never from here. */
 
-const SYSTEM = `You read a social-media post about places to visit and list the specific places it names.
+const SYSTEM = `You read a social-media post about places to visit and list the specific places it names, so each can be found on a map.
 Rules:
 - A place is a named venue: a restaurant, café, bar, shop, park, hike, viewpoint, exhibition space. Not a city, district or street on its own.
-- Copy names exactly as written in the post, in the post's own language and script. Do not translate, expand or correct them.
-- "evidence" must be a verbatim, contiguous quote from the post that contains the name. Copy it character for character.
-- "addressText" is a verbatim quote of any address or location hint for that place, or null.
+- "nameText": the venue's name exactly as the post writes it, in the post's own language and script. Do not translate, expand or correct it. For a chain or brand, include the branch when the post names one, as written (e.g. "喜茶(海上世界店)").
+- "evidence": a verbatim, contiguous quote from the post that contains the name, copied character for character.
+- "addressText": where the place is, split into its parts from the largest area to the smallest, separated by single spaces: province, city, district, town or village, area, street and number, building or mall, floor or unit. Chinese often runs these together without commas or in reverse order: "平山村桃园深圳广东" is "广东 深圳 平山村 桃园"; "南山区蛇口海上世界广场B1" is "南山区 蛇口 海上世界广场 B1". Copy every part exactly from the post and never add a part the post does not state. null if the post gives no location.
+- "searchText": what to type into a map search (高德/Amap) to find this exact place rather than another branch of the same brand or another place with a similar name: the name followed by the most specific location parts the post gives (mall or building, street, area, district), separated by single spaces, e.g. "星巴克 海上世界" or "Bionic Brew 蛇口". A brand's flagship, themed or limited store must be told apart from its ordinary branches this way. Every part copied exactly from the post; if the post gives nothing beyond the name, the name alone.
 - If the post names no specific place, return an empty list.
-Answer with JSON only: {"mentions":[{"nameText":"…","addressText":null,"evidence":"…"}]}`;
+Answer with JSON only: {"mentions":[{"nameText":"…","addressText":"…","searchText":"…","evidence":"…"}]}`;
+
+/* The parts of a composed field (an address split into components, a search query), each of which
+   must be quoted from the post: the model may reorder and separate what the post says, never add
+   to it. */
+const PART_SEPARATORS = /[\s,，、;；|/]+/u;
+function quotedParts(composed: string | null, source: string): string | null {
+  if (!composed) return null;
+  const parts = composed.normalize('NFC').split(PART_SEPARATORS).filter(Boolean);
+  if (!parts.length || !parts.every((part) => source.includes(part))) return null;
+  return parts.join(' ');
+}
 
 const responseSchema = z.object({
   mentions: z.array(mentionSchema).max(MAX_MENTIONS_PER_SNAPSHOT * 2),
@@ -38,9 +50,11 @@ export function validateMentions(mentions: MentionDto[], text: string): MentionD
     if (!source.includes(evidence)) continue;
     // The name has to be in its own evidence too, or the evidence is decoration.
     if (!evidence.includes(mention.nameText.normalize('NFC'))) continue;
-    if (mention.addressText && !source.includes(mention.addressText.normalize('NFC'))) {
-      mention = { ...mention, addressText: null };
-    }
+    mention = {
+      ...mention,
+      addressText: quotedParts(mention.addressText, source),
+      searchText: quotedParts(mention.searchText, source),
+    };
     const key = mention.nameText.normalize('NFKC').toLocaleLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);

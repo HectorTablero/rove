@@ -97,7 +97,10 @@ export type ItemDto = PlaceItemDto | EventItemDto | FilmItemDto;
  */
 export interface MentionDto {
   nameText: string;
+  /** The location's parts, largest area first, space-separated; each quoted from the post. */
   addressText: string | null;
+  /** The map-search query that finds this branch: name plus location parts, each quoted. */
+  searchText: string | null;
   evidence: string;
 }
 

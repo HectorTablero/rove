@@ -64,19 +64,22 @@ export default function AddPage() {
   const [mentions, setMentions] = useState<MentionDto[]>([]);
   const [extracting, setExtracting] = useState(false);
   const [name, setName] = useState('');
-  const [debouncedName, setDebouncedName] = useState('');
+  /* What the geocoder is asked: the name as typed, or — for a picked mention — its search text,
+     which carries the branch or mall that tells one store of a brand from the rest. */
+  const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [candidate, setCandidate] = useState<GeocodeCandidate | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [pasted, setPasted] = useState('');
   const nameInput = useRef<HTMLInputElement>(null);
 
-  const suggestions = useSuggestions(debouncedName, region.id);
+  const suggestions = useSuggestions(debouncedQuery, region.id);
   const canExtract = Boolean(settings?.llmBaseUrl && settings.llmModel);
 
   useEffect(() => {
-    const handle = setTimeout(() => setDebouncedName(name), SUGGEST_DEBOUNCE_MS);
+    const handle = setTimeout(() => setDebouncedQuery(query), SUGGEST_DEBOUNCE_MS);
     return () => clearTimeout(handle);
-  }, [name]);
+  }, [query]);
 
   // A link from the share sheet resolves on its own — nobody shares a link to then press a button.
   useEffect(() => {
@@ -146,6 +149,7 @@ export default function AddPage() {
 
   const pickMention = (mention: MentionDto) => {
     setName(mention.nameText);
+    setQuery(mention.searchText ?? mention.nameText);
     setCandidate(null);
     nameInput.current?.focus();
   };
@@ -209,6 +213,7 @@ export default function AddPage() {
     setResolveError(null);
     setMentions([]);
     setName('');
+    setQuery('');
     setCandidate(null);
     setSavedId(null);
     setPasted('');
@@ -338,6 +343,7 @@ export default function AddPage() {
             value={name}
             onChange={(e) => {
               setName(e.target.value);
+              setQuery(e.target.value);
               setCandidate(null);
             }}
           />

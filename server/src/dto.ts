@@ -138,6 +138,7 @@ const extractionToDto = (extraction: LeanExtraction): ExtractionDto => ({
   mentions: (extraction.mentions ?? []).map((m) => ({
     nameText: m.nameText,
     addressText: m.addressText ?? null,
+    searchText: m.searchText ?? null,
     evidence: m.evidence,
   })),
 });

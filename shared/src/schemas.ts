@@ -153,6 +153,9 @@ export const snapshotBodySchema = z
 export const mentionSchema = z.object({
   nameText: z.string().trim().min(1).max(MAX_MENTION_LENGTH),
   addressText: z.string().trim().max(MAX_ADDRESS_LENGTH).nullable().default(null),
+  /** What to type into the map search to find this branch and not another: the name plus the
+      post's most specific location parts. Null on extractions from before it existed. */
+  searchText: z.string().trim().max(MAX_ADDRESS_LENGTH).nullable().default(null),
   evidence: z.string().min(1).max(MAX_SNAPSHOT_TEXT_LENGTH),
 });
 
