@@ -197,36 +197,39 @@ export default function SettingsPage() {
             )
           }
         >
-          <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-8">
-            <div className="flex flex-col gap-1.5">
-              <Label>{t('settings.general.theme')}</Label>
-              <div className="flex gap-1">
-                {(
-                  [
-                    ['light', Sun, t('settings.general.themeLight')],
-                    ['dark', Moon, t('settings.general.themeDark')],
-                    ['auto', SunMoon, t('settings.general.themeAuto')],
-                  ] as const
-                ).map(([value, Icon, label]) => (
-                  <Button
-                    key={value}
-                    variant={theme === value ? 'secondary' : 'outline'}
-                    size="sm"
-                    className={cn(
-                      'gap-1.5 h-8',
-                      theme === value && 'ring-[1.5px] ring-inset ring-ring',
-                    )}
-                    onClick={() => changeTheme(value)}
-                  >
-                    <Icon className="size-4" />
-                    {label}
-                  </Button>
-                ))}
+          {/* Same rhythm as the rows under "Advanced": gap-4 between controls. */}
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-8">
+              <div className="flex flex-col gap-1.5">
+                <Label>{t('settings.general.theme')}</Label>
+                <div className="flex gap-1">
+                  {(
+                    [
+                      ['light', Sun, t('settings.general.themeLight')],
+                      ['dark', Moon, t('settings.general.themeDark')],
+                      ['auto', SunMoon, t('settings.general.themeAuto')],
+                    ] as const
+                  ).map(([value, Icon, label]) => (
+                    <Button
+                      key={value}
+                      variant={theme === value ? 'secondary' : 'outline'}
+                      size="sm"
+                      className={cn(
+                        'gap-1.5 h-8',
+                        theme === value && 'ring-[1.5px] ring-inset ring-ring',
+                      )}
+                      onClick={() => changeTheme(value)}
+                    >
+                      <Icon className="size-4" />
+                      {label}
+                    </Button>
+                  ))}
+                </div>
               </div>
+              <LanguageSetting />
             </div>
-            <LanguageSetting />
+            <TranslationSetting />
           </div>
-          <TranslationSetting />
         </Section>
 
         <Section title={t('settings.region.title')} description={t('settings.region.description')}>
