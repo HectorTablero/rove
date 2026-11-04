@@ -1,6 +1,7 @@
 import { toDatum } from '@rove/shared';
 import AMapLoader from '@amap/amap-jsapi-loader';
 import { useEffect, useRef, useState } from 'react';
+import { API_BASE } from '@/lib/apiClient';
 import type { MapViewProps } from '../renderer';
 
 /* Amap JS API 2.0, behind the MapRenderer interface.
@@ -45,7 +46,11 @@ const KEY = (import.meta.env.VITE_AMAP_JS_KEY as string | undefined) ?? '';
 let loading: Promise<AMapNamespace> | null = null;
 function loadAMap(): Promise<AMapNamespace> {
   if (!loading) {
-    window._AMapSecurityConfig = { serviceHost: `${window.location.origin}/_AMapService` };
+    /* The server's origin, not the page's: in the Android app the page is https://localhost,
+       which answers every unknown path with index.html — and the SDK then fails parsing it. */
+    window._AMapSecurityConfig = {
+      serviceHost: `${API_BASE || window.location.origin}/_AMapService`,
+    };
     loading = AMapLoader.load({ key: KEY, version: '2.0', plugins: [] }) as Promise<AMapNamespace>;
   }
   return loading;

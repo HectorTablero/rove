@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { config } from '../../config';
 
 /* The server-side half of the browser map's key.
@@ -21,29 +22,32 @@ const UPSTREAM: { prefix: string; target: string }[] = [
 ];
 
 export const amapJsProxy = (trustedOrigins: readonly string[]) =>
-  new Hono().get('/*', async (c) => {
-    if (!config.amapJsSecurityCode) return c.json({ error: 'geocode.not_configured' }, 503);
-    const origin = c.req.header('origin') ?? originOf(c.req.header('referer'));
-    if (!origin || !trustedOrigins.includes(origin))
-      return c.json({ error: 'errors.forbidden' }, 403);
+  new Hono()
+    // The Android app calls this cross-origin (from https://localhost), and the SDK reads the JSON.
+    .use('/*', cors({ origin: [...trustedOrigins] }))
+    .get('/*', async (c) => {
+      if (!config.amapJsSecurityCode) return c.json({ error: 'geocode.not_configured' }, 503);
+      const origin = c.req.header('origin') ?? originOf(c.req.header('referer'));
+      if (!origin || !trustedOrigins.includes(origin))
+        return c.json({ error: 'errors.forbidden' }, 403);
 
-    const path = c.req.path.replace(/^\/_AMapService/, '') || '/';
-    const rule = UPSTREAM.find((r) => path.startsWith(r.prefix)) ?? UPSTREAM[UPSTREAM.length - 1];
-    const upstream = new URL(rule.target + path.slice(rule.prefix.length).replace(/^\/+/, ''));
-    const incoming = new URL(c.req.url);
-    incoming.searchParams.forEach((value, key) => upstream.searchParams.append(key, value));
-    upstream.searchParams.set('jscode', config.amapJsSecurityCode);
+      const path = c.req.path.replace(/^\/_AMapService/, '') || '/';
+      const rule = UPSTREAM.find((r) => path.startsWith(r.prefix)) ?? UPSTREAM[UPSTREAM.length - 1];
+      const upstream = new URL(rule.target + path.slice(rule.prefix.length).replace(/^\/+/, ''));
+      const incoming = new URL(c.req.url);
+      incoming.searchParams.forEach((value, key) => upstream.searchParams.append(key, value));
+      upstream.searchParams.set('jscode', config.amapJsSecurityCode);
 
-    const res = await fetch(upstream, { signal: AbortSignal.timeout(15_000) }).catch(() => null);
-    if (!res) return c.json({ error: 'geocode.upstream' }, 502);
-    return new Response(res.body, {
-      status: res.status,
-      headers: {
-        'Content-Type': res.headers.get('content-type') ?? 'application/octet-stream',
-        'Cache-Control': res.headers.get('cache-control') ?? 'no-store',
-      },
+      const res = await fetch(upstream, { signal: AbortSignal.timeout(15_000) }).catch(() => null);
+      if (!res) return c.json({ error: 'geocode.upstream' }, 502);
+      return new Response(res.body, {
+        status: res.status,
+        headers: {
+          'Content-Type': res.headers.get('content-type') ?? 'application/octet-stream',
+          'Cache-Control': res.headers.get('cache-control') ?? 'no-store',
+        },
+      });
     });
-  });
 
 const originOf = (url: string | undefined): string | null => {
   if (!url) return null;
