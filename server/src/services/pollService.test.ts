@@ -22,7 +22,7 @@ vi.mock('../sources', async (importOriginal) => ({
 }));
 vi.mock('./settingsService', () => settings);
 
-const { pollSource, sourceStatuses } = await import('./pollService');
+const { pollSource, reparseStored, REPARSE_LIMIT, sourceStatuses } = await import('./pollService');
 
 const entry = (title: string, link: string) => ({
   title,
@@ -71,7 +71,7 @@ describe('pollSource', () => {
     );
   });
 
-  it('refreshes a known candidate with what the feed now says, and leaves a kept item alone', async () => {
+  it('refreshes a known candidate with what the feed now says, and leaves a dismissed item alone', async () => {
     rss.fetchFeed.mockResolvedValue([
       { ...entry('A', 'https://d/1'), text: '演出时间：2026-10-02 20:00\n场馆：B10\n票价：380' },
       { ...entry('B', 'https://d/2'), text: '票价：99' },
@@ -94,7 +94,7 @@ describe('pollSource', () => {
                 allDay: false,
               },
             }
-          : { _id: 's1', status: 'saved', price: null },
+          : { _id: 's1', status: 'dismissed', price: null },
       ),
     );
 
@@ -139,6 +139,27 @@ describe('pollSource', () => {
     );
   });
 
+  it('corrects a saved item too, without giving it an expiry', async () => {
+    rss.fetchFeed.mockResolvedValue([entry('A', 'https://d/1')]);
+    Item.findOne.mockImplementation(() =>
+      query({
+        _id: 's1',
+        status: 'saved',
+        price: null,
+        coverUrl: null,
+        categories: [],
+        venue: 'B10',
+        when: null,
+      }),
+    );
+
+    await pollSource('u1', 'damai');
+
+    const [, update] = Item.updateOne.mock.calls[0] as [unknown, { $set: Record<string, unknown> }];
+    expect(update.$set.when).toMatchObject({ start: new Date('2026-10-02T12:00:00.000Z') });
+    expect(update.$set).not.toHaveProperty('expiresAt');
+  });
+
   it('records a failed feed as a run with its code instead of throwing', async () => {
     rss.fetchFeed.mockRejectedValue(
       Object.assign(new Error('x'), { code: 'poll.rsshub_unreachable' }),
@@ -158,6 +179,50 @@ describe('pollSource', () => {
     const run = await pollSource('u1', 'instagram-oembed');
     expect(run.error).toBe('poll.not_pollable');
     expect(rss.fetchFeed).not.toHaveBeenCalled();
+  });
+});
+
+describe('reparseStored', () => {
+  const stored = {
+    _id: 'c1',
+    status: 'saved',
+    regionId: 'shenzhen',
+    snapshotIds: ['snap'],
+    price: null,
+    coverUrl: null,
+    categories: [],
+    venue: 'B10',
+    // The old parser's reading: a year off.
+    when: {
+      start: new Date('2027-10-02T12:00:00.000Z'),
+      end: null,
+      tz: 'Asia/Shanghai',
+      allDay: false,
+    },
+  };
+
+  it('re-reads an active item from its snapshot, relative to when it was fetched', async () => {
+    Item.countDocuments.mockResolvedValue(1);
+    Item.find.mockReturnValue(query([stored]));
+    Snapshot.findById.mockReturnValue(
+      query({
+        sourceId: 'damai',
+        fetchedAt: new Date('2026-09-12T00:00:00.000Z'),
+        body: JSON.stringify(entry('A', 'https://d/1')),
+      }),
+    );
+
+    expect(await reparseStored()).toBe(1);
+    expect(Item.updateOne).toHaveBeenCalledWith(
+      { _id: 'c1' },
+      { $set: { when: expect.objectContaining({ start: new Date('2026-10-02T12:00:00.000Z') }) } },
+    );
+  });
+
+  it('does nothing above the limit', async () => {
+    Item.countDocuments.mockResolvedValue(REPARSE_LIMIT + 1);
+    expect(await reparseStored()).toBe(0);
+    expect(Item.find).not.toHaveBeenCalled();
   });
 });
 

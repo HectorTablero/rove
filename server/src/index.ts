@@ -15,7 +15,7 @@ import {
 import type { AppEnv } from './middleware/session';
 import { ensureTombstoneTtl, tombstoneGauges } from './models/deletion';
 import { liveSyncGauges } from './services/liveSync';
-import { pollAll, sweepExpiredCandidates } from './services/pollService';
+import { pollAll, reparseStored, sweepExpiredCandidates } from './services/pollService';
 
 async function main() {
   /* Registered before connect(), so the first transition is caught too.
@@ -47,6 +47,12 @@ async function main() {
   injectWebSocket(server);
 
   trackEvent('server_started', { port: config.port, node: process.version });
+
+  /* Re-read stored items with this build's parsers, so a parser fix reaches rows the feeds no
+     longer list. Local data only; skipped above REPARSE_LIMIT active items. */
+  reparseStored()
+    .then((count) => count && console.log(`Re-read ${count} stored items with the current parsers`))
+    .catch((err) => captureError(err, { scope: 'reparseStored' }));
 
   /* The feed schedule: every enabled source of every account, then the sweep of candidates
      nobody acted on. A plain interval rather than a cron library — there is one process and one

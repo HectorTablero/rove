@@ -107,6 +107,7 @@ export function modelDouble() {
     deleteMany: vi.fn(async (..._args: unknown[]) => ({ deletedCount: 0 })),
     insertMany: vi.fn(async (..._args: unknown[]) => [] as unknown[]),
     estimatedDocumentCount: vi.fn(async (..._args: unknown[]) => 0),
+    countDocuments: vi.fn(async (..._args: unknown[]) => 0),
   };
 }
 
@@ -128,6 +129,7 @@ export function resetModels(...models: ModelDouble[]): void {
     model.updateMany.mockResolvedValue({ modifiedCount: 0 });
     model.deleteMany.mockResolvedValue({ deletedCount: 0 });
     model.insertMany.mockResolvedValue([]);
+    model.countDocuments.mockResolvedValue(0);
   }
 }
 

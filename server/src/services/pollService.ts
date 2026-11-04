@@ -24,15 +24,19 @@ import { getSettings } from './settingsService';
  * Every failure is recorded as a run and never thrown past one source: a broken Damai route must
  * not stop Douban from being read in the same pass. */
 
-/* A candidate seen again picks up what the feed now says about it: a price, a poster, a venue
-   that was missing or mis-read the first time. Only while it is still a candidate — once kept or
-   dismissed, the row is the user's. Written only on a real change, because every write bumps
-   updatedAt and every bump is a row each device pulls. */
-async function refreshCandidate(
+/* An item seen again picks up what the feed now says about it: a price, a poster, a venue or a
+   time window that was missing or mis-read the first time. Candidates and saved items both —
+   these fields only ever come from the source, the app has no way to edit them. Dismissed and
+   visited rows are history and stay as they were. Written only on a real change, because every
+   write bumps updatedAt and every bump is a row each device pulls. */
+const REFRESHED_STATUSES = ['candidate', 'saved'] as const;
+const REFRESHED = new Set<string>(REFRESHED_STATUSES);
+
+async function refreshFromDraft(
   known: { _id: Types.ObjectId; status: string; [key: string]: unknown },
   draft: CandidateDraft,
-): Promise<void> {
-  if (known.status !== 'candidate') return;
+): Promise<boolean> {
+  if (!REFRESHED.has(known.status)) return false;
   const next: Record<string, unknown> = {
     price: draft.price,
     coverUrl: draft.coverUrl,
@@ -57,9 +61,45 @@ async function refreshCandidate(
     : null;
   if (JSON.stringify(known.when ?? null) !== JSON.stringify(when)) {
     changed.when = when;
-    changed.expiresAt = new Date(draft.expiresAt);
+    // Only a candidate expires; a saved item is the user's until they drop it.
+    if (known.status === 'candidate') changed.expiresAt = new Date(draft.expiresAt);
   }
-  if (Object.keys(changed).length) await Item.updateOne({ _id: known._id }, { $set: changed });
+  if (!Object.keys(changed).length) return false;
+  await Item.updateOne({ _id: known._id }, { $set: changed });
+  return true;
+}
+
+/** Above this many active items the startup re-read is skipped rather than slowing a deploy. */
+export const REPARSE_LIMIT = 1000;
+
+/* Re-reads every active polled item (candidate or saved) from the snapshot it was created from,
+   so a parser fix reaches rows the feeds no longer list — a saved event from last month will
+   never be polled again. Runs at startup, i.e. once per deploy; local data only, no fetching.
+   `now` for each re-read is the snapshot's own fetch time, which is what a yearless date was
+   relative to. Returns how many rows changed. */
+export async function reparseStored(): Promise<number> {
+  const filter = { status: { $in: [...REFRESHED_STATUSES] }, 'snapshotIds.0': { $exists: true } };
+  // ponytail: all-or-nothing cap; page through by _id if accounts ever hold more than this.
+  if ((await Item.countDocuments(filter)) > REPARSE_LIMIT) return 0;
+  const items = await Item.find(filter).lean();
+  let changed = 0;
+  for (const item of items) {
+    try {
+      const snapshot = await Snapshot.findById(item.snapshotIds[0]).lean();
+      if (!snapshot?.body) continue;
+      const poller = pollerById(snapshot.sourceId);
+      const draft = poller.map(
+        JSON.parse(snapshot.body),
+        regionById(item.regionId),
+        snapshot.fetchedAt,
+      );
+      if (draft && (await refreshFromDraft(item, draft))) changed++;
+    } catch {
+      // A snapshot from a source that no longer polls, or a body that is not an entry: skip it.
+    }
+  }
+  if (changed) trackEvent('items_reparsed', { count: changed });
+  return changed;
 }
 
 export interface RunSummary {
@@ -97,7 +137,7 @@ export async function pollSource(
       if (!draft) continue;
       const known = await Item.findOne({ userId, sourceUrls: draft.link }).lean();
       if (known) {
-        await refreshCandidate(known, draft);
+        await refreshFromDraft(known, draft);
         continue;
       }
 
