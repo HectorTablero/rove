@@ -146,18 +146,20 @@ describe('bySoonest', () => {
       when: start ? { start, end, tz: 'Asia/Shanghai', allDay: false } : null,
     }) as unknown as ItemDto;
 
-  it('treats a running event as now, then upcoming, undated, and finished last', () => {
+  it('puts dated events first, then open runs, then undated, and finished last', () => {
     const items = [
       event('finished', '2026-06-01T00:00:00.000Z', '2026-06-30T00:00:00.000Z'),
       event('undated', null),
-      event('next week', '2026-11-11T00:00:00.000Z'),
-      event('open since June', '2026-06-15T00:00:00.000Z', '2027-02-28T00:00:00.000Z'),
-      event('tomorrow', '2026-11-05T00:00:00.000Z'),
+      event('6 Nov', '2026-11-06T11:30:00.000Z', '2026-11-06T13:30:00.000Z'),
+      event('10 Oct – 20 Nov', '2026-10-09T16:00:00.000Z', '2026-11-20T15:59:00.000Z'),
+      event('5 Nov', '2026-11-05T11:30:00.000Z'),
+      event('from 1 Dec', '2026-11-30T16:00:00.000Z', '2027-01-15T15:59:00.000Z'),
     ];
     expect(items.sort(bySoonest(now)).map((i) => (i as { title: string }).title)).toEqual([
-      'open since June',
-      'tomorrow',
-      'next week',
+      '5 Nov',
+      '6 Nov',
+      '10 Oct – 20 Nov',
+      'from 1 Dec',
       'undated',
       'finished',
     ]);

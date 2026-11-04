@@ -122,25 +122,34 @@ export function rangeWindow(range: WhenRange, now: Date, tz: string): Window {
   return { start: now, end: new Date(midnight.getTime() + 86_400_000) };
 }
 
+/** The calendar day of an instant in a zone, as `YYYY-MM-DD`. */
+const ymd = (iso: string, tz: string) =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: tz, dateStyle: 'short' }).format(new Date(iso));
+
+/** A window over more than one calendar day in its zone: a run, not a date. */
+export const isMultiDay = (when: WhenDto): boolean =>
+  when.end !== null && ymd(when.start, when.tz) !== ymd(when.end, when.tz);
+
 /**
- * "Soonest": what you could go to first. An event already running counts as now (an exhibition
- * that opened in June is not "before" one opening tomorrow), upcoming ones by start, then undated
- * ones newest first — "time unknown" is not "soon" — and finished ones last, latest first.
- * `now` is an ISO string, compared as text like every stored time.
+ * "Soonest": what you could go to first. Events on a date come first, by start: a concert on the
+ * 6th is a plan in a way an exhibition open from October to December is not. Then the runs still
+ * open, the one already running as "now" (one that opened in June is not "before" one opening
+ * tomorrow). Then undated ones newest first — "time unknown" is not "soon" — and finished ones
+ * last, latest first. `now` is an ISO string, compared as text like every stored time.
  */
 export function bySoonest(now: string): (a: ItemDto, b: ItemDto) => number {
   const rank = (item: ItemDto): [number, string] => {
     const when = item.kind !== 'place' ? item.when : null;
-    if (!when) return [1, item.createdAt];
+    if (!when) return [2, item.createdAt];
     const end = when.end ?? when.start;
-    if (end < now) return [2, end];
-    return [0, when.start < now ? now : when.start];
+    if (end < now) return [3, end];
+    return [isMultiDay(when) ? 1 : 0, when.start < now ? now : when.start];
   };
   return (a, b) => {
     const [ga, ka] = rank(a);
     const [gb, kb] = rank(b);
     if (ga !== gb) return ga - gb;
     const order = ka < kb ? -1 : ka > kb ? 1 : 0;
-    return ga === 0 ? order : -order;
+    return ga <= 1 ? order : -order;
   };
 }

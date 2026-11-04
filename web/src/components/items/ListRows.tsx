@@ -7,7 +7,7 @@ import { formatPrice } from '@/lib/price';
 import { useRegion } from '@/lib/region';
 import { detectSource, useTranslatedText } from '@/lib/translate';
 import { cn } from '@/lib/utils';
-import { endsWithin, otherYear, type Window } from '@/lib/when';
+import { endsWithin, isMultiDay, otherYear, type Window } from '@/lib/when';
 
 /* The list, one shape per kind rather than one card for everything.
  *
@@ -202,14 +202,6 @@ const ROW =
 const zoned = (iso: string, tz: string, lng: string, opts: Intl.DateTimeFormatOptions) =>
   new Intl.DateTimeFormat(lng, { timeZone: tz, ...opts }).format(new Date(iso));
 
-/** The stub: day large, month small, in the region's clock. A dashed edge tears it off the ticket. */
-/** The calendar day of an instant in a zone, for "is this one day or several". */
-const dayKey = (iso: string, tz: string) => zoned(iso, tz, 'en-CA', { dateStyle: 'short' });
-
-/** A window spanning more than one calendar day in the region's clock. */
-const isMultiDay = (when: WhenDto, tz: string) =>
-  when.end !== null && dayKey(when.start, tz) !== dayKey(when.end, tz);
-
 /** "Nov 5 – Feb 28, 2027": the year only when an end falls outside this year. */
 function rangeText(when: WhenDto, tz: string, lng: string): string {
   const withYear = otherYear(when.start, tz) || otherYear(when.end!, tz);
@@ -231,11 +223,15 @@ function StubYear({ iso, tz }: { iso: string; tz: string }) {
   );
 }
 
+/** The stub: day large and month small, or a run's two ends, in the region's clock. A dashed
+    edge tears it off the ticket. */
 function DateStub({ when, tz }: { when: WhenDto | null; tz: string }) {
   const { t, i18n } = useTranslation();
   const now = new Date().toISOString();
-  // Running already: "Now", and when it ends — a start date from June would only mislead.
-  const ongoing = when !== null && when.start < now && isMultiDay(when, tz) && when.end! >= now;
+  const short = (iso: string) => zoned(iso, tz, i18n.language, { month: 'short', day: 'numeric' });
+  // A run reads as three equal lines: its start ("Now" once it has begun — a start date from June
+  // would only mislead), a lone dash, its end.
+  const run = when !== null && isMultiDay(when);
   return (
     <span
       className={cn(
@@ -243,14 +239,22 @@ function DateStub({ when, tz }: { when: WhenDto | null; tz: string }) {
         when ? 'text-primary' : 'text-muted-foreground',
       )}
     >
-      {when && ongoing ? (
-        <>
-          <span className="text-sm leading-none font-semibold">{t('list.now')}</span>
-          <span className="mt-1.5 text-center text-[11px] leading-none">
-            {zoned(when.end!, tz, i18n.language, { month: 'short', day: 'numeric' })}
+      {when && run ? (
+        <span className="flex flex-col items-center text-center text-[11px] leading-tight font-medium">
+          {when.start < now ? (
+            <span>{t('list.now')}</span>
+          ) : (
+            <>
+              <span>{short(when.start)}</span>
+              <StubYear iso={when.start} tz={tz} />
+            </>
+          )}
+          <span aria-hidden className="opacity-60">
+            –
           </span>
+          <span>{short(when.end!)}</span>
           <StubYear iso={when.end!} tz={tz} />
-        </>
+        </span>
       ) : when ? (
         <>
           <span className="text-xl leading-none font-semibold tabular-nums">
@@ -282,7 +286,7 @@ function EventRow({
   const { t, i18n } = useTranslation();
   const region = useRegion();
   const time =
-    item.when && isMultiDay(item.when, tz)
+    item.when && isMultiDay(item.when)
       ? rangeText(item.when, tz, i18n.language)
       : item.when && !item.when.allDay
         ? // "Sat 19:30 – 21:30" when the source gave an end, else just the start.
