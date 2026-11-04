@@ -1,7 +1,14 @@
 import { regionById, SOURCES } from '@rove/shared';
 import { describe, expect, it } from 'vitest';
 import { parseFeed } from '../rss';
-import { damaiPoller, doubanEventsPoller, maoyanPoller, POLLERS, showstartPoller } from './index';
+import {
+  damaiPoller,
+  doubanEventsPoller,
+  doubanPageWhen,
+  maoyanPoller,
+  POLLERS,
+  showstartPoller,
+} from './index';
 
 /* The four mappings against feeds shaped like RSSHub's. The fixtures are this project's reading
    of the routes' descriptions, not captures — the live shape is checked against a self-hosted
@@ -200,5 +207,34 @@ describe('details: price, cover, categories', () => {
       feed(item('x', 'https://e/1', '<img src="data:image/png;base64,AA">')),
     );
     expect(entry.image).toBeNull();
+  });
+});
+
+describe('doubanPageWhen', () => {
+  // As https://www.douban.com/event/37326478/ printed it on 2026-11-05 (trimmed to the tags read).
+  const page = `<li class="calendar-str-item">2025年09月01日 周一 00:00 ~ 2026年12月31日 周四 23:59</li>
+    <time itemprop="startDate" datetime="2025-09-01T00:00:00"></time>
+    <time itemprop="endDate" datetime="2026-12-31T23:59:59"></time>`;
+
+  it('reads the whole window a months-long exhibition runs for, as whole days', () => {
+    expect(doubanPageWhen(page, 'Asia/Shanghai')).toEqual({
+      start: '2025-08-31T16:00:00.000Z',
+      end: '2026-12-31T15:59:00.000Z',
+      tz: 'Asia/Shanghai',
+      allDay: true,
+    });
+  });
+
+  it('keeps the times of an evening show', () => {
+    const show = `<x itemprop="startDate" datetime="2026-11-22T19:30:00"><x itemprop="endDate" datetime="2026-11-22T21:30:00">`;
+    expect(doubanPageWhen(show, 'Asia/Shanghai')).toMatchObject({
+      start: '2026-11-22T11:30:00.000Z',
+      end: '2026-11-22T13:30:00.000Z',
+      allDay: false,
+    });
+  });
+
+  it('is null for a page without the dates (a login wall, a removed event)', () => {
+    expect(doubanPageWhen('<html>登录</html>', 'Asia/Shanghai')).toBeNull();
   });
 });

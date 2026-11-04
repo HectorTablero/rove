@@ -1,6 +1,6 @@
 import { FILM_TTL_DAYS, MAX_PRICE_LENGTH } from '@rove/shared';
 import { HttpError } from '../../errors';
-import { expiryFor, labelled, parseWhen } from './dates';
+import { expiryFor, labelled, parseWhen, windowFromSchemaDates } from './dates';
 import type { CandidateDraft, Poller } from './types';
 
 /* One poller per feed, each a route and a mapping. The mappings read what RSSHub's route writes
@@ -96,7 +96,32 @@ export const doubanEventsPoller: Poller = {
       categories: subtype ? [subtype] : entry.categories,
     });
   },
+  /* The feed's line carries only the start date; the event page has the whole window as
+     schema.org dates. A months-long exhibition read from the feed alone would be a single day
+     that ended last year. */
+  async detail(draft, region, now) {
+    // ponytail: a fixed pause keeps a first pass over many items polite; a token bucket if
+    // Douban starts refusing anyway.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    const res = await fetch(draft.link, {
+      headers: { 'User-Agent': BROWSER_UA, Referer: 'https://www.douban.com/' },
+      signal: AbortSignal.timeout(10_000),
+    }).catch(() => null);
+    if (!res?.ok) return null;
+    const when = doubanPageWhen(await res.text(), region.tz);
+    return when ? { ...draft, when, expiresAt: expiryFor(when, now) } : null;
+  },
 };
+
+const BROWSER_UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
+
+/** The window a Douban event page states in its `itemprop="startDate"`/`"endDate"` tags. */
+export function doubanPageWhen(html: string, tz: string) {
+  const prop = (name: string) =>
+    new RegExp(`itemprop="${name}"[^>]*?datetime="([^"]+)"`).exec(html)?.[1] ?? null;
+  return windowFromSchemaDates(prop('startDate'), prop('endDate'), tz);
+}
 
 /** The calendar day of an instant in a zone, as `YYYY-MM-DD`. */
 const ymdIn = (at: Date, tz: string): string =>

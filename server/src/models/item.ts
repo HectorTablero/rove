@@ -62,6 +62,10 @@ const itemSchema = new Schema(
     venue: { type: String, default: null },
     price: { type: String, default: null },
     coverUrl: { type: String, default: null },
+    /* Server-only: when the source's own event page was read for what its feed leaves out
+       (Douban's feed has a start date, its page the whole range). Null means "not yet", which is
+       what makes a poll or a restart go and read it; set, the page's `when` beats the feed's. */
+    detailAt: { type: Date, default: null },
   },
   { timestamps: true },
 );

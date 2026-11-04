@@ -1,4 +1,5 @@
 import {
+  type RegionDescriptor,
   MAX_POLL_ITEMS_PER_RUN,
   regionById,
   sourceById,
@@ -11,7 +12,7 @@ import { Item } from '../models/item';
 import { Snapshot } from '../models/snapshot';
 import { SourceRun } from '../models/sourceRun';
 import { UserSettings } from '../models/userSettings';
-import { fetchFeed, pollerById, type CandidateDraft } from '../sources';
+import { fetchFeed, pollerById, type CandidateDraft, type Poller } from '../sources';
 import { getSettings } from './settingsService';
 
 /* Polling: feed → candidates, per account, per source, each run isolated.
@@ -32,9 +33,39 @@ import { getSettings } from './settingsService';
 const REFRESHED_STATUSES = ['candidate', 'saved'] as const;
 const REFRESHED = new Set<string>(REFRESHED_STATUSES);
 
-async function refreshFromDraft(
-  known: { _id: Types.ObjectId; status: string; [key: string]: unknown },
+type Known = {
+  _id: Types.ObjectId;
+  status: string;
+  detailAt?: Date | null;
+  [key: string]: unknown;
+};
+
+/* What an item's `when` should come from. A source with an event page (`poller.detail`) is read
+   there once � when the item is created, or the first time it is seen without `detailAt` � and
+   from then on the page's window stands and the feed's, which is poorer, is ignored. A page that
+   cannot be read leaves the feed's draft in place and `detailAt` unset, so the next pass retries. */
+async function withDetail(
+  poller: Poller,
   draft: CandidateDraft,
+  region: RegionDescriptor,
+  now: Date,
+  known: Known | null,
+): Promise<{ draft: CandidateDraft; keepWhen: boolean; detailAt: Date | null }> {
+  if (!poller.detail) return { draft, keepWhen: false, detailAt: null };
+  if (known?.detailAt) return { draft, keepWhen: true, detailAt: null };
+  const detailed = await poller.detail(draft, region, now).catch(() => null);
+  return detailed
+    ? { draft: detailed, keepWhen: false, detailAt: now }
+    : { draft, keepWhen: false, detailAt: null };
+}
+
+async function refreshFromDraft(
+  known: Known,
+  {
+    draft,
+    keepWhen,
+    detailAt,
+  }: { draft: CandidateDraft; keepWhen: boolean; detailAt: Date | null },
 ): Promise<boolean> {
   if (!REFRESHED.has(known.status)) return false;
   const next: Record<string, unknown> = {
@@ -59,11 +90,12 @@ async function refreshFromDraft(
         allDay: draft.when.allDay,
       }
     : null;
-  if (JSON.stringify(known.when ?? null) !== JSON.stringify(when)) {
+  if (!keepWhen && JSON.stringify(known.when ?? null) !== JSON.stringify(when)) {
     changed.when = when;
     // Only a candidate expires; a saved item is the user's until they drop it.
     if (known.status === 'candidate') changed.expiresAt = new Date(draft.expiresAt);
   }
+  if (detailAt) changed.detailAt = detailAt;
   if (!Object.keys(changed).length) return false;
   await Item.updateOne({ _id: known._id }, { $set: changed });
   return true;
@@ -74,7 +106,8 @@ export const REPARSE_LIMIT = 1000;
 
 /* Re-reads every active polled item (candidate or saved) from the snapshot it was created from,
    so a parser fix reaches rows the feeds no longer list — a saved event from last month will
-   never be polled again. Runs at startup, i.e. once per deploy; local data only, no fetching.
+   never be polled again. Runs at startup, i.e. once per deploy. Local data, except an item from a
+   source with an event page that has not been read yet: that page is fetched, one at a time.
    `now` for each re-read is the snapshot's own fetch time, which is what a yearless date was
    relative to. Returns how many rows changed. */
 export async function reparseStored(): Promise<number> {
@@ -88,12 +121,11 @@ export async function reparseStored(): Promise<number> {
       const snapshot = await Snapshot.findById(item.snapshotIds[0]).lean();
       if (!snapshot?.body) continue;
       const poller = pollerById(snapshot.sourceId);
-      const draft = poller.map(
-        JSON.parse(snapshot.body),
-        regionById(item.regionId),
-        snapshot.fetchedAt,
-      );
-      if (draft && (await refreshFromDraft(item, draft))) changed++;
+      const region = regionById(item.regionId);
+      const draft = poller.map(JSON.parse(snapshot.body), region, snapshot.fetchedAt);
+      if (!draft) continue;
+      const read = await withDetail(poller, draft, region, new Date(), item);
+      if (await refreshFromDraft(item, read)) changed++;
     } catch {
       // A snapshot from a source that no longer polls, or a body that is not an entry: skip it.
     }
@@ -137,9 +169,11 @@ export async function pollSource(
       if (!draft) continue;
       const known = await Item.findOne({ userId, sourceUrls: draft.link }).lean();
       if (known) {
-        await refreshFromDraft(known, draft);
+        if (REFRESHED.has(known.status))
+          await refreshFromDraft(known, await withDetail(poller, draft, region, now, known));
         continue;
       }
+      const read = await withDetail(poller, draft, region, now, null);
 
       const snapshot = await Snapshot.create({
         userId,
@@ -165,16 +199,17 @@ export async function pollSource(
         status: 'candidate',
         snapshotIds: [snapshot._id as Types.ObjectId],
         sourceUrls: [draft.link],
-        expiresAt: new Date(draft.expiresAt),
+        expiresAt: new Date(read.draft.expiresAt),
         location: null,
-        when: draft.when
+        when: read.draft.when
           ? {
-              start: new Date(draft.when.start),
-              end: draft.when.end ? new Date(draft.when.end) : null,
-              tz: draft.when.tz,
-              allDay: draft.when.allDay,
+              start: new Date(read.draft.when.start),
+              end: read.draft.when.end ? new Date(read.draft.when.end) : null,
+              tz: read.draft.when.tz,
+              allDay: read.draft.when.allDay,
             }
           : null,
+        detailAt: read.detailAt,
         venue: draft.kind === 'event' ? draft.venue : null,
       });
       created++;

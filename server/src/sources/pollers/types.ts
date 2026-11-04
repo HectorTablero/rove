@@ -31,4 +31,11 @@ export interface Poller {
   route(region: RegionDescriptor): string;
   /** Map one entry, or null to skip it (no title, a category page rather than an event, …). */
   map(entry: FeedEntry, region: RegionDescriptor, now: Date): CandidateDraft | null;
+  /** For a feed that leaves out what the event page has: the draft completed from the page
+      (one fetch), or null when the page could not be read — the feed's draft then stands. */
+  detail?(
+    draft: CandidateDraft,
+    region: RegionDescriptor,
+    now: Date,
+  ): Promise<CandidateDraft | null>;
 }

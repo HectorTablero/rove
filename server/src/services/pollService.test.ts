@@ -1,5 +1,5 @@
 import { DEFAULT_SETTINGS } from '@rove/shared';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { modelDouble, query, resetModels } from '../test/mongooseDouble';
 
 /* The promises the inbox depends on: an entry already known is not created twice, a broken feed
@@ -16,13 +16,33 @@ vi.mock('../models/item', () => ({ Item }));
 vi.mock('../models/snapshot', () => ({ Snapshot }));
 vi.mock('../models/sourceRun', () => ({ SourceRun }));
 vi.mock('../models/userSettings', () => ({ UserSettings }));
-vi.mock('../sources', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../sources')>()),
-  fetchFeed: rss.fetchFeed,
-}));
+vi.mock('../sources', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../sources')>();
+  return { ...actual, fetchFeed: rss.fetchFeed, pollerById: vi.fn(actual.pollerById) };
+});
 vi.mock('./settingsService', () => settings);
 
 const { pollSource, reparseStored, REPARSE_LIMIT, sourceStatuses } = await import('./pollService');
+const sources = await import('../sources');
+const actualSources = await vi.importActual<typeof import('../sources')>('../sources');
+
+/* Damai's mapping with an event page that says the show runs 19:30–21:30, counting reads. */
+const withPage = () => {
+  const detail = vi.fn(async (draft: import('../sources').CandidateDraft) => ({
+    ...draft,
+    when: {
+      start: '2026-10-02T11:30:00.000Z',
+      end: '2026-10-02T13:30:00.000Z',
+      tz: 'Asia/Shanghai',
+      allDay: false,
+    },
+  }));
+  vi.mocked(sources.pollerById).mockImplementation((id) => ({
+    ...actualSources.pollerById(id),
+    detail,
+  }));
+  return detail;
+};
 
 const entry = (title: string, link: string) => ({
   title,
@@ -179,6 +199,54 @@ describe('pollSource', () => {
     const run = await pollSource('u1', 'instagram-oembed');
     expect(run.error).toBe('poll.not_pollable');
     expect(rss.fetchFeed).not.toHaveBeenCalled();
+  });
+});
+
+describe('event pages', () => {
+  afterEach(() => {
+    vi.mocked(sources.pollerById).mockImplementation(actualSources.pollerById);
+  });
+
+  it('reads the page for a new item and keeps its window, marking it read', async () => {
+    const detail = withPage();
+    rss.fetchFeed.mockResolvedValue([entry('A', 'https://d/1')]);
+
+    await pollSource('u1', 'damai');
+
+    expect(detail).toHaveBeenCalledTimes(1);
+    expect(Item.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        when: expect.objectContaining({ end: new Date('2026-10-02T13:30:00.000Z') }),
+        detailAt: expect.any(Date),
+      }),
+    );
+  });
+
+  it('never lets the poorer feed window overwrite a page already read, nor reads it again', async () => {
+    const detail = withPage();
+    rss.fetchFeed.mockResolvedValue([entry('A', 'https://d/1')]);
+    Item.findOne.mockImplementation(() =>
+      query({
+        _id: 'c1',
+        status: 'saved',
+        detailAt: new Date('2026-11-01T00:00:00.000Z'),
+        price: null,
+        coverUrl: null,
+        categories: [],
+        venue: 'B10',
+        when: {
+          start: new Date('2026-10-02T11:30:00.000Z'),
+          end: new Date('2026-10-02T13:30:00.000Z'),
+          tz: 'Asia/Shanghai',
+          allDay: false,
+        },
+      }),
+    );
+
+    await pollSource('u1', 'damai');
+
+    expect(detail).not.toHaveBeenCalled();
+    expect(Item.updateOne).not.toHaveBeenCalled();
   });
 });
 

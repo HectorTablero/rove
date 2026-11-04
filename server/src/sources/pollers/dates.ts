@@ -122,6 +122,36 @@ function toWindow(first: Loose, second: Loose | null, tz: string, now: Date): Wh
   return { start: startIso, end: endIso, tz, allDay };
 }
 
+const ISO_LOCAL = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/;
+
+/** A schema.org `startDate`/`endDate` pair — local wall-clock times without an offset, as Douban's
+    event pages write them (`2025-09-01T00:00:00` → `2026-12-31T23:59:59`) — as a window in `tz`.
+    Midnight to 23:59 is a run of whole days, which is how a months-long exhibition is meant. */
+export function windowFromSchemaDates(
+  start: string | null,
+  end: string | null,
+  tz: string,
+): WhenDto | null {
+  const read = (text: string | null): Stamp | null => {
+    const m = text ? ISO_LOCAL.exec(text) : null;
+    if (!m) return null;
+    const [year, month, day, hour, minute] = m.slice(1).map(Number);
+    return { year, month, day, hour, minute };
+  };
+  const from = read(start);
+  if (!from) return null;
+  const to = read(end);
+  const allDay =
+    from.hour === 0 && from.minute === 0 && (!to || (to.hour === 23 && to.minute === 59));
+  const startIso = zonedIso(from, tz);
+  const endIso = to
+    ? zonedIso(to, tz)
+    : allDay
+      ? zonedIso({ ...from, hour: 23, minute: 59 }, tz)
+      : null;
+  return { start: startIso, end: endIso && endIso > startIso ? endIso : null, tz, allDay };
+}
+
 /** When a candidate leaves the inbox: after its window, or a month from now if it has none. */
 export function expiryFor(
   when: WhenDto | null,
