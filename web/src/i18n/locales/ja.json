@@ -75,8 +75,10 @@
       },
       "poll": {
         "bad_feed": "フィードの形式が読み取れませんでした。",
+        "missing_param": "この地域ではまだ設定されていません（{{param}} がありません）。",
         "not_pollable": "そのソースは定期的に読み込めません。",
         "rate_limited": "読み込みが多すぎます。少し待ってください。",
+        "rsshub_http": "RSSHub がこのフィードを読み込めませんでした（HTTP {{status}}）。サイトがブロックしている可能性があります。",
         "rsshub_not_configured": "サーバーにフィードを読むためのRSSHubがありません。",
         "rsshub_unreachable": "RSSHubが応答しませんでした。",
         "unknown_source": "そのソースに対応する読み込み処理がありません。",

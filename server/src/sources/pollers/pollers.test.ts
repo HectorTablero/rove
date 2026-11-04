@@ -29,9 +29,11 @@ describe('registry', () => {
   });
 
   it('refuses to build a route when the region lacks a parameter', () => {
-    expect(() => showstartPoller.route(regionById('shenzhen'))).toThrow(
-      /poll.missing_param:showstart.cityCode/,
-    );
+    const blank = {
+      ...regionById('shenzhen'),
+      sourceParams: { ...regionById('shenzhen').sourceParams, showstart: { cityCode: '' } },
+    };
+    expect(() => showstartPoller.route(blank)).toThrow(/poll.missing_param:showstart.cityCode/);
     expect(showstartPoller.route(region)).toBe('/showstart/event/4');
     expect(damaiPoller.route(region)).toBe('/damai/activity/%E6%B7%B1%E5%9C%B3/全部/全部');
     expect(doubanEventsPoller.route(region)).toBe('/douban/event/hot/118282');

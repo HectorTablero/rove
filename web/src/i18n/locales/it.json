@@ -75,8 +75,10 @@
       },
       "poll": {
         "bad_feed": "La fonte è arrivata in una forma illeggibile.",
+        "missing_param": "Non ancora configurata per questa regione (manca {{param}}).",
         "not_pollable": "Quella fonte non può essere letta periodicamente.",
         "rate_limited": "Troppe letture in una volta. Aspetta un momento.",
+        "rsshub_http": "RSSHub non è riuscito a leggere questa fonte (HTTP {{status}}). Il sito potrebbe bloccarla.",
         "rsshub_not_configured": "Il server non ha un RSSHub da cui leggere le fonti.",
         "rsshub_unreachable": "RSSHub non ha risposto.",
         "unknown_source": "Non esiste un lettore per quella fonte.",

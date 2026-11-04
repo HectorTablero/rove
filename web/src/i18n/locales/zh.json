@@ -75,8 +75,10 @@
       },
       "poll": {
         "bad_feed": "来源返回的格式无法解析。",
+        "missing_param": "该地区尚未配置（缺少 {{param}}）。",
         "not_pollable": "该来源无法定期读取。",
         "rate_limited": "读取过于频繁，请稍等。",
+        "rsshub_http": "RSSHub 无法读取该来源（HTTP {{status}}），网站可能在拦截。",
         "rsshub_not_configured": "服务器没有可用于读取来源的 RSSHub。",
         "rsshub_unreachable": "RSSHub 没有响应。",
         "unknown_source": "没有对应该来源的读取程序。",

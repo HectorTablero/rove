@@ -75,8 +75,10 @@
       },
       "poll": {
         "bad_feed": "The feed came back in a shape that could not be read.",
+        "missing_param": "Not set up for this region yet ({{param}} is missing).",
         "not_pollable": "That source cannot be read on a schedule.",
         "rate_limited": "Too many reads at once. Wait a moment.",
+        "rsshub_http": "RSSHub could not read this feed (HTTP {{status}}). The site may be blocking it.",
         "rsshub_not_configured": "The server has no RSSHub to read feeds from.",
         "rsshub_unreachable": "RSSHub did not answer.",
         "unknown_source": "No poller exists for that source.",

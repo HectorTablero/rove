@@ -1,6 +1,7 @@
 import type { SettingsDto } from '@rove/shared';
 import { RefreshCw } from 'lucide-react';
 import { useState } from 'react';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { Spinner } from '@/components/common/Spinner';
@@ -11,6 +12,18 @@ import { notifyError, notifySuccess } from '@/lib/notify';
 import { useRegion } from '@/lib/region';
 import { pollableSources, pollNow, useSourceStatus } from '@/lib/sources';
 import { Section, ToggleRow } from './Section';
+
+/* Two poll errors carry a value after the code (`poll.missing_param:showstart.cityCode`,
+   `poll.rsshub_http_503`), so they cannot be looked up as-is. */
+function pollErrorText(t: TFunction, code: string | null | undefined): string {
+  if (code?.startsWith('poll.missing_param:'))
+    return t('errors.codes.poll.missing_param', {
+      param: code.slice('poll.missing_param:'.length),
+    });
+  const http = code?.match(/^poll\.rsshub_http_(\d+)$/);
+  if (http) return t('errors.codes.poll.rsshub_http', { status: http[1] });
+  return t(`errors.codes.${code}`, { defaultValue: code ?? t('errors.unknown') });
+}
 
 /* Which feeds the server reads for this account, what each did last, and a button to read them
    now. The tier is shown beside every source so what a feed costs — an API, a scraped page, an
@@ -47,9 +60,7 @@ export function SourcesSection({
       const failed = runs.filter((run) => !run.ok);
       notifySuccess(t('settings.sources.polled', { count: created }), { important: true });
       for (const run of failed) {
-        notifyError(
-          t(`errors.codes.${run.error}`, { defaultValue: run.error ?? t('errors.unknown') }),
-        );
+        notifyError(pollErrorText(t, run.error));
       }
       await qc.invalidateQueries();
     } catch (err) {
@@ -73,9 +84,7 @@ export function SourcesSection({
     if (!entry.lastRun.ok) {
       return t('settings.sources.lastFailed', {
         when,
-        error: t(`errors.codes.${entry.lastRun.error}`, {
-          defaultValue: entry.lastRun.error ?? '',
-        }),
+        error: pollErrorText(t, entry.lastRun.error),
       });
     }
     return t('settings.sources.lastRun', {
