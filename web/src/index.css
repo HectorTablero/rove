@@ -331,17 +331,24 @@ html body[data-scroll-locked] {
   margin-right: 0 !important;
 }
 
-/* A full-bleed overlay wants the viewport, gutter included.
+/* A full-bleed page wants the viewport, gutter included, and never scrolls.
  *
- * `scrollbar-gutter: stable` reserves its strip inside the *root scroller's* padding box, which
- * shrinks the initial containing block — so `position: fixed; inset: 0` stops short of the right
- * edge, and the first-run tour's footer bar visibly fails to reach it. The gutter exists to stop
- * the page jumping when a scrollbar comes and goes, and while a modal is open nothing behind it is
- * scrolling or visible, so here it is reserving space against a shift that cannot happen.
+ * `scrollbar-gutter: stable` reserves its strip inside the root scroller's padding box, which
+ * leaves a blank band down the right edge of anything that should reach it. The gutter exists to
+ * stop the page jumping when a scrollbar comes and goes; a page that cannot scroll has no jump to
+ * prevent.
  *
- * Set by components/onboarding/OnboardingFlow.tsx for as long as the tour is mounted. */
+ * Set by pages/MapPage.tsx for as long as it is mounted. */
 html[data-fullbleed] {
   scrollbar-gutter: auto;
+  overflow: hidden;
+}
+
+/* ponytail: hides Amap's logo and copyright line. Amap's terms ask for both to stay visible;
+   fine for a personal non-commercial app, remove these two lines if this ever ships to others. */
+.amap-logo,
+.amap-copyright {
+  display: none !important;
 }
 
 /* Minimal themed scrollbar (desktop) */

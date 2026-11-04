@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useItems } from '@/api/hooks';
 import { ItemSheet } from '@/components/items/ItemSheet';
@@ -29,6 +29,12 @@ export default function MapPage() {
     markers.map((m) => m.id),
     'map',
   );
+
+  // No scrolling and no scrollbar gutter while the map is up (see index.css).
+  useEffect(() => {
+    document.documentElement.setAttribute('data-fullbleed', '');
+    return () => document.documentElement.removeAttribute('data-fullbleed');
+  }, []);
 
   return (
     <div

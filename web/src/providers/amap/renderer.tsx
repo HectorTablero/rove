@@ -1,6 +1,6 @@
 import { toDatum } from '@rove/shared';
 import AMapLoader from '@amap/amap-jsapi-loader';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { MapViewProps } from '../renderer';
 
 /* Amap JS API 2.0, behind the MapRenderer interface.
@@ -79,6 +79,10 @@ export function AmapView({
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
   const fitted = useRef(false);
+  /* The map is created asynchronously, after the SDK loads. Without a state change at that point
+     nothing re-renders, so the marker effect below never sees a map and a page that renders once
+     (the add screen's preview) shows no marker at all. */
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -95,6 +99,7 @@ export function AmapView({
           ? 'amap://styles/dark'
           : 'amap://styles/normal',
       });
+      setReady(true);
     });
     return () => {
       cancelled = true;
@@ -136,7 +141,14 @@ export function AmapView({
     if (!m || fitToMarkers) return;
     const c = toDatum(center, 'GCJ02');
     m.setCenter([c.lon, c.lat]);
-  }, [center.lon, center.lat, center.datum, fitToMarkers]);
+  }, [ready, center.lon, center.lat, center.datum, fitToMarkers]);
 
-  return <div ref={container} className={className} />;
+  /* Two divs, not one: the SDK forces `position: relative` onto its container, which voids a
+     caller's `absolute inset-0` and collapses the map to height 0. The caller's layout goes on the
+     outer div; the SDK gets an inner one that just fills it. */
+  return (
+    <div className={className}>
+      <div ref={container} className="size-full" />
+    </div>
+  );
 }
