@@ -77,7 +77,10 @@ const nativeEngine = (): Engine => {
         const { languages } = await (await plugin()).getDownloadedModels();
         const have = new Set<string>(languages);
         return have.has(source) && have.has(target) ? 'available' : 'downloadable';
-      } catch {
+      } catch (err) {
+        // The Settings switch hides on 'unavailable'; say why somewhere a developer can see it
+        // (chrome://inspect). No plugin in an older APK, or no Google Play services, end here.
+        console.warn('[translate] ML Kit unavailable:', err);
         return 'unavailable';
       }
     },

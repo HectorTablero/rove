@@ -102,13 +102,13 @@
         transition: d 0.6s cubic-bezier(0.25, 1, 0.5, 1);
       }
       #boot-splash.morph .bs-h {
-        d: path('M 200 250 L 100 250');
+        d: path('M 200 100 L 200 400');
       }
       #boot-splash.morph .bs-c {
-        d: path('M 175 100 L 400 250 L 175 400');
+        d: path('M 200 100 L 375 100 L 325 175 L 375 250 L 200 250');
       }
       #boot-splash.morph .bs-v {
-        d: path('M 100 100 L 100 400');
+        d: path('M 275 400 L 125 400');
       }
       #boot-splash.fade {
         opacity: 0;
@@ -126,7 +126,7 @@
     <div id="boot-splash" aria-hidden="true" style="display: flex">
       <svg viewBox="0 0 500 500" width="120" height="120">
         <path class="bs-h" d="M 375 250 L 50 250" />
-        <path class="bs-c" d="M 300 125 L 375 250 L 300 375" />
+        <path class="bs-c" d="M 300 125 L 337.5 187.5 L 375 250 L 337.5 312.5 L 300 375" />
         <path class="bs-v" d="M 450 100 L 450 400" />
       </svg>
     </div>
