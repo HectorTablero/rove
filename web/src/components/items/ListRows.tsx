@@ -315,6 +315,7 @@ function EventRow({
   return (
     <button
       type="button"
+      data-item-id={item.id}
       onClick={() => onOpen(item.id)}
       className={cn(
         ROW,
@@ -361,6 +362,7 @@ function FilmCard({
   return (
     <button
       type="button"
+      data-item-id={item.id}
       onClick={() => onOpen(item.id)}
       className={cn(ROW, 'group flex flex-col gap-1.5 rounded-lg')}
     >
@@ -422,6 +424,7 @@ function PlaceRow({
   return (
     <button
       type="button"
+      data-item-id={item.id}
       onClick={() => onOpen(item.id)}
       className={cn(
         ROW,

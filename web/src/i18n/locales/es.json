@@ -100,6 +100,7 @@
   "items": {
     "copied": "Copiado",
     "copyOriginal": "Copiar el nombre original",
+    "copyName": "Copiar nombre",
     "deleted": "Eliminado",
     "deleteDescription": "Su valoración y sus notas se van con él. La publicación guardada se conserva.",
     "deleteTitle": "¿Eliminar este lugar?",
@@ -121,6 +122,7 @@
     "navigate": "Ir",
     "notes": "Notas",
     "notesPlaceholder": "Lo que merezca la pena recordar…",
+    "openDetails": "Ver detalles",
     "rating": "Valoración",
     "sources": "Visto en",
     "stars_one": "{{count}} estrella",

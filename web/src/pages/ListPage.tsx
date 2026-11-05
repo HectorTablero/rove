@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { useItems, useReviews } from '@/api/hooks';
 import { EmptyState } from '@/components/common/EmptyState';
 import { TranslatedText } from '@/components/common/TranslatedText';
+import { useItemMenu } from '@/components/items/ItemMenu';
 import { ItemSheet } from '@/components/items/ItemSheet';
 import { ListRows } from '@/components/items/ListRows';
 import { PageContainer, PageHeader } from '@/components/layout/PageHeader';
@@ -118,6 +119,7 @@ export default function ListPage() {
     recordAction(id, 'list', 'open');
     setSelected(id);
   };
+  const itemMenu = useItemMenu('list', open);
 
   const narrowed = Boolean(kind || range || category);
   const filtered = Boolean(query) || filter !== 'all' || narrowed;
@@ -250,17 +252,21 @@ export default function ListPage() {
           description={filtered ? undefined : t('list.emptyDescription')}
         />
       ) : (
-        <ListRows
-          items={items}
-          reviews={reviewsById}
-          grouped={!kind}
-          tz={region.tz}
-          window={range ? rangeWindow(range, now, region.tz) : undefined}
-          onOpen={open}
-        />
+        // Right-click (or long-press) on any row: each carries its id as data-item-id.
+        <div onContextMenu={itemMenu.onContextMenu}>
+          <ListRows
+            items={items}
+            reviews={reviewsById}
+            grouped={!kind}
+            tz={region.tz}
+            window={range ? rangeWindow(range, now, region.tz) : undefined}
+            onOpen={open}
+          />
+        </div>
       )}
 
       <ItemSheet itemId={selected} onClose={() => setSelected(null)} />
+      {itemMenu.menu}
     </PageContainer>
   );
 }

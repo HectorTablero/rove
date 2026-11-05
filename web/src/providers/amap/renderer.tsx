@@ -197,7 +197,7 @@ const markerHtml = (marker: Marker, selected: boolean): string => {
   const fill = marker.status === 'visited' ? 'var(--primary)' : 'var(--background)';
   const stroke = marker.status === 'candidate' ? 'var(--muted-foreground)' : 'var(--primary)';
   const size = selected ? 18 : 14;
-  return `<div class="rove-marker" style="width:${size}px;height:${size}px;background:${fill};border-color:${stroke}">${tooltipHtml(marker)}</div>`;
+  return `<div class="rove-marker" data-item-id="${escapeHtml(marker.id)}" style="width:${size}px;height:${size}px;background:${fill};border-color:${stroke}">${tooltipHtml(marker)}</div>`;
 };
 
 export function AmapView({
@@ -205,6 +205,7 @@ export function AmapView({
   center,
   zoom = 12,
   onSelect,
+  onContextMenu,
   selectedId = null,
   fitToMarkers = false,
   className,
@@ -215,6 +216,8 @@ export function AmapView({
   const overlays = useRef<AMapMarker[]>([]);
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
+  const onContextMenuRef = useRef(onContextMenu);
+  onContextMenuRef.current = onContextMenu;
   const fitted = useRef(false);
   /* The map is created asynchronously, after the SDK loads. Without a state change at that point
      nothing re-renders, so the marker effect below never sees a map and a page that renders once
@@ -241,9 +244,12 @@ export function AmapView({
     const el = container.current;
     const onOver = (event: MouseEvent) => placeHoveredTip(event, el!.getBoundingClientRect());
     el?.addEventListener('mouseover', onOver);
+    const onMenu = (event: MouseEvent) => onContextMenuRef.current?.(event);
+    el?.addEventListener('contextmenu', onMenu);
     return () => {
       cancelled = true;
       el?.removeEventListener('mouseover', onOver);
+      el?.removeEventListener('contextmenu', onMenu);
       map.current?.destroy();
       map.current = null;
       overlays.current = [];

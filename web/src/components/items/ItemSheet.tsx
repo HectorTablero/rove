@@ -1,5 +1,3 @@
-import type { ItemDto } from '@rove/shared';
-import { navigationById } from '@rove/shared';
 import {
   Bookmark,
   BookmarkMinus,
@@ -14,10 +12,10 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useDeleteItem, useItem, useReview, useUpdateItem, useUpsertReview } from '@/api/hooks';
-import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { useUpdateItem, useUpsertReview } from '@/api/hooks';
 import { TranslatedText } from '@/components/common/TranslatedText';
 import { StarRating } from '@/components/items/StarRating';
+import { useItemActions } from '@/components/items/useItemActions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,11 +27,11 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { recordAction, recordShown } from '@/lib/impressions';
+import { recordShown } from '@/lib/impressions';
 import { suggestPlaces } from '@/lib/ingest';
 import { ApiError } from '@/lib/apiClient';
 import { formatWhen } from '@/lib/when';
-import { notifyError, notifySuccess } from '@/lib/notify';
+import { notifyError } from '@/lib/notify';
 import { useRegion } from '@/lib/region';
 import { coverSrc } from '@/lib/cover';
 import { formatPrice } from '@/lib/price';
@@ -58,17 +56,15 @@ export function ItemSheet({ itemId, onClose }: { itemId: string | null; onClose:
 function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => void }) {
   const { t, i18n } = useTranslation();
   const region = useRegion();
-  const { data: item } = useItem(itemId);
+  const actions = useItemActions(itemId, 'sheet', onClose);
+  const { item, review, location, visited } = actions;
   const [locating, setLocating] = useState(false);
   // A broken poster hides itself; reset per item so one bad URL does not hide the next item's.
   const [coverFailed, setCoverFailed] = useState(false);
   useEffect(() => setCoverFailed(false), [itemId]);
   const translatedTitle = useTranslatedText(item?.title ?? '');
-  const { data: review } = useReview(itemId);
   const updateItem = useUpdateItem();
   const upsertReview = useUpsertReview();
-  const deleteItem = useDeleteItem();
-  const [confirm, setConfirm] = useState<'delete' | 'unkeep' | null>(null);
   const [notes, setNotes] = useState<string | null>(null);
   const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -106,13 +102,6 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
   );
 
   if (!item) return null;
-  const location = item.kind === 'film' ? null : item.location;
-  const visited = item.status === 'visited';
-  /* What you put into it. Deleting or unkeeping an item with any of this asks first; one without
-     it has nothing to lose, so it just goes. */
-  const invested = Boolean(review?.rating || review?.notes.trim() || review?.visits.length);
-  const ask = (action: 'delete' | 'unkeep', run: () => void) =>
-    invested ? setConfirm(action) : run();
   const candidate = item.status === 'candidate';
   const when = item.kind !== 'place' && item.when ? formatWhen(item.when, i18n.language) : null;
   const venue = item.kind === 'event' ? item.venue : null;
@@ -140,51 +129,6 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
     }
   };
 
-  const keep = () => {
-    recordAction(itemId, 'sheet', 'save');
-    updateItem.mutate({ id: itemId, input: { status: 'saved' } });
-    notifySuccess(t('items.kept'), { important: true });
-  };
-
-  /* Back to the suggestions it came from, expiry and all — a mistaken keep, or a plan that fell
-     through, without the finality of deleting it. */
-  const unkeep = () => {
-    updateItem.mutate({ id: itemId, input: { status: 'candidate' } });
-    notifySuccess(t('items.unkept'));
-  };
-
-  const dismiss = () => {
-    recordAction(itemId, 'sheet', 'dismiss');
-    updateItem.mutate({ id: itemId, input: { status: 'dismissed' } });
-    onClose();
-  };
-
-  const navigate = () => {
-    if (!location) return;
-    recordAction(itemId, 'sheet', 'navigate');
-    const url = navigationById(region.navigation).routeUrl(location.point, item.title);
-    window.open(url, '_blank', 'noopener');
-  };
-
-  const toggleVisited = () => {
-    const now = new Date().toISOString();
-    updateItem.mutate({ id: itemId, input: { status: visited ? 'saved' : 'visited' } });
-    if (!visited) {
-      upsertReview.mutate({ itemId, input: { visits: [...(review?.visits ?? []), now] } });
-      notifySuccess(t('items.markedVisited'));
-    }
-  };
-
-  const remove = () => {
-    recordAction(itemId, 'sheet', 'dismiss');
-    deleteItem.mutate(itemId, {
-      onSuccess: () => {
-        notifySuccess(t('items.deleted'), { important: true });
-        onClose();
-      },
-    });
-  };
-
   return (
     <>
       <DialogHeader>
@@ -200,12 +144,7 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
               type="button"
               aria-label={t('items.copyOriginal')}
               className="shrink-0 rounded p-1 hover:bg-accent hover:text-foreground"
-              onClick={() =>
-                void navigator.clipboard
-                  .writeText(item.title)
-                  .then(() => notifySuccess(t('items.copied')))
-                  .catch(() => notifyError(t('errors.unknown')))
-              }
+              onClick={actions.copyTitle}
             >
               <Copy className="size-3.5" />
             </button>
@@ -257,11 +196,11 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
 
         {candidate ? (
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" className="gap-1.5" onClick={keep}>
+            <Button size="sm" className="gap-1.5" onClick={actions.keep}>
               <Bookmark className="size-4" />
               {t('items.keep')}
             </Button>
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={dismiss}>
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={actions.dismiss}>
               <X className="size-4" />
               {t('items.dismiss')}
             </Button>
@@ -269,7 +208,7 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
         ) : (
           <div className="flex flex-wrap gap-2">
             {location && (
-              <Button size="sm" className="gap-1.5" onClick={navigate}>
+              <Button size="sm" className="gap-1.5" onClick={actions.navigate}>
                 <Navigation className="size-4" />
                 {t('items.navigate')}
               </Button>
@@ -290,20 +229,13 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
               size="sm"
               variant={visited ? 'secondary' : 'outline'}
               className="gap-1.5"
-              onClick={toggleVisited}
+              onClick={actions.toggleVisited}
             >
               {visited ? <Undo2 className="size-4" /> : <Check className="size-4" />}
               {visited ? t('items.unmarkVisited') : t('items.markVisited')}
             </Button>
-            {/* Only what a feed suggested can go back to being a suggestion; a place you added
-                yourself never was one. Feed items carry an expiry, hand-added ones do not. */}
-            {item.status === 'saved' && item.expiresAt !== null && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5"
-                onClick={() => ask('unkeep', unkeep)}
-              >
+            {actions.canUnkeep && (
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={actions.unkeep}>
                 <BookmarkMinus className="size-4" />
                 {t('items.unkeep')}
               </Button>
@@ -363,7 +295,7 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
             variant="ghost"
             size="sm"
             className="gap-1.5 text-muted-foreground hover:text-destructive"
-            onClick={() => ask('delete', remove)}
+            onClick={actions.remove}
           >
             <Trash2 className="size-3.5" />
             {t('common.delete')}
@@ -371,23 +303,7 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
         </div>
       </div>
 
-      <ConfirmDialog
-        open={confirm === 'delete'}
-        onOpenChange={(open) => !open && setConfirm(null)}
-        title={t('items.deleteTitle')}
-        description={t('items.deleteDescription')}
-        confirmLabel={t('common.delete')}
-        onConfirm={remove}
-      />
-      <ConfirmDialog
-        open={confirm === 'unkeep'}
-        onOpenChange={(open) => !open && setConfirm(null)}
-        title={t('items.unkeepTitle')}
-        description={t('items.unkeepDescription')}
-        confirmLabel={t('items.unkeep')}
-        destructive={false}
-        onConfirm={unkeep}
-      />
+      {actions.dialogs}
     </>
   );
 }

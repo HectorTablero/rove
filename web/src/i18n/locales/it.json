@@ -100,6 +100,7 @@
   "items": {
     "copied": "Copiato",
     "copyOriginal": "Copia il nome originale",
+    "copyName": "Copia nome",
     "deleted": "Eliminato",
     "deleteDescription": "Voto e note se ne vanno con lui. Il post salvato resta.",
     "deleteTitle": "Eliminare questo luogo?",
@@ -121,6 +122,7 @@
     "navigate": "Vai",
     "notes": "Note",
     "notesPlaceholder": "Tutto ciò che vale la pena ricordare…",
+    "openDetails": "Apri dettagli",
     "rating": "Voto",
     "sources": "Visto su",
     "stars_one": "{{count}} stella",

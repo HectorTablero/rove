@@ -40,6 +40,9 @@ export interface MapViewProps {
   zoom?: number;
   /** A marker was tapped. */
   onSelect?: (id: string) => void;
+  /** A marker was right-clicked (or long-pressed). Each marker's element carries its id as
+      `data-item-id`, for the handler to read. */
+  onContextMenu?: (event: MouseEvent) => void;
   /** Which marker to draw as selected, if any. */
   selectedId?: string | null;
   /** Fit the view to every marker on first render, rather than to `center`. */

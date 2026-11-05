@@ -100,6 +100,7 @@
   "items": {
     "copied": "Copied",
     "copyOriginal": "Copy original name",
+    "copyName": "Copy name",
     "deleted": "Deleted",
     "deleteDescription": "Its rating and notes go with it. The saved post is kept.",
     "deleteTitle": "Delete this place?",
@@ -121,6 +122,7 @@
     "navigate": "Navigate",
     "notes": "Notes",
     "notesPlaceholder": "Anything worth remembering…",
+    "openDetails": "Open details",
     "rating": "Rating",
     "sources": "Seen at",
     "stars_one": "{{count}} star",

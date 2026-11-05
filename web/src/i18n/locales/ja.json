@@ -100,6 +100,7 @@
   "items": {
     "copied": "コピーしました",
     "copyOriginal": "元の名前をコピー",
+    "copyName": "名前をコピー",
     "deleted": "削除しました",
     "deleteDescription": "評価とメモも一緒に削除されます。保存した投稿は残ります。",
     "deleteTitle": "この場所を削除しますか？",
@@ -121,6 +122,7 @@
     "navigate": "ナビ",
     "notes": "メモ",
     "notesPlaceholder": "覚えておきたいことを…",
+    "openDetails": "詳細を開く",
     "rating": "評価",
     "sources": "出典",
     "stars": "星{{count}}つ",

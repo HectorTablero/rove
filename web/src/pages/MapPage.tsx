@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { ItemDto, ReviewDto } from '@rove/shared';
 import type { TFunction } from 'i18next';
 import { useItems, useReviews } from '@/api/hooks';
+import { useItemMenu } from '@/components/items/ItemMenu';
 import { ItemSheet } from '@/components/items/ItemSheet';
 import { MapView } from '@/components/map/MapView';
 import { useShown } from '@/lib/impressions';
@@ -99,6 +100,8 @@ export default function MapPage() {
     return () => document.documentElement.removeAttribute('data-fullbleed');
   }, []);
 
+  const itemMenu = useItemMenu('map', setSelected);
+
   return (
     /* Edge to edge: under the translucent tab bar (subtracting its height left a strip wherever
        the real height differed from the guess) and under the status bar. Cannot scroll. */
@@ -109,6 +112,7 @@ export default function MapPage() {
         markers={markers}
         selectedId={selected}
         onSelect={setSelected}
+        onContextMenu={itemMenu.onContextMenu}
         fitToMarkers={markers.length > 0}
       />
       {/* Keeps the status-bar icons legible over a busy map. */}
@@ -120,6 +124,7 @@ export default function MapPage() {
         {t('map.markerCount', { count: markers.length })}
       </div>
       <ItemSheet itemId={selected} onClose={() => setSelected(null)} />
+      {itemMenu.menu}
     </div>
   );
 }
