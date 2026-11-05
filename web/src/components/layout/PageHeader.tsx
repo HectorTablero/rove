@@ -34,7 +34,13 @@ export function PageContainer({
   className?: string;
 }) {
   return (
-    <div className={cn('mx-auto w-full max-w-3xl px-4 py-6 md:px-8 md:py-8', className)}>
+    // The status-bar inset counts toward the top padding rather than adding to it.
+    <div
+      className={cn(
+        'mx-auto w-full max-w-3xl px-4 pt-[max(1.5rem,var(--inset-top))] pb-6 md:px-8 md:pt-[max(2rem,var(--inset-top))] md:pb-8',
+        className,
+      )}
+    >
       {children}
     </div>
   );

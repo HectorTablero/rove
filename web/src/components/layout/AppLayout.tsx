@@ -107,7 +107,7 @@ function TabBar({ candidates }: { candidates: number }) {
         !isNative && 'md:hidden',
       )}
     >
-      <div className="flex items-stretch justify-around pb-[var(--inset-bottom)]">
+      <div className="flex items-stretch justify-around pr-[var(--inset-right)] pb-[var(--inset-bottom)] pl-[var(--inset-left)]">
         {NAV.map((item) => (
           <NavLink
             key={item.to}
@@ -165,7 +165,7 @@ function UpdateBanner() {
   if (update.kind !== 'native-required' || dismissed) return null;
 
   return (
-    <div className="sticky top-0 z-50 flex items-center justify-center gap-4 border-b border-blue-500/30 bg-blue-500/10 px-4 py-2 text-sm text-blue-600 dark:text-blue-400">
+    <div className="sticky top-0 z-50 flex items-center justify-center gap-4 border-b border-blue-500/30 bg-blue-500/10 px-4 pt-[calc(0.5rem+var(--inset-top))] pb-2 text-sm text-blue-600 dark:text-blue-400">
       {t('update.needsInstall', { version: update.version })}
       <a
         href={update.releaseUrl}
@@ -216,7 +216,7 @@ function SyncStatusOverlay() {
     return (
       <div
         role="alert"
-        className="sticky top-0 z-50 flex items-center justify-center gap-2 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-sm text-amber-600 dark:text-amber-400"
+        className="sticky top-0 z-50 flex items-center justify-center gap-2 border-b border-amber-500/30 bg-amber-500/10 px-4 pt-[calc(0.5rem+var(--inset-top))] pb-2 text-sm text-amber-600 dark:text-amber-400"
       >
         {t('sync.sessionExpired')}
         <Link to="/login" className="font-medium underline underline-offset-2">
@@ -348,11 +348,13 @@ export default function AppLayout() {
     <div className="flex min-h-dvh">
       {!isNative && <SkipToContentLink />}
       {!isNative && <Sidebar candidates={candidates} />}
+      {/* No top inset here: the map runs under the status bar, and PageContainer folds the inset
+          into its own top padding instead of stacking the two. */}
       <main
         id="main"
         tabIndex={-1}
         className={cn(
-          'min-w-0 flex-1 pt-[var(--inset-top)] pb-[calc(5.5rem+var(--inset-bottom))]',
+          'min-w-0 flex-1 pb-[calc(5.5rem+var(--inset-bottom))]',
           !isNative && 'md:pb-0',
         )}
       >

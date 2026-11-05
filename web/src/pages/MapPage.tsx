@@ -6,12 +6,10 @@ import { useItems, useReviews } from '@/api/hooks';
 import { ItemSheet } from '@/components/items/ItemSheet';
 import { MapView } from '@/components/map/MapView';
 import { useShown } from '@/lib/impressions';
-import { isNative } from '@/lib/native';
 import type { MapMarker, MapTooltip } from '@/providers';
 import { coverSrc } from '@/lib/cover';
 import { formatPrice } from '@/lib/price';
 import { useRegion } from '@/lib/region';
-import { cn } from '@/lib/utils';
 import { formatWhen } from '@/lib/when';
 
 /** How many tags the hover card lists before it stops. */
@@ -102,15 +100,9 @@ export default function MapPage() {
   }, []);
 
   return (
-    <div
-      className={cn(
-        /* Down to the screen's edge, under the translucent tab bar: subtracting the bar's height
-           left a strip wherever the bar's real height differed from the guess (the main's
-           padding is a content allowance, not the bar). The page cannot scroll while it's up. */
-        'relative h-[calc(100dvh-var(--inset-top))]',
-        !isNative && 'md:h-dvh',
-      )}
-    >
+    /* Edge to edge: under the translucent tab bar (subtracting its height left a strip wherever
+       the real height differed from the guess) and under the status bar. Cannot scroll. */
+    <div className="relative h-dvh">
       <h1 className="sr-only">{t('nav.map')}</h1>
       <MapView
         className="absolute inset-0"
@@ -119,7 +111,12 @@ export default function MapPage() {
         onSelect={setSelected}
         fitToMarkers={markers.length > 0}
       />
-      <div className="pointer-events-none absolute top-3 left-3 rounded-full border bg-background/90 px-3 py-1 text-xs text-muted-foreground shadow-sm backdrop-blur">
+      {/* Keeps the status-bar icons legible over a busy map. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-[var(--inset-top)] bg-gradient-to-b from-background/80 to-background/0"
+      />
+      <div className="pointer-events-none absolute top-[calc(0.75rem+var(--inset-top))] left-[calc(0.75rem+var(--inset-left))] rounded-full border bg-background/90 px-3 py-1 text-xs text-muted-foreground shadow-sm backdrop-blur">
         {t('map.markerCount', { count: markers.length })}
       </div>
       <ItemSheet itemId={selected} onClose={() => setSelected(null)} />

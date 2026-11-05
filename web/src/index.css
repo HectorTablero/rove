@@ -14,6 +14,8 @@
 :root {
   --inset-top: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
   --inset-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
+  --inset-left: max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px));
+  --inset-right: max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px));
 }
 
 /* Add the safe-area inset on top of sonner's own offset (--offset-top/-bottom,
