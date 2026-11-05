@@ -45,3 +45,16 @@ it('asks first when the item has a rating', async () => {
   await user.click(screen.getAllByRole('button', { name: 'Unkeep' }).at(-1)!);
   await waitFor(async () => expect((await db.items.get('k'))?.status).toBe('candidate'));
 });
+
+it('turns the copy button into a check once the name is copied', async () => {
+  // Translated, so the original and its copy button show: a Chinese title, translation on.
+  vi.spyOn(await import('@/lib/translate'), 'useTranslatedText').mockReturnValue('Happy Tea');
+  await seed({ items: [{ ...kept, title: '喜茶' }] });
+  const user = userEvent.setup();
+  renderWithProviders(<ItemSheet itemId="k" onClose={() => {}} />);
+
+  await user.click(await screen.findByRole('button', { name: 'Copy original name' }));
+
+  expect(await screen.findByRole('button', { name: 'Copied' })).toBeInTheDocument();
+  expect(await navigator.clipboard.readText()).toBe('喜茶');
+});

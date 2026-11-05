@@ -144,7 +144,7 @@ function ItemMenu({
               )}
             </>
           )}
-          <DropdownMenuItem onSelect={actions.copyTitle}>
+          <DropdownMenuItem onSelect={() => void actions.copyTitle()}>
             <Copy />
             {t('items.copyName')}
           </DropdownMenuItem>

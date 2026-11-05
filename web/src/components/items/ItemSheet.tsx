@@ -36,12 +36,15 @@ import { useRegion } from '@/lib/region';
 import { coverSrc } from '@/lib/cover';
 import { formatPrice } from '@/lib/price';
 import { detectSource, useTranslatedText } from '@/lib/translate';
+import { cn } from '@/lib/utils';
 
 /* One item, and everything you can do to it: navigate there, mark it visited, rate it, write a
    note, delete it. Opened from the map and the list alike. Notes save on a short debounce and on
    close, like the settings page — a field typed into and closed never blurs. */
 
 const NOTES_DEBOUNCE_MS = 600;
+/** How long the copy button shows its check after a copy. */
+const COPIED_MS = 1500;
 
 export function ItemSheet({ itemId, onClose }: { itemId: string | null; onClose: () => void }) {
   return (
@@ -59,6 +62,12 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
   const actions = useItemActions(itemId, 'sheet', onClose);
   const { item, review, location, visited } = actions;
   const [locating, setLocating] = useState(false);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const handle = setTimeout(() => setCopied(false), COPIED_MS);
+    return () => clearTimeout(handle);
+  }, [copied]);
   // A broken poster hides itself; reset per item so one bad URL does not hide the next item's.
   const [coverFailed, setCoverFailed] = useState(false);
   useEffect(() => setCoverFailed(false), [itemId]);
@@ -142,11 +151,18 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
             </span>
             <button
               type="button"
-              aria-label={t('items.copyOriginal')}
-              className="shrink-0 rounded p-1 hover:bg-accent hover:text-foreground"
-              onClick={actions.copyTitle}
+              aria-label={copied ? t('items.copied') : t('items.copyOriginal')}
+              className={cn(
+                'shrink-0 rounded p-1 transition-colors hover:bg-accent hover:text-foreground',
+                copied && 'text-primary hover:text-primary',
+              )}
+              onClick={() => void actions.copyTitle().then((ok) => ok && setCopied(true))}
             >
-              <Copy className="size-3.5" />
+              {copied ? (
+                <Check className="size-3.5 animate-in zoom-in-50 duration-150" />
+              ) : (
+                <Copy className="size-3.5" />
+              )}
             </button>
           </p>
         )}

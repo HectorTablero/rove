@@ -66,12 +66,19 @@ export function useItemActions(itemId: string, surface: ImpressionSurface, onGon
     }
   };
 
-  const copyTitle = () => {
-    if (!item) return;
-    void navigator.clipboard
+  /** Resolves true once the name is on the clipboard, for a button that wants to show it. */
+  const copyTitle = (): Promise<boolean> => {
+    if (!item) return Promise.resolve(false);
+    return navigator.clipboard
       .writeText(item.title)
-      .then(() => notifySuccess(t('items.copied')))
-      .catch(() => notifyError(t('errors.unknown')));
+      .then(() => {
+        notifySuccess(t('items.copied'));
+        return true;
+      })
+      .catch(() => {
+        notifyError(t('errors.unknown'));
+        return false;
+      });
   };
 
   const removeNow = () => {
