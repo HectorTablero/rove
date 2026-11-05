@@ -16,6 +16,7 @@ import { createSnapshot, updateSnapshot } from '@/db/mutations';
 import { getSnapshotByUrl } from '@/db/repo';
 import { ApiError } from '@/lib/apiClient';
 import { findDuplicate } from '@/lib/dedupe';
+import { markMentions } from '@/lib/mentionMarks';
 import { recordAction } from '@/lib/impressions';
 import {
   extractMentions,
@@ -277,17 +278,25 @@ export default function AddPage() {
                 <CaptionWithEvidence text={snapshot.text} mentions={mentions} />
                 <div className="flex flex-wrap items-center gap-1.5 pt-1">
                   {extracting && <Spinner className="size-3.5" />}
-                  {mentions.map((mention) => (
+                  {mentions.map((mention, index) => (
                     <button
                       key={mention.nameText}
                       type="button"
                       onClick={() => pickMention(mention)}
+                      style={{ '--m': mentionColor(index) } as React.CSSProperties}
                       className={cn(
-                        'rounded-full border px-2.5 py-1 text-xs transition-colors hover:bg-accent',
-                        name === mention.nameText && 'border-primary bg-accent',
+                        'flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-left text-xs transition-colors hover:bg-accent',
+                        name === mention.nameText &&
+                          'border-(--m) bg-[color-mix(in_oklab,var(--m)_14%,transparent)]',
                       )}
                     >
-                      {mention.nameText}
+                      <span aria-hidden className="size-2 shrink-0 rounded-full bg-(--m)" />
+                      <span className="truncate">
+                        <span className="font-medium">{mention.nameText}</span>
+                        {mention.addressText && (
+                          <span className="text-muted-foreground"> {mention.addressText}</span>
+                        )}
+                      </span>
                     </button>
                   ))}
                   {!extracting && mentions.length === 0 && (
@@ -459,37 +468,32 @@ export default function AddPage() {
   );
 }
 
-/** The caption with every accepted mention's evidence marked, so a suggestion can be checked
-    against the words it came from at a glance. */
+/** Each found place's colour, cycled over the --mention-* tokens (index.css). */
+const mentionColor = (index: number) => `var(--mention-${(index % 5) + 1})`;
+
+/* The caption, with each place the extractor found in its own colour: its name tinted, and the
+   location parts it read for that place underlined in the same colour. The chips below carry a
+   matching dot, so the chip row is the legend. */
 function CaptionWithEvidence({ text, mentions }: { text: string; mentions: MentionDto[] }) {
-  const spans = useMemo(() => {
-    const marks = mentions
-      .map((m) => ({
-        start: text.indexOf(m.evidence),
-        end: text.indexOf(m.evidence) + m.evidence.length,
-      }))
-      .filter((m) => m.start >= 0)
-      .sort((a, b) => a.start - b.start);
-    const out: { text: string; marked: boolean }[] = [];
-    let cursor = 0;
-    for (const mark of marks) {
-      if (mark.start < cursor) continue;
-      if (mark.start > cursor) out.push({ text: text.slice(cursor, mark.start), marked: false });
-      out.push({ text: text.slice(mark.start, mark.end), marked: true });
-      cursor = mark.end;
-    }
-    if (cursor < text.length) out.push({ text: text.slice(cursor), marked: false });
-    return out;
-  }, [text, mentions]);
+  const runs = useMemo(() => markMentions(text, mentions), [text, mentions]);
   return (
     <p className="max-h-48 overflow-y-auto text-sm whitespace-pre-wrap">
-      {spans.map((span, i) =>
-        span.marked ? (
-          <mark key={i} className="rounded bg-primary/15 px-0.5 text-foreground">
-            {span.text}
-          </mark>
+      {runs.map((run, i) =>
+        run.mention === null ? (
+          <span key={i}>{run.text}</span>
         ) : (
-          <span key={i}>{span.text}</span>
+          <mark
+            key={i}
+            style={{ '--m': mentionColor(run.mention) } as React.CSSProperties}
+            className={cn(
+              'text-foreground decoration-(--m) decoration-2 underline-offset-[3px]',
+              run.role === 'name'
+                ? 'rounded-sm bg-[color-mix(in_oklab,var(--m)_22%,transparent)] px-0.5 font-medium underline'
+                : 'bg-transparent underline decoration-dotted',
+            )}
+          >
+            {run.text}
+          </mark>
         ),
       )}
     </p>
