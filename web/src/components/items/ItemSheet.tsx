@@ -30,6 +30,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { recordShown } from '@/lib/impressions';
 import { suggestPlaces } from '@/lib/ingest';
 import { ApiError } from '@/lib/apiClient';
+import { useHour12 } from '@/lib/preferences';
 import { formatWhen } from '@/lib/when';
 import { notifyError } from '@/lib/notify';
 import { useRegion } from '@/lib/region';
@@ -60,6 +61,7 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
   const { t, i18n } = useTranslation();
   const region = useRegion();
   const actions = useItemActions(itemId, 'sheet', onClose);
+  const hour12 = useHour12();
   const { item, review, location, visited } = actions;
   const [locating, setLocating] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -112,7 +114,8 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
 
   if (!item) return null;
   const candidate = item.status === 'candidate';
-  const when = item.kind !== 'place' && item.when ? formatWhen(item.when, i18n.language) : null;
+  const when =
+    item.kind !== 'place' && item.when ? formatWhen(item.when, i18n.language, hour12) : null;
   const venue = item.kind === 'event' ? item.venue : null;
 
   /* A candidate's venue is text the feed printed. Finding it on the map spends one geocoder call,

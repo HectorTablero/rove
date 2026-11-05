@@ -13,6 +13,18 @@ import {
 const TZ = 'Asia/Shanghai';
 
 describe('formatWhen', () => {
+  it('follows the 12/24-hour setting, and the language when it is left on automatic', () => {
+    const when = {
+      start: '2026-11-07T11:30:00.000Z',
+      end: null,
+      tz: 'Asia/Shanghai',
+      allDay: false,
+    };
+    expect(formatWhen(when, 'en')).toMatch(/07:30\sPM/);
+    expect(formatWhen(when, 'en', false)).toMatch(/19:30/);
+    expect(formatWhen(when, 'es', true)).toMatch(/07:30\s?p/);
+  });
+
   it('renders in the region zone, not the device zone', () => {
     // 19:30 in Shenzhen is 11:30Z; a device in Madrid must still read 19:30.
     const text = formatWhen(

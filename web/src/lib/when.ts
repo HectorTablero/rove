@@ -19,23 +19,31 @@ const day = (iso: string, tz: string, lng: string): string =>
     ...(otherYear(iso, tz) ? { year: 'numeric' } : {}),
   }).format(new Date(iso));
 
-const time = (iso: string, tz: string, lng: string): string =>
-  new Intl.DateTimeFormat(lng, { timeZone: tz, hour: '2-digit', minute: '2-digit' }).format(
-    new Date(iso),
-  );
+/** The 12/24-hour choice as Intl options: nothing for the language's own (undefined), else the
+    cycle the Settings picker forced (lib/preferences useHour12). Spread into any time format. */
+export const hourOptions = (hour12?: boolean): Intl.DateTimeFormatOptions =>
+  hour12 === undefined ? {} : { hourCycle: hour12 ? 'h12' : 'h23' };
+
+const time = (iso: string, tz: string, lng: string, hour12?: boolean): string =>
+  new Intl.DateTimeFormat(lng, {
+    timeZone: tz,
+    hour: '2-digit',
+    minute: '2-digit',
+    ...hourOptions(hour12),
+  }).format(new Date(iso));
 
 /** "Sat 20 Sep · 19:30", "Sat 19 Sep – Mon 21 Sep", or "Sat 20 Sep" for an all-day single day. */
-export function formatWhen(when: WhenDto, lng: string): string {
+export function formatWhen(when: WhenDto, lng: string, hour12?: boolean): string {
   const start = day(when.start, when.tz, lng);
   if (when.allDay) {
     if (!when.end) return start;
     const end = day(when.end, when.tz, lng);
     return end === start ? start : `${start} – ${end}`;
   }
-  const startTime = time(when.start, when.tz, lng);
+  const startTime = time(when.start, when.tz, lng, hour12);
   if (!when.end) return `${start} · ${startTime}`;
   const endDay = day(when.end, when.tz, lng);
-  const endTime = time(when.end, when.tz, lng);
+  const endTime = time(when.end, when.tz, lng, hour12);
   return endDay === start
     ? `${start} · ${startTime}–${endTime}`
     : `${start} · ${startTime} – ${endDay} · ${endTime}`;

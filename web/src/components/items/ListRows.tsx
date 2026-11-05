@@ -8,7 +8,15 @@ import { useRegion } from '@/lib/region';
 import { detectSource, useTranslatedText } from '@/lib/translate';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { endsWithin, formatWhen, isMultiDay, otherYear, type Window } from '@/lib/when';
+import { useHour12 } from '@/lib/preferences';
+import {
+  endsWithin,
+  formatWhen,
+  hourOptions,
+  isMultiDay,
+  otherYear,
+  type Window,
+} from '@/lib/when';
 
 /* The list, one shape per kind rather than one card for everything.
  *
@@ -229,12 +237,13 @@ function StubYear({ iso, tz }: { iso: string; tz: string }) {
     screen readers get that instead of the stub's fragments. */
 function DateStub({ when, tz }: { when: WhenDto | null; tz: string }) {
   const { t, i18n } = useTranslation();
+  const hour12 = useHour12();
   const now = new Date().toISOString();
   const short = (iso: string) => zoned(iso, tz, i18n.language, { month: 'short', day: 'numeric' });
   // A run reads as three equal lines: its start ("Now" once it has begun — a start date from June
   // would only mislead), a lone dash, its end.
   const run = when !== null && isMultiDay(when);
-  const full = when ? formatWhen(when, i18n.language) : null;
+  const full = when ? formatWhen(when, i18n.language, hour12) : null;
   const stub = (
     <span
       className={cn(
@@ -299,6 +308,7 @@ function EventRow({
 }) {
   const { t, i18n } = useTranslation();
   const region = useRegion();
+  const hour12 = useHour12();
   /* The stub already says the day; this line is only for what it cannot, the time. All-day
      events and runs have none, and their full dates are on the stub's hover. */
   const time =
@@ -308,6 +318,7 @@ function EventRow({
           timeZone: tz,
           hour: '2-digit',
           minute: '2-digit',
+          ...hourOptions(hour12),
         }).formatRange(new Date(item.when.start), new Date(item.when.end ?? item.when.start))
       : null;
   const where = item.venue ?? item.location?.address ?? null;

@@ -11,7 +11,7 @@ import { DataSection } from '@/components/settings/DataSection';
 import { SourcesSection } from '@/components/settings/SourcesSection';
 import { notifyDeviceSaved, Section, SubToggleRow, ToggleRow } from '@/components/settings/Section';
 import { VersionFooter } from '@/components/settings/VersionFooter';
-import { LanguageSetting } from '@/components/settings/deviceSettings';
+import { HourCycleSetting, LanguageSetting } from '@/components/settings/deviceSettings';
 import { TranslationSetting } from '@/components/settings/TranslationSetting';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -227,6 +227,7 @@ export default function SettingsPage() {
                 </div>
               </div>
               <LanguageSetting />
+              <HourCycleSetting />
             </div>
             <TranslationSetting />
           </div>

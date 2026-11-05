@@ -9,7 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ApiError } from '@/lib/apiClient';
 import { notifyError, notifySuccess } from '@/lib/notify';
+import { useHour12 } from '@/lib/preferences';
 import { useRegion } from '@/lib/region';
+import { hourOptions } from '@/lib/when';
 import { pollableSources, pollNow, useSourceStatus } from '@/lib/sources';
 import { Section, ToggleRow } from './Section';
 
@@ -38,6 +40,7 @@ export function SourcesSection({
   onChange: (pollSources: string[]) => void;
 }) {
   const { t, i18n } = useTranslation();
+  const hour12 = useHour12();
   const region = useRegion();
   const qc = useQueryClient();
   const status = useSourceStatus(!disabled);
@@ -80,6 +83,7 @@ export function SourcesSection({
     const when = new Intl.DateTimeFormat(i18n.language, {
       dateStyle: 'medium',
       timeStyle: 'short',
+      ...hourOptions(hour12),
     }).format(new Date(entry.lastRun.at));
     if (!entry.lastRun.ok) {
       return t('settings.sources.lastFailed', {

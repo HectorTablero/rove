@@ -10,6 +10,7 @@ import { useShown } from '@/lib/impressions';
 import type { MapMarker, MapTooltip } from '@/providers';
 import { coverSrc } from '@/lib/cover';
 import { formatPrice } from '@/lib/price';
+import { useHour12 } from '@/lib/preferences';
 import { useRegion } from '@/lib/region';
 import { formatWhen } from '@/lib/when';
 
@@ -25,9 +26,14 @@ function tooltipFor(
   t: TFunction,
   lng: string,
   currency: string,
+  hour12: boolean,
 ) {
   const when =
-    item.kind === 'place' ? null : item.when ? formatWhen(item.when, lng) : t('items.timeUnknown');
+    item.kind === 'place'
+      ? null
+      : item.when
+        ? formatWhen(item.when, lng, hour12)
+        : t('items.timeUnknown');
   const where =
     item.kind === 'event'
       ? (item.venue ?? item.location?.address ?? null)
@@ -64,6 +70,7 @@ export default function MapPage() {
   const { data: items = [] } = useItems({ status: ['saved', 'visited'] });
   const { data: reviews = [] } = useReviews();
   const region = useRegion();
+  const hour12 = useHour12();
   const [selected, setSelected] = useState<string | null>(null);
 
   const markers = useMemo<MapMarker[]>(
@@ -82,12 +89,13 @@ export default function MapPage() {
                   t,
                   i18n.language,
                   region.currency,
+                  hour12,
                 ),
               },
             ]
           : [],
       ),
-    [items, reviews, t, i18n.language, region.currency],
+    [items, reviews, t, i18n.language, region.currency, hour12],
   );
   useShown(
     markers.map((m) => m.id),
