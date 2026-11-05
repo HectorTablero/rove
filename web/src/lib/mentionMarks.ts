@@ -4,9 +4,11 @@ import type { MentionDto } from '@rove/shared';
    the location parts it quoted for that place, in that place's colour.
  *
  * Every occurrence is marked, not only the one in the evidence: a post that names a café in its
- * title and again in its body should show both. Names win over location parts where they overlap,
- * earlier mentions over later ones. A name that cannot be found as written (normalisation, a
- * model quoting a slightly different form) falls back to marking its evidence. */
+ * title and again in its body should show both. Names win over location parts, and a longer name
+ * over a shorter one inside it: 盐田云海广场 keeps its whole span rather than losing 云海广场 to a
+ * second mention of that name. An occurrence overlapping text already marked is skipped whole,
+ * never cut into fragments. A name that cannot be found as written (normalisation, a model quoting
+ * a slightly different form) falls back to marking its evidence. */
 
 export type MarkRole = 'name' | 'place';
 
@@ -24,27 +26,34 @@ export function markMentions(text: string, mentions: MentionDto[]): MarkRun[] {
   const owner = new Array<number>(text.length).fill(-1);
   const role = new Array<MarkRole | null>(text.length).fill(null);
 
+  /** Marks every free occurrence; true when the needle is in the text at all. */
   const paint = (needle: string, index: number, as: MarkRole) => {
     let found = false;
     for (let at = text.indexOf(needle); needle && at !== -1; at = text.indexOf(needle, at + 1)) {
       found = true;
-      for (let i = at; i < at + needle.length; i++) {
-        if (owner[i] !== -1) continue;
-        owner[i] = index;
-        role[i] = as;
-      }
+      const end = at + needle.length;
+      if (owner.slice(at, end).some((o) => o !== -1)) continue;
+      owner.fill(index, at, end);
+      role.fill(as, at, end);
     }
     return found;
   };
 
-  mentions.forEach((mention, index) => {
-    if (!paint(mention.nameText, index, 'name')) paint(mention.evidence, index, 'name');
-  });
-  mentions.forEach((mention, index) => {
-    for (const part of mention.addressText?.split(' ') ?? []) {
-      if (part.length >= MIN_PART_LENGTH) paint(part, index, 'place');
-    }
-  });
+  // Longest first, each keeping its own index (and so its colour).
+  const longestFirst = <T>(items: T[], length: (item: T) => number) =>
+    items.map((item, index) => ({ item, index })).sort((a, b) => length(b.item) - length(a.item));
+
+  for (const { item, index } of longestFirst(mentions, (m) => m.nameText.length)) {
+    if (!paint(item.nameText, index, 'name')) paint(item.evidence, index, 'name');
+  }
+  const parts = mentions.flatMap((mention, index) =>
+    (mention.addressText?.split(' ') ?? [])
+      .filter((part) => part.length >= MIN_PART_LENGTH)
+      .map((part) => ({ part, index })),
+  );
+  for (const { item } of longestFirst(parts, (p) => p.part.length)) {
+    paint(item.part, item.index, 'place');
+  }
 
   const runs: MarkRun[] = [];
   for (let i = 0; i < text.length; i++) {

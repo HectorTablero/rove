@@ -45,6 +45,14 @@ describe('markMentions', () => {
     ]);
   });
 
+  it('gives a longer name its whole span, whichever mention comes first', () => {
+    const text = 'Yunhai Square (云海广场)\n📍Yunhai Square (盐田云海广场)';
+    expect(marked(text, [mention('云海广场', null), mention('盐田云海广场', null)])).toEqual([
+      '0:name:云海广场',
+      '1:name:盐田云海广场',
+    ]);
+  });
+
   it('falls back to the evidence when the name is not in the text as written', () => {
     expect(marked('去了 HEYTEA 喜茶', [mention('Heytea', null, 'HEYTEA 喜茶')])).toEqual([
       '0:name:HEYTEA 喜茶',
