@@ -18,10 +18,20 @@ describe('formatPrice', () => {
     expect(show('49.5元')).toBe('¥49.5');
   });
 
+  it('reads a list of price tiers as a range, however long', () => {
+    // douban.com/event/38119896, full-width spaces and all.
+    expect(show('1688元　1388元　1188元　888元　588元')).toBe('¥588–1,688');
+    expect(show('80/120/180元')).toBe('¥80–180');
+  });
+
+  it('counts only the numbers marked as money inside a sentence', () => {
+    expect(show('学生票 50元（限2人）')).toBe('¥50');
+    expect(show('早鸟 ¥128 现场 ¥168 限量300张')).toBe('¥128–168');
+  });
+
   it('shows anything it cannot read exactly as printed', () => {
     expect(show('VIP 套票 请咨询')).toBe('VIP 套票 请咨询');
     expect(show('$20')).toBe('$20');
-    expect(show('80/120/180元')).toBe('80/120/180元');
     expect(parsePrice('一二三')).toBeNull();
   });
 });

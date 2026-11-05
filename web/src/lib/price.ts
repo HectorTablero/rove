@@ -14,17 +14,28 @@ export interface ParsedPrice {
 }
 
 const NUMBER = /\d+(?:\.\d+)?/g;
+/** A number the text marks as money: `¥56`, `220.0元`, `1688 元`. */
+const PRICED = /[¥￥]\s*(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?)\s*元/g;
+/** Nothing but prices: numbers, currency marks, separators, "from". A tier list is this. */
+const ONLY_PRICES = /^[\d.\s¥￥元/、,，|~～起-]+$/;
 
 export function parsePrice(raw: string): ParsedPrice | null {
   const text = raw.normalize('NFKC').trim();
   if (/免费|free/i.test(text)) return { free: true, min: null, max: null, from: false };
   // Only prices this region writes: yuan, ¥ or a bare number. Another currency stays as printed.
   if (/[$€£]|usd|eur|hkd/i.test(text)) return null;
-  const numbers = (text.match(NUMBER) ?? []).map(Number).filter((n) => Number.isFinite(n));
-  if (numbers.length === 0 || numbers.length > 2) return null;
+  /* A text of nothing but prices is a tier list however long (`1688元　1388元　…　588元`,
+     `80/120/180元`): its cheapest to its dearest. In a sentence, only the numbers marked as money
+     count, so a stray count (`学生票 50元（限2人）`) is not read as a price; and a sentence with no
+     marks is a price only as one or two bare numbers (`298`, `380-1680`). */
+  const all = (text.match(NUMBER) ?? []).map(Number);
+  const priced = [...text.matchAll(PRICED)].map((m) => Number(m[1] ?? m[2]));
+  const numbers = ONLY_PRICES.test(text) ? all : priced.length ? priced : all;
+  if (numbers.length === 0 || (numbers === all && !ONLY_PRICES.test(text) && all.length > 2))
+    return null;
   const from = /起|以上|from|\+$/i.test(text);
   const [min, max] =
-    numbers.length === 2 ? [Math.min(...numbers), Math.max(...numbers)] : [numbers[0], null];
+    numbers.length >= 2 ? [Math.min(...numbers), Math.max(...numbers)] : [numbers[0], null];
   return { free: false, min, max: max === min ? null : max, from };
 }
 
