@@ -30,11 +30,12 @@ export async function getItems(filter: ItemFilter = {}): Promise<ItemDto[]> {
   const now = new Date().toISOString();
   /* A suggestion for something that has already happened is gone: past its expiry, or past the
      end of its window whatever the expiry says. Hidden here on every read; the server deletes it
-     at its next sweep. Only suggestions — anything you saved stays, finished or not. */
+     at its next sweep. Only suggestions — anything you saved stays, finished or not. A film's
+     date is its release, the start of a run that lasts weeks, so only its expiry ends it. */
   let items = (await db.items.toArray()).filter((item) => {
     if (item.status !== 'candidate') return true;
     if (item.expiresAt !== null && item.expiresAt < now) return false;
-    const when = item.kind !== 'place' ? item.when : null;
+    const when = item.kind === 'event' ? item.when : null;
     return !when || (when.end ?? when.start) >= now;
   });
   if (filter.status?.length) items = items.filter((item) => filter.status!.includes(item.status));

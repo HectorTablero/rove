@@ -109,6 +109,20 @@ describe('pollSource', () => {
     expect(Snapshot.create).not.toHaveBeenCalled();
   });
 
+  it('stores a film already released: its date opens a run, it does not end one', async () => {
+    vi.setSystemTime(new Date('2026-10-03T00:00:00Z'));
+    settings.getSettings.mockResolvedValue({ ...DEFAULT_SETTINGS, pollSources: ['maoyan'] });
+    rss.fetchFeed.mockResolvedValue([
+      { ...entry('[8.5分] 片名', 'https://m/1'), text: '上映时间：2026-10-01' },
+    ]);
+    Item.findOne.mockImplementation(() => query(null));
+
+    const run = await pollSource('u1', 'maoyan');
+
+    expect(run).toMatchObject({ ok: true, created: 1 });
+    expect(Item.create).toHaveBeenCalledWith(expect.objectContaining({ kind: 'film' }));
+  });
+
   it('refreshes a known candidate with what the feed now says, and leaves a dismissed item alone', async () => {
     rss.fetchFeed.mockResolvedValue([
       { ...entry('A', 'https://d/1'), text: '演出时间：2026-10-02 20:00\n场馆：B10\n票价：380' },

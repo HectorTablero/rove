@@ -174,9 +174,12 @@ export async function pollSource(
         continue;
       }
       const read = await withDetail(poller, draft, region, now, null);
-      // A listing for something already over is not a suggestion. Not stored, so it costs nothing.
+      /* A listing for something already over is not a suggestion. Not stored, so it costs nothing.
+         Not films: their date is the release, the first day of a run, and their expiry (see
+         FILM_TTL_DAYS) is what says when the run is over. */
       const when = read.draft.when;
-      if (when && Date.parse(when.end ?? when.start) < now.getTime()) continue;
+      if (draft.kind !== 'film' && when && Date.parse(when.end ?? when.start) < now.getTime())
+        continue;
 
       const snapshot = await Snapshot.create({
         userId,

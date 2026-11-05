@@ -94,7 +94,10 @@ export const MAX_POLL_ITEMS_PER_RUN = 60;
 export const MAX_POLL_SOURCES = 20;
 /** How long an undated candidate stays in the inbox. */
 export const CANDIDATE_UNDATED_TTL_DAYS = 30;
-/** How long a film stays after its release date. */
+/** How long a film stays after its release date. A film's date is only its first day in cinemas.
+    In China a release's decryption key is good for one month, and a film still drawing audiences
+    (the hot list the feed reads) is routinely granted a further month — so two months, not the
+    release date, is when it is gone. */
 export const FILM_TTL_DAYS = 60;
 /** Two empty or failed runs in a row is "the source is down", shown as a banner. */
 export const SOURCE_DOWN_AFTER_RUNS = 2;
