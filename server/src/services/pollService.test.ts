@@ -59,6 +59,12 @@ beforeEach(() => {
   settings.getSettings.mockResolvedValue({ ...DEFAULT_SETTINGS, pollSources: ['damai'] });
   rss.fetchFeed.mockReset();
   Snapshot.create.mockImplementation(async () => ({ _id: 'snap' }) as never);
+  // Before the fixtures' 2 Oct show, so it is still to come.
+  vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-09-20T00:00:00Z') });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('pollSource', () => {
@@ -89,6 +95,18 @@ describe('pollSource', () => {
     expect(SourceRun.create).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 'u1', sourceId: 'damai', ok: true, found: 2, created: 1 }),
     );
+  });
+
+  it('does not store a listing for an event that is already over', async () => {
+    vi.setSystemTime(new Date('2026-10-03T00:00:00Z'));
+    rss.fetchFeed.mockResolvedValue([entry('A', 'https://d/1')]);
+    Item.findOne.mockImplementation(() => query(null));
+
+    const run = await pollSource('u1', 'damai');
+
+    expect(run).toMatchObject({ ok: true, found: 1, created: 0 });
+    expect(Item.create).not.toHaveBeenCalled();
+    expect(Snapshot.create).not.toHaveBeenCalled();
   });
 
   it('refreshes a known candidate with what the feed now says, and leaves a dismissed item alone', async () => {

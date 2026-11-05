@@ -13,8 +13,9 @@ import { endsWithin, isMultiDay, otherYear, type Window } from '@/lib/when';
  *
  * Events are tickets: a date stub, torn off by a dashed edge, then what and where and what it
  * costs. Films are a shelf of posters — the one thing every film feed reliably has. Places are a
- * quiet index: name, address, your stars. Status is a mark, not a badge: a dot for something new,
- * a check for somewhere you have been, nothing for the ordinary saved case. */
+ * quiet index: name, address, your stars. Status is a mark, not a badge. Suggestions are most of
+ * the list, so they carry nothing; what you kept gets a bookmark ribbon hanging off the card's top
+ * edge, and somewhere you have been a check. */
 
 const GROUP_ORDER: ItemKind[] = ['event', 'film', 'place'];
 
@@ -106,15 +107,25 @@ function Title({ title, className }: { title: string; className?: string }) {
   );
 }
 
-/** A dot for a suggestion nobody has looked at, a check for a place you have been. */
+/** A ribbon tucked into the card's top edge, as into a ticket. The card must be `relative`. */
+function SavedRibbon({ status, className }: { status: ItemDto['status']; className?: string }) {
+  const { t } = useTranslation();
+  if (status !== 'saved') return null;
+  return (
+    <span
+      className={cn(
+        'pointer-events-none absolute top-0 h-5 w-3.5 bg-primary shadow-sm [clip-path:polygon(0_0,100%_0,100%_100%,50%_72%,0_100%)]',
+        className,
+      )}
+    >
+      <span className="sr-only">{t('items.status.saved')}</span>
+    </span>
+  );
+}
+
+/** A check for somewhere you have been. */
 function StatusMark({ status, className }: { status: ItemDto['status']; className?: string }) {
   const { t } = useTranslation();
-  if (status === 'candidate')
-    return (
-      <span className={cn('flex size-2 shrink-0 rounded-full bg-primary', className)}>
-        <span className="sr-only">{t('items.status.candidate')}</span>
-      </span>
-    );
   if (status === 'visited')
     return (
       <span className={cn('shrink-0 text-primary', className)}>
@@ -305,15 +316,24 @@ function EventRow({
     <button
       type="button"
       onClick={() => onOpen(item.id)}
-      className={cn(ROW, 'flex items-stretch rounded-xl border bg-card hover:bg-accent/40')}
+      className={cn(
+        ROW,
+        'relative flex items-stretch rounded-xl border bg-card hover:bg-accent/40',
+      )}
     >
+      <SavedRibbon status={item.status} className="right-3" />
       <DateStub when={item.when} tz={tz} />
       <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-3 py-2.5">
         <Title title={item.title} />
         {where && <span className="truncate text-xs text-muted-foreground">{where}</span>}
         {time && <span className="text-xs text-muted-foreground">{time}</span>}
       </span>
-      <span className="flex shrink-0 flex-col items-end justify-between gap-1 py-2.5 pr-3">
+      <span
+        className={cn(
+          'flex shrink-0 flex-col items-end justify-between gap-1 py-2.5 pr-3',
+          item.status === 'saved' && 'pt-6',
+        )}
+      >
         <StatusMark status={item.status} className="mt-1" />
         <Stars rating={review?.rating} />
         {price && (
@@ -359,9 +379,10 @@ function FilmCard({
             <Clapperboard className="size-6" aria-hidden />
           </span>
         )}
+        <SavedRibbon status={item.status} className="right-2" />
         <StatusMark
           status={item.status}
-          className="absolute top-1.5 right-1.5 ring-2 ring-background"
+          className="absolute top-1.5 right-1.5 rounded-full bg-background/90 p-0.5"
         />
       </span>
       <span className="line-clamp-2 text-xs leading-snug font-medium">
@@ -402,8 +423,13 @@ function PlaceRow({
     <button
       type="button"
       onClick={() => onOpen(item.id)}
-      className={cn(ROW, 'flex items-center gap-3 px-3 py-2.5 hover:bg-accent/40')}
+      className={cn(
+        ROW,
+        'relative flex items-center gap-3 px-3 py-2.5 hover:bg-accent/40',
+        item.status === 'saved' && 'pr-9',
+      )}
     >
+      <SavedRibbon status={item.status} className="right-3" />
       {item.coverUrl && !failed && (
         <img
           src={coverSrc(item.coverUrl) ?? undefined}

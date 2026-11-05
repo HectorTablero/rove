@@ -174,6 +174,9 @@ export async function pollSource(
         continue;
       }
       const read = await withDetail(poller, draft, region, now, null);
+      // A listing for something already over is not a suggestion. Not stored, so it costs nothing.
+      const when = read.draft.when;
+      if (when && Date.parse(when.end ?? when.start) < now.getTime()) continue;
 
       const snapshot = await Snapshot.create({
         userId,
@@ -313,11 +316,12 @@ export async function sourceStatuses(userId: string): Promise<SourceStatus[]> {
   );
 }
 
-/** Candidates nobody acted on and that expired more than a month ago: gone, with tombstones. */
+/** Candidates nobody acted on and that have expired: gone, with tombstones. Clients already hide
+    them, so there is nothing to wait for; a poll will not bring a finished event back (see
+    pollSource), and a saved item never expires. */
 export async function sweepExpiredCandidates(now = new Date()): Promise<number> {
-  const cutoff = new Date(now.getTime() - 30 * 86_400_000);
   const stale = await Item.find(
-    { status: 'candidate', expiresAt: { $lt: cutoff } },
+    { status: 'candidate', expiresAt: { $lt: now } },
     '_id userId',
   ).lean();
   if (!stale.length) return 0;

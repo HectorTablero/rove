@@ -28,12 +28,15 @@ export const foldText = (text: string): string =>
 
 export async function getItems(filter: ItemFilter = {}): Promise<ItemDto[]> {
   const now = new Date().toISOString();
-  /* A candidate past its expiry is a suggestion for something that has happened. Hidden here, on
-     every read, rather than deleted: the server sweeps them a month later, and until then a
-     restore or a clock skew cannot resurrect a stale inbox. */
-  let items = (await db.items.toArray()).filter(
-    (item) => !(item.status === 'candidate' && item.expiresAt !== null && item.expiresAt < now),
-  );
+  /* A suggestion for something that has already happened is gone: past its expiry, or past the
+     end of its window whatever the expiry says. Hidden here on every read; the server deletes it
+     at its next sweep. Only suggestions — anything you saved stays, finished or not. */
+  let items = (await db.items.toArray()).filter((item) => {
+    if (item.status !== 'candidate') return true;
+    if (item.expiresAt !== null && item.expiresAt < now) return false;
+    const when = item.kind !== 'place' ? item.when : null;
+    return !when || (when.end ?? when.start) >= now;
+  });
   if (filter.status?.length) items = items.filter((item) => filter.status!.includes(item.status));
   if (filter.when) {
     const window = rangeWindow(filter.when.range, filter.when.now, filter.when.tz);
