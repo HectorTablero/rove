@@ -315,23 +315,16 @@
   }
 }
 
-/* One colour per place the extractor found in a caption (AddPage), cycled. Categorical, so they
-   only need to be told apart. Lighter in dark mode so a tint over the card still reads. */
+/* The saturation and lightness of the colours that tell found places apart in a caption
+   (AddPage's mentionColor spreads their hues round the wheel, one per place). Lighter in dark
+   mode so a tint over the card still reads. */
 :root {
-  --mention-1: oklch(0.6 0.17 255);
-  --mention-2: oklch(0.58 0.2 305);
-  --mention-3: oklch(0.6 0.11 190);
-  --mention-4: oklch(0.62 0.2 350);
-  --mention-5: oklch(0.6 0.15 150);
-  --mention-6: oklch(0.64 0.17 55);
+  --mention-s: 70%;
+  --mention-l: 48%;
 }
 .dark {
-  --mention-1: oklch(0.74 0.14 255);
-  --mention-2: oklch(0.74 0.16 305);
-  --mention-3: oklch(0.76 0.1 190);
-  --mention-4: oklch(0.76 0.15 350);
-  --mention-5: oklch(0.76 0.14 150);
-  --mention-6: oklch(0.78 0.14 55);
+  --mention-s: 75%;
+  --mention-l: 68%;
 }
 
 html {

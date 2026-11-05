@@ -283,7 +283,7 @@ export default function AddPage() {
                       key={mention.nameText}
                       type="button"
                       onClick={() => pickMention(mention)}
-                      style={{ '--m': mentionColor(index) } as React.CSSProperties}
+                      style={{ '--m': mentionColor(index, mentions.length) } as React.CSSProperties}
                       className={cn(
                         'flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-left text-xs transition-colors hover:bg-accent',
                         name === mention.nameText &&
@@ -468,8 +468,11 @@ export default function AddPage() {
   );
 }
 
-/** Each found place's colour, cycled over the --mention-* tokens (index.css). */
-const mentionColor = (index: number) => `var(--mention-${(index % 6) + 1})`;
+/** Each found place's colour: the hues spread evenly round the wheel, as many as there are
+    places, starting from blue; saturation and lightness come from the theme (--mention-s/-l in
+    index.css). However many a post names, no two share a colour. */
+const mentionColor = (index: number, count: number) =>
+  `hsl(${Math.round(210 + (index * 360) / Math.max(count, 1)) % 360} var(--mention-s) var(--mention-l))`;
 
 /* The caption, with each place the extractor found in its own colour: its name tinted, and the
    location parts it read for that place underlined in the same colour. The chips below carry a
@@ -484,7 +487,7 @@ function CaptionWithEvidence({ text, mentions }: { text: string; mentions: Menti
         ) : (
           <mark
             key={i}
-            style={{ '--m': mentionColor(run.mention) } as React.CSSProperties}
+            style={{ '--m': mentionColor(run.mention, mentions.length) } as React.CSSProperties}
             className={cn(
               'text-foreground decoration-(--m) decoration-2 underline-offset-[3px]',
               run.role === 'name'
