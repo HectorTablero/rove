@@ -91,7 +91,7 @@ export function ListRows({ items, reviews, grouped, tz, window, onOpen }: ListRo
 
 /** The title in the UI language when translation is on, with the original underneath. */
 function Title({ title, className }: { title: string; className?: string }) {
-  const translated = useTranslatedText(title);
+  const translated = useTranslatedText(title, 'title');
   return (
     <>
       <span className={cn('block truncate font-medium', className)}>{translated ?? title}</span>
@@ -358,7 +358,7 @@ function FilmCard({
 }) {
   const { i18n } = useTranslation();
   const [failed, setFailed] = useState(false);
-  const translated = useTranslatedText(item.title);
+  const translated = useTranslatedText(item.title, 'title');
   return (
     <button
       type="button"

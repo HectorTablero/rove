@@ -62,7 +62,7 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
   // A broken poster hides itself; reset per item so one bad URL does not hide the next item's.
   const [coverFailed, setCoverFailed] = useState(false);
   useEffect(() => setCoverFailed(false), [itemId]);
-  const translatedTitle = useTranslatedText(item?.title ?? '');
+  const translatedTitle = useTranslatedText(item?.title ?? '', 'title');
   const updateItem = useUpdateItem();
   const upsertReview = useUpsertReview();
   const [notes, setNotes] = useState<string | null>(null);

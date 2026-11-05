@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isNative } from './native';
 import { usePreferences } from './preferences';
+import { applyCase, type Casing } from './casing';
 
 /* On-device translation of item titles, never through a server.
  *
@@ -167,8 +168,12 @@ const enqueue = <T>(task: () => Promise<T>): Promise<T> => {
  * The text translated into the UI language, or null when it should be shown as is: translation
  * off, the text already in the UI language, the model not downloaded, or the engine failing.
  * Never downloads anything by itself — that only happens from the Settings switch.
+ *
+ * `casing` says what the text is — a title, or a label such as a tag — since the case of a
+ * translation out of Chinese is the engine's guess (see lib/casing). Applied on the way out, not
+ * cached, so a change to the rules reaches translations already stored.
  */
-export function useTranslatedText(text: string): string | null {
+export function useTranslatedText(text: string, casing: Casing): string | null {
   const { autoTranslate } = usePreferences();
   const { i18n } = useTranslation();
   const target = baseLanguage(i18n.language);
@@ -197,5 +202,6 @@ export function useTranslatedText(text: string): string | null {
   }, [active, cached, source, target, text]);
 
   if (!active) return null;
-  return cached ?? (fresh?.text === text ? fresh.value : null);
+  const value = cached ?? (fresh?.text === text ? fresh.value : null);
+  return value && applyCase(value, target, casing);
 }
