@@ -2,6 +2,7 @@ import type { ItemDto } from '@rove/shared';
 import { navigationById } from '@rove/shared';
 import {
   Bookmark,
+  BookmarkMinus,
   Check,
   Copy,
   ExternalLink,
@@ -67,7 +68,7 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
   const updateItem = useUpdateItem();
   const upsertReview = useUpsertReview();
   const deleteItem = useDeleteItem();
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirm, setConfirm] = useState<'delete' | 'unkeep' | null>(null);
   const [notes, setNotes] = useState<string | null>(null);
   const notesTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -107,6 +108,11 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
   if (!item) return null;
   const location = item.kind === 'film' ? null : item.location;
   const visited = item.status === 'visited';
+  /* What you put into it. Deleting or unkeeping an item with any of this asks first; one without
+     it has nothing to lose, so it just goes. */
+  const invested = Boolean(review?.rating || review?.notes.trim() || review?.visits.length);
+  const ask = (action: 'delete' | 'unkeep', run: () => void) =>
+    invested ? setConfirm(action) : run();
   const candidate = item.status === 'candidate';
   const when = item.kind !== 'place' && item.when ? formatWhen(item.when, i18n.language) : null;
   const venue = item.kind === 'event' ? item.venue : null;
@@ -138,6 +144,13 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
     recordAction(itemId, 'sheet', 'save');
     updateItem.mutate({ id: itemId, input: { status: 'saved' } });
     notifySuccess(t('items.kept'), { important: true });
+  };
+
+  /* Back to the suggestions it came from, expiry and all — a mistaken keep, or a plan that fell
+     through, without the finality of deleting it. */
+  const unkeep = () => {
+    updateItem.mutate({ id: itemId, input: { status: 'candidate' } });
+    notifySuccess(t('items.unkept'));
   };
 
   const dismiss = () => {
@@ -282,6 +295,19 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
               {visited ? <Undo2 className="size-4" /> : <Check className="size-4" />}
               {visited ? t('items.unmarkVisited') : t('items.markVisited')}
             </Button>
+            {/* Only what a feed suggested can go back to being a suggestion; a place you added
+                yourself never was one. Feed items carry an expiry, hand-added ones do not. */}
+            {item.status === 'saved' && item.expiresAt !== null && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => ask('unkeep', unkeep)}
+              >
+                <BookmarkMinus className="size-4" />
+                {t('items.unkeep')}
+              </Button>
+            )}
           </div>
         )}
 
@@ -337,7 +363,7 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
             variant="ghost"
             size="sm"
             className="gap-1.5 text-muted-foreground hover:text-destructive"
-            onClick={() => setConfirmDelete(true)}
+            onClick={() => ask('delete', remove)}
           >
             <Trash2 className="size-3.5" />
             {t('common.delete')}
@@ -346,12 +372,21 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
       </div>
 
       <ConfirmDialog
-        open={confirmDelete}
-        onOpenChange={setConfirmDelete}
+        open={confirm === 'delete'}
+        onOpenChange={(open) => !open && setConfirm(null)}
         title={t('items.deleteTitle')}
         description={t('items.deleteDescription')}
         confirmLabel={t('common.delete')}
         onConfirm={remove}
+      />
+      <ConfirmDialog
+        open={confirm === 'unkeep'}
+        onOpenChange={(open) => !open && setConfirm(null)}
+        title={t('items.unkeepTitle')}
+        description={t('items.unkeepDescription')}
+        confirmLabel={t('items.unkeep')}
+        destructive={false}
+        onConfirm={unkeep}
       />
     </>
   );

@@ -97,6 +97,10 @@
         "stars": "Screen-reader name of each star in the rating control, counted.",
         "navigate": "The button that opens the maps app at the place. One word; \"Navigate\", \"Go\", 导航.",
         "keep": "Accept a suggestion into the saved list. Pairs with dismiss; both are short buttons.",
+        "unkeep": "Undo a keep: the saved item goes back to being a suggestion. The opposite of keep, not delete; short button.",
+        "unkeepTitle": "Confirm dialog before unkeeping an item you rated, wrote notes on or visited.",
+        "unkeepDescription": "Why it asks: the item becomes a suggestion again, and suggestions are deleted when they expire, taking the rating, notes and visits with them.",
+        "unkept": "Toast after unkeep: the item is back among the suggestions.",
         "dismiss": "Decline a suggestion. Neutral and personal (\"not for me\"), never \"reject\".",
         "findOnMap": "Geocode a suggested event's venue text on request; spends one search."
       }

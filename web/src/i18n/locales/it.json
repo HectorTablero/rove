@@ -107,6 +107,10 @@
     "findOnMap": "Trova sulla mappa",
     "keep": "Tieni",
     "kept": "Tenuto",
+    "unkeep": "Non tenere",
+    "unkeepDescription": "Torna tra i suggerimenti. Voto, note e visite restano finché non scade, poi se ne vanno con lui.",
+    "unkeepTitle": "Non tenerlo più?",
+    "unkept": "Di nuovo tra i suggerimenti",
     "kind": {
       "event": "Evento",
       "film": "Film",

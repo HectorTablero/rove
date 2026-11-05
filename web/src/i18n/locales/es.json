@@ -107,6 +107,10 @@
     "findOnMap": "Buscar en el mapa",
     "keep": "Guardar",
     "kept": "Guardado",
+    "unkeep": "Quitar de guardados",
+    "unkeepDescription": "Vuelve a las sugerencias. Tu valoración, notas y visitas se quedan con ella hasta que caduque, y luego se van con ella.",
+    "unkeepTitle": "¿Quitar de guardados?",
+    "unkept": "De vuelta en sugerencias",
     "kind": {
       "event": "Evento",
       "film": "Película",

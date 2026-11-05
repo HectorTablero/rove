@@ -107,6 +107,10 @@
     "findOnMap": "地図で探す",
     "keep": "保存",
     "kept": "保存しました",
+    "unkeep": "保存を解除",
+    "unkeepDescription": "候補に戻ります。評価・メモ・訪問記録は期限が切れるまで残り、その後一緒に消えます。",
+    "unkeepTitle": "保存を解除しますか？",
+    "unkept": "候補に戻しました",
     "kind": {
       "event": "イベント",
       "film": "映画",

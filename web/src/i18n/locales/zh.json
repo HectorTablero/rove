@@ -107,6 +107,10 @@
     "findOnMap": "在地图上查找",
     "keep": "收藏",
     "kept": "已收藏",
+    "unkeep": "取消收藏",
+    "unkeepDescription": "它会回到候选中。你的评分、笔记和到访记录会保留到它过期，之后一并删除。",
+    "unkeepTitle": "取消收藏？",
+    "unkept": "已移回候选",
     "kind": {
       "event": "活动",
       "film": "电影",

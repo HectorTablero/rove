@@ -107,6 +107,10 @@
     "findOnMap": "Find on map",
     "keep": "Keep",
     "kept": "Kept",
+    "unkeep": "Unkeep",
+    "unkeepDescription": "It goes back to the suggestions. Your rating, notes and visits stay with it until it expires, then go with it.",
+    "unkeepTitle": "Unkeep this?",
+    "unkept": "Back in suggestions",
     "kind": {
       "event": "Event",
       "film": "Film",
