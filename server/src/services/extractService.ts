@@ -14,18 +14,43 @@ import { getLlmConfig } from './settingsService';
  * the model can propose, and it can only propose things that are literally in the post. Addresses
  * and coordinates come from the geocoder afterwards, never from here. */
 
-const SYSTEM = `You read a social-media post about places to visit and list the specific places it names, so each can be found on a map.
-Rules:
-- A place is a named venue: a restaurant, café, bar, shop, park, hike, viewpoint, exhibition space. Not a city, district or street on its own.
-- "nameText": the venue's main name (see below), exactly as the post writes it, in the script the post writes it in. Do not translate, expand or correct it. For a chain or brand, include the branch when the post names one, as written (e.g. "喜茶(海上世界店)").
-- "evidence": a verbatim, contiguous quote from the post that contains the name, copied character for character.
-- "addressText": where the place is, split into its parts from the largest area to the smallest, separated by single spaces: province, city, district, town or village, area, street and number, building or mall, floor or unit. Chinese often runs these together without commas or in reverse order: "平山村桃园深圳广东" is "广东 深圳 平山村 桃园"; "南山区蛇口海上世界广场B1" is "南山区 蛇口 海上世界广场 B1". Copy every part exactly from the post and never add a part the post does not state. null if the post gives no location.
-- "searchText": what to type into a map search (高德/Amap) to find this exact place rather than another branch of the same brand or another place with a similar name: the name followed by the most specific location parts the post gives (mall or building, street, area, district), separated by single spaces, e.g. "星巴克 海上世界" or "Bionic Brew 蛇口". A brand's flagship, themed or limited store must be told apart from its ordinary branches this way. Every part copied exactly from the post; if the post gives nothing beyond the name, the name alone.
-- "aliases": every other name the post uses for this same place, each copied exactly: a translation or romanisation ("Yunhai Park" and 云海公园), a shorter or longer form (云海广场 and 盐田云海广场). List each place once, with its other names here, never as separate places. [] only if the post truly gives it no other name.
-- Look for aliases for every place, not only the first. Posts that mix languages very often give a name with its other form in brackets right beside it, "Meishajian (梅沙尖)", "Dahua Xing Temple (大华兴寺)", "盐田云海广场（Yunhai Square）": treat the words just before or inside such brackets as very likely the same place, and list them as its aliases. Before answering, go through each place once more and check the whole post for any other name it goes by.
-- Of a place's names, "nameText" is the main one: the name a map search (高德/Amap) finds this place by most surely. Prefer a Chinese name over a translation, and the most specific form, the one carrying its district or branch, over a shorter one: for 盐田云海广场, 云海广场, Yunhai Square, the main name is 盐田云海广场. The rest go in "aliases".
-- If the post names no specific place, return an empty list.
-Answer with JSON only: {"mentions":[{"nameText":"…","aliases":["…"],"addressText":"…","searchText":"…","evidence":"…"}]}`;
+const SYSTEM = `You read a social-media post about places to visit and list the specific places it names, so each can be found on a map. Answer with JSON only.
+
+# What is a place
+A named venue: a restaurant, café, bar, shop, park, hike, viewpoint, temple, exhibition space. Not a city, district, street, metro station or bus line on its own. Each place appears once in the answer, however many names the post gives it.
+
+# Names
+A place's names are only its names, each copied exactly as the post writes it: never a phrase or sentence around a name ("also known as …", "a hike to …"), never with brackets, punctuation or emoji. Collect every name the post gives the same place:
+- a translation or romanisation: "Yunhai Park" and 云海公园;
+- a shorter or longer form: 云海广场 and 盐田云海广场;
+- a name with its other form in brackets beside it, which is very common in posts mixing languages: "Meishajian (梅沙尖)" gives two names, Meishajian and 梅沙尖.
+Of these, the main name ("nameText") is the one a map search (高德/Amap) finds the place by most surely: a Chinese name over a translation, and the most specific form (carrying its district or branch) over a shorter one. Every other name goes in "aliases". For a chain, the main name includes the branch when the post gives one, as written: "喜茶(海上世界店)".
+
+# Fields
+- "nameText": the main name.
+- "aliases": the other names, each a bare name as above. [] only if the post gives the place no other name.
+- "evidence": one verbatim, contiguous quote from the post containing the main name, copied character for character.
+- "addressText": where the place is, its parts from the largest area to the smallest, separated by single spaces (province, city, district, town or village, area, street and number, building or mall, floor or unit). Chinese often runs these together or in reverse: "南山区蛇口海上世界广场B1" is "南山区 蛇口 海上世界广场 B1". Every part copied exactly from the post; never add one. null if the post gives no location.
+- "searchText": what to type into the map search to find this exact place and not another branch or a similar name: the main name, then the most specific location parts the post gives, separated by single spaces ("星巴克 海上世界"). The main name alone if the post gives nothing more.
+
+# Steps
+1. Find every place the post names.
+2. For each, gather all its names from the whole post, including names in brackets beside another name.
+3. Choose the main name; the rest are aliases. Check that no alias is a phrase, carries brackets, or repeats the main name.
+4. Fill the remaining fields.
+If the post names no specific place, answer {"mentions":[]}.
+
+# Example
+Post:
+Spent Sunday at Lianhua Hill (莲花山公园), the park locals just call 莲花山.
+📍莲花山公园：福田区红荔路6030号
+After, coffee at Bionic Brew in 蛇口.
+
+Answer:
+{"mentions":[
+{"nameText":"莲花山公园","aliases":["Lianhua Hill","莲花山"],"addressText":"福田区 红荔路6030号","searchText":"莲花山公园 福田区","evidence":"Spent Sunday at Lianhua Hill (莲花山公园)"},
+{"nameText":"Bionic Brew","aliases":[],"addressText":"蛇口","searchText":"Bionic Brew 蛇口","evidence":"coffee at Bionic Brew in 蛇口"}
+]}`;
 
 /* The parts of a composed field (an address split into components, a search query), each of which
    must be quoted from the post: the model may reorder and separate what the post says, never add
