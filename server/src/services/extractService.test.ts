@@ -113,4 +113,37 @@ describe('validateMentions', () => {
     expect(kept.addressText).toBeNull();
     expect(kept.searchText).toBeNull();
   });
+
+  describe('aliases', () => {
+    const POST = 'Yunhai Park (云海公园)… 📍Yunhai Square (盐田云海广场)，又叫云海广场。';
+    const m = (nameText: string, aliases: string[] = [], evidence = nameText) => ({
+      nameText,
+      aliases,
+      addressText: null,
+      searchText: null,
+      evidence,
+    });
+
+    it('keeps the aliases the text contains and drops the rest', () => {
+      const [kept] = validateMentions(
+        [m('盐田云海广场', ['云海广场', 'Yunhai Square', 'Cloud Sea Plaza'])],
+        POST,
+      );
+      expect(kept.aliases).toEqual(['云海广场', 'Yunhai Square']);
+    });
+
+    it('folds a synonym listed as its own place into the one that named it', () => {
+      const kept = validateMentions(
+        [
+          m('盐田云海广场', ['云海广场', 'Yunhai Park']),
+          m('云海公园', ['Yunhai Park']),
+          m('云海广场'),
+        ],
+        POST,
+      );
+      expect(kept).toHaveLength(1);
+      expect(kept[0].nameText).toBe('盐田云海广场');
+      expect(kept[0].aliases).toEqual(['云海广场', 'Yunhai Park', '云海公园']);
+    });
+  });
 });

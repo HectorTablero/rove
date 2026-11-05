@@ -101,6 +101,9 @@ export interface MentionDto {
   addressText: string | null;
   /** The map-search query that finds this branch: name plus location parts, each quoted. */
   searchText: string | null;
+  /** The post's other names for the same place — a translation, a romanisation, a shorter or
+      longer form — each quoted. Absent on extractions from before it existed. */
+  aliases?: string[];
   evidence: string;
 }
 

@@ -139,6 +139,7 @@ const extractionToDto = (extraction: LeanExtraction): ExtractionDto => ({
     nameText: m.nameText,
     addressText: m.addressText ?? null,
     searchText: m.searchText ?? null,
+    ...(m.aliases?.length ? { aliases: m.aliases } : {}),
     evidence: m.evidence,
   })),
 });

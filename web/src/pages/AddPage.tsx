@@ -152,9 +152,12 @@ export default function AddPage() {
     else nameInput.current?.focus();
   }
 
-  const pickMention = (mention: MentionDto) => {
-    setName(mention.nameText);
-    setQuery(mention.searchText ?? mention.nameText);
+  /* The main name by default, the one the model judged a map search finds best; or one of its
+     aliases, picked by hand, searched with the same location parts the main name carried. */
+  const pickMention = (mention: MentionDto, alias?: string) => {
+    const chosen = alias ?? mention.nameText;
+    setName(chosen);
+    setQuery(mention.searchText ? mention.searchText.replace(mention.nameText, chosen) : chosen);
     setCandidate(null);
     nameInput.current?.focus();
   };
@@ -278,27 +281,60 @@ export default function AddPage() {
                 <CaptionWithEvidence text={snapshot.text} mentions={mentions} />
                 <div className="flex flex-wrap items-center gap-1.5 pt-1">
                   {extracting && <Spinner className="size-3.5" />}
-                  {mentions.map((mention, index) => (
-                    <button
-                      key={mention.nameText}
-                      type="button"
-                      onClick={() => pickMention(mention)}
-                      style={{ '--m': mentionColor(index, mentions.length) } as React.CSSProperties}
-                      className={cn(
-                        'flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-left text-xs transition-colors hover:bg-accent',
-                        name === mention.nameText &&
-                          'border-(--m) bg-[color-mix(in_oklab,var(--m)_14%,transparent)]',
-                      )}
-                    >
-                      <span aria-hidden className="size-2 shrink-0 rounded-full bg-(--m)" />
-                      <span className="truncate">
-                        <span className="font-medium">{mention.nameText}</span>
-                        {mention.addressText && (
-                          <span className="text-muted-foreground"> {mention.addressText}</span>
+                  {mentions.map((mention, index) => {
+                    const names = [mention.nameText, ...(mention.aliases ?? [])];
+                    return (
+                      /* One pill per place, every name it goes by in it. Each name picks itself;
+                         anywhere else on the pill (the dot, the address, the padding) picks the
+                         main name, the first. The main name's own button is the keyboard's way
+                         to that, so the pill itself needs no role. */
+                      <div
+                        key={mention.nameText}
+                        onClick={() => pickMention(mention)}
+                        style={
+                          { '--m': mentionColor(index, mentions.length) } as React.CSSProperties
+                        }
+                        className={cn(
+                          'flex max-w-full cursor-pointer items-baseline gap-1.5 rounded-2xl border px-2.5 py-1 text-xs transition-colors hover:bg-accent',
+                          names.includes(name) &&
+                            'border-(--m) bg-[color-mix(in_oklab,var(--m)_14%,transparent)]',
                         )}
-                      </span>
-                    </button>
-                  ))}
+                      >
+                        <span
+                          aria-hidden
+                          className="size-2 shrink-0 translate-y-px self-center rounded-full bg-(--m)"
+                        />
+                        <span className="min-w-0">
+                          {names.map((option, n) => (
+                            <span key={option}>
+                              {n > 0 && (
+                                <span aria-hidden className="px-1 text-muted-foreground">
+                                  ·
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  pickMention(mention, n === 0 ? undefined : option);
+                                }}
+                                className={cn(
+                                  'rounded-sm underline-offset-2 decoration-(--m) decoration-2 hover:underline',
+                                  n === 0 && 'font-medium',
+                                  name === option && 'underline',
+                                )}
+                              >
+                                {option}
+                              </button>
+                            </span>
+                          ))}
+                          {mention.addressText && (
+                            <span className="text-muted-foreground"> {mention.addressText}</span>
+                          )}
+                        </span>
+                      </div>
+                    );
+                  })}
                   {!extracting && mentions.length === 0 && (
                     <span className="text-xs text-muted-foreground">
                       {canExtract ? t('add.noMentions') : t('add.noModel')}

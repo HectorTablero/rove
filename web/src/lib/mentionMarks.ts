@@ -43,9 +43,17 @@ export function markMentions(text: string, mentions: MentionDto[]): MarkRun[] {
   const longestFirst = <T>(items: T[], length: (item: T) => number) =>
     items.map((item, index) => ({ item, index })).sort((a, b) => length(b.item) - length(a.item));
 
-  for (const { item, index } of longestFirst(mentions, (m) => m.nameText.length)) {
-    if (!paint(item.nameText, index, 'name')) paint(item.evidence, index, 'name');
+  // A place's name and its aliases (a translation, a short form) are all its name, in its colour.
+  const names = mentions.flatMap((mention, index) =>
+    [mention.nameText, ...(mention.aliases ?? [])].map((name) => ({ name, index })),
+  );
+  const found = new Set<number>();
+  for (const { item } of longestFirst(names, (n) => n.name.length)) {
+    if (paint(item.name, item.index, 'name')) found.add(item.index);
   }
+  mentions.forEach((mention, index) => {
+    if (!found.has(index)) paint(mention.evidence, index, 'name');
+  });
   const parts = mentions.flatMap((mention, index) =>
     (mention.addressText?.split(' ') ?? [])
       .filter((part) => part.length >= MIN_PART_LENGTH)

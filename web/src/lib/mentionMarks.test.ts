@@ -53,6 +53,19 @@ describe('markMentions', () => {
     ]);
   });
 
+  it('marks a place’s aliases in its colour too', () => {
+    const text = 'Yunhai Park (云海公园)，云海广场';
+    const yunhai = {
+      ...mention('盐田云海广场', null),
+      aliases: ['Yunhai Park', '云海公园', '云海广场'],
+    };
+    expect(marked(text, [yunhai])).toEqual([
+      '0:name:Yunhai Park',
+      '0:name:云海公园',
+      '0:name:云海广场',
+    ]);
+  });
+
   it('falls back to the evidence when the name is not in the text as written', () => {
     expect(marked('去了 HEYTEA 喜茶', [mention('Heytea', null, 'HEYTEA 喜茶')])).toEqual([
       '0:name:HEYTEA 喜茶',

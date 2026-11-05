@@ -11,6 +11,7 @@ import {
   MAX_LLM_BASE_URL_LENGTH,
   MAX_LLM_KEY_LENGTH,
   MAX_LLM_MODEL_LENGTH,
+  MAX_MENTION_ALIASES,
   MAX_MENTION_LENGTH,
   MAX_MENTIONS_PER_SNAPSHOT,
   MAX_NOTES_LENGTH,
@@ -156,6 +157,12 @@ export const mentionSchema = z.object({
   /** What to type into the map search to find this branch and not another: the name plus the
       post's most specific location parts. Null on extractions from before it existed. */
   searchText: z.string().trim().max(MAX_ADDRESS_LENGTH).nullable().default(null),
+  /** Other names the post uses for this place; each verbatim in the text. */
+  aliases: z
+    .array(z.string().trim().min(1).max(MAX_MENTION_LENGTH))
+    // Trimmed rather than refused: a model listing one alias too many is not a bad reply.
+    .transform((aliases) => aliases.slice(0, MAX_MENTION_ALIASES))
+    .optional(),
   evidence: z.string().min(1).max(MAX_SNAPSHOT_TEXT_LENGTH),
 });
 

@@ -44,6 +44,8 @@ export const MAX_SNAPSHOT_BODY_BYTES = 262_144;
 export const MAX_SNAPSHOT_TEXT_LENGTH = 20_000;
 export const MAX_MENTIONS_PER_SNAPSHOT = 20;
 export const MAX_MENTION_LENGTH = 200;
+/** Other names one place may carry: a translation, a romanisation, a short form, a long one. */
+export const MAX_MENTION_ALIASES = 8;
 export const MAX_SOURCE_ID_LENGTH = 40;
 export const SOURCE_ID_REGEX = /^[a-z][a-z0-9-]{0,39}$/;
 
