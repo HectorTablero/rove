@@ -64,10 +64,13 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
   const hour12 = useHour12();
   const { item, review, location, visited } = actions;
   const [locating, setLocating] = useState(false);
-  const [copied, setCopied] = useState(false);
+  /* 'idle' until the first copy, so the icon does not animate when the sheet opens; after that
+     the check and the copy icon each zoom in as they swap, both ways. */
+  const [copy, setCopy] = useState<'idle' | 'copied' | 'reverted'>('idle');
+  const copied = copy === 'copied';
   useEffect(() => {
     if (!copied) return;
-    const handle = setTimeout(() => setCopied(false), COPIED_MS);
+    const handle = setTimeout(() => setCopy('reverted'), COPIED_MS);
     return () => clearTimeout(handle);
   }, [copied]);
   // A broken poster hides itself; reset per item so one bad URL does not hide the next item's.
@@ -159,12 +162,17 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
                 'shrink-0 rounded p-1 transition-colors hover:bg-accent hover:text-foreground',
                 copied && 'text-primary hover:text-primary',
               )}
-              onClick={() => void actions.copyTitle().then((ok) => ok && setCopied(true))}
+              onClick={() => void actions.copyTitle().then((ok) => ok && setCopy('copied'))}
             >
               {copied ? (
                 <Check className="size-3.5 animate-in zoom-in-50 duration-150" />
               ) : (
-                <Copy className="size-3.5" />
+                <Copy
+                  className={cn(
+                    'size-3.5',
+                    copy === 'reverted' && 'animate-in zoom-in-50 duration-150',
+                  )}
+                />
               )}
             </button>
           </p>
