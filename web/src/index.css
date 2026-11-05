@@ -447,11 +447,15 @@ html[data-fullbleed] {
  * stars and the visited check; everything else is foreground and muted text, so the title leads.
  * No hover state of its own — pointer-events are off, so moving onto it never fights the marker. */
 .rove-marker-tip {
+  /* Set on hover by placeHoveredTip (renderer.tsx); centred with the arrow straight down until then. */
+  --tip-shift: 0px;
+  --arrow-base: 50%;
+  --arrow-tip: 50%;
   display: none;
   position: absolute;
   bottom: calc(100% + 10px);
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(calc(-50% + var(--tip-shift)));
   align-items: stretch;
   width: max-content;
   min-width: 11rem;
@@ -469,18 +473,58 @@ html[data-fullbleed] {
   white-space: normal;
   pointer-events: none;
 }
-/* The arrow: a square turned 45°, half under the card, sharing its border. */
+/* Flipped under the dot when there is no room above it. */
+.rove-marker-tip[data-below] {
+  top: calc(100% + 10px);
+  bottom: auto;
+}
+/* The arrow: a triangle from its base on the card to its tip on the dot, which lean apart when the
+   card is pushed in from an edge. Drawn twice — the border colour, then the card's fill 1px inside
+   it and over the card's own edge, so the two read as one outline. Each layer is a strip 2rem wider
+   than the card on both sides, so a leaning tip can reach past the card's edge. */
+.rove-marker-tip::before,
 .rove-marker-tip::after {
   content: '';
   position: absolute;
-  top: 100%;
-  left: 50%;
-  width: 10px;
+  left: -2rem;
+  right: -2rem;
   height: 10px;
+  top: 100%;
+}
+.rove-marker-tip::before {
+  background: var(--border);
+  clip-path: polygon(
+    calc(2rem + var(--arrow-base) - 7px) 0,
+    calc(2rem + var(--arrow-base) + 7px) 0,
+    calc(2rem + var(--arrow-tip)) 100%
+  );
+}
+.rove-marker-tip::after {
+  top: calc(100% - 1px);
   background: var(--popover);
-  border-right: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  transform: translate(-50%, -50%) rotate(45deg);
+  clip-path: polygon(
+    calc(2rem + var(--arrow-base) - 6px) 0,
+    calc(2rem + var(--arrow-base) + 6px) 0,
+    calc(2rem + var(--arrow-tip)) calc(100% - 1.5px)
+  );
+}
+.rove-marker-tip[data-below]::before {
+  top: auto;
+  bottom: 100%;
+  clip-path: polygon(
+    calc(2rem + var(--arrow-base) - 7px) 100%,
+    calc(2rem + var(--arrow-base) + 7px) 100%,
+    calc(2rem + var(--arrow-tip)) 0
+  );
+}
+.rove-marker-tip[data-below]::after {
+  top: auto;
+  bottom: calc(100% - 1px);
+  clip-path: polygon(
+    calc(2rem + var(--arrow-base) - 6px) 100%,
+    calc(2rem + var(--arrow-base) + 6px) 100%,
+    calc(2rem + var(--arrow-tip)) 1.5px
+  );
 }
 .rove-tip-cover {
   flex-shrink: 0;
@@ -580,11 +624,11 @@ html[data-fullbleed] {
 @keyframes rove-tip-in {
   from {
     opacity: 0;
-    transform: translate(-50%, 4px);
+    transform: translate(calc(-50% + var(--tip-shift)), 4px);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, 0);
+    transform: translate(calc(-50% + var(--tip-shift)), 0);
   }
 }
 @media (hover: hover) and (pointer: fine) {

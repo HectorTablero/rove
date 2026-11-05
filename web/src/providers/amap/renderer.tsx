@@ -132,6 +132,67 @@ export const tooltipHtml = ({ title, status, tooltip }: Marker): string => {
   return `<span class="rove-marker-tip" role="tooltip" data-kind="${tooltip.kind}">${cover}<span class="rove-tip-body"><span class="sr-only">${escapeHtml(tooltip.kindLabel)}</span><span class="rove-tip-title">${escapeHtml(title)}</span>${stars}${facts ? `<span class="rove-tip-facts">${facts}</span>` : ''}${tags}${note}</span></span>`;
 };
 
+/** Space kept between a card and the map's edges, and between a card and its dot. */
+const TIP_MARGIN = 8;
+const TIP_GAP = 10;
+/** How far in from a card's corners the arrow's base may sit, clear of the rounding. */
+const ARROW_INSET = 18;
+
+interface Box {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+/**
+ * Where a card goes for a dot: above it unless that crosses the top and below has more room,
+ * shifted sideways to stay `TIP_MARGIN` inside the map. The arrow's base stays on the card, clear
+ * of the corners, and its tip stays on the dot — near an edge the two part and the arrow leans.
+ * `shift` moves the card from centred; `base` and `tip` are x from the card's left edge.
+ */
+export function placeTip(
+  dot: Box,
+  width: number,
+  height: number,
+  bounds: Box,
+): { below: boolean; shift: number; base: number; tip: number } {
+  const cx = (dot.left + dot.right) / 2;
+  const roomAbove = dot.top - TIP_GAP - bounds.top - TIP_MARGIN;
+  const roomBelow = bounds.bottom - TIP_MARGIN - dot.bottom - TIP_GAP;
+  const below = roomAbove < height && roomBelow > roomAbove;
+  const min = bounds.left + TIP_MARGIN;
+  const max = bounds.right - TIP_MARGIN - width;
+  const left = max < min ? min : Math.min(Math.max(cx - width / 2, min), max);
+  // Kept inside the arrow layers' 2rem overhang (index.css), for a dot half off the map.
+  const tip = Math.min(Math.max(cx - left, -24), width + 24);
+  const base = Math.min(Math.max(tip, ARROW_INSET), width - ARROW_INSET);
+  return { below, shift: left - (cx - width / 2), base, tip };
+}
+
+/* Places the card of the dot under the pointer. One listener for the whole map: the markers are
+   HTML strings the SDK owns. Measured on every hover, since the map pans between them. */
+function placeHoveredTip(event: MouseEvent, bounds: Box) {
+  const dot = (event.target as Element | null)?.closest('.rove-marker');
+  const card = dot?.querySelector<HTMLElement>('.rove-marker-tip');
+  if (!dot || !card) return;
+  // Not laid out yet if the browser has not applied :hover by the time the event arrives.
+  if (!card.offsetWidth) {
+    requestAnimationFrame(() => card.offsetWidth && placeHoveredTip(event, bounds));
+    return;
+  }
+  const { below, shift, base, tip } = placeTip(
+    dot.getBoundingClientRect(),
+    card.offsetWidth,
+    card.offsetHeight,
+    bounds,
+  );
+  card.toggleAttribute('data-below', below);
+  card.style.setProperty('--tip-shift', `${shift}px`);
+  card.style.setProperty('--arrow-base', `${base}px`);
+  card.style.setProperty('--arrow-tip', `${tip}px`);
+}
+
 const markerHtml = (marker: Marker, selected: boolean): string => {
   const fill = marker.status === 'visited' ? 'var(--primary)' : 'var(--background)';
   const stroke = marker.status === 'candidate' ? 'var(--muted-foreground)' : 'var(--primary)';
@@ -177,8 +238,12 @@ export function AmapView({
       });
       setReady(true);
     });
+    const el = container.current;
+    const onOver = (event: MouseEvent) => placeHoveredTip(event, el!.getBoundingClientRect());
+    el?.addEventListener('mouseover', onOver);
     return () => {
       cancelled = true;
+      el?.removeEventListener('mouseover', onOver);
       map.current?.destroy();
       map.current = null;
       overlays.current = [];
