@@ -100,39 +100,36 @@ const fact = (icon: keyof typeof ICON, text: string | null) =>
     ? `<span class="rove-tip-fact rove-tip-fact-${icon}">${svg(ICON[icon], 'rove-tip-icon')}<span>${escapeHtml(text)}</span></span>`
     : '';
 
-/* The hover card: a kind-coloured top edge and chip, poster beside the title, your stars in
-   amber, then one line per fact with its icon, the source's tags as chips, and your note set off
-   like a quote. Everything here was already translated by the page; this only lays it out. */
+/* The hover card, cut like the list's tickets: the poster, when there is one, is the stub, flush
+   to the left edge behind a dashed tear; then the title, your stars, one muted line per fact, the
+   source's tags and your note. Only saved and visited items reach the map, so status is a check
+   line for visited and nothing otherwise. Everything here was already translated by the page;
+   this only lays it out. */
 export const tooltipHtml = ({ title, status, tooltip }: Marker): string => {
   if (!tooltip)
-    return `<span class="rove-marker-tip" role="tooltip"><span class="rove-tip-title">${escapeHtml(title)}</span></span>`;
+    return `<span class="rove-marker-tip" role="tooltip"><span class="rove-tip-body"><span class="rove-tip-title">${escapeHtml(title)}</span></span></span>`;
   const cover = tooltip.coverUrl
     ? `<img class="rove-tip-cover" src="${escapeHtml(tooltip.coverUrl)}" alt="" referrerpolicy="no-referrer" loading="lazy">`
     : '';
-  const chips = [
-    `<span class="rove-tip-chip rove-tip-kind">${escapeHtml(tooltip.kindLabel)}</span>`,
-    tooltip.statusLabel
-      ? `<span class="rove-tip-chip rove-tip-status" data-status="${status}">${status === 'visited' ? svg(ICON.visits, 'rove-tip-chip-icon') : ''}${escapeHtml(tooltip.statusLabel)}</span>`
-      : '',
-  ].join('');
   const stars = tooltip.rating
     ? `<span class="rove-tip-stars" aria-label="${escapeHtml(tooltip.ratingLabel ?? '')}">${[
         1, 2, 3, 4, 5,
       ]
         .map((n) => svg(STAR, n <= tooltip.rating! ? 'rove-tip-star is-on' : 'rove-tip-star'))
-        .join('')}<span class="rove-tip-score">${tooltip.rating}</span></span>`
+        .join('')}</span>`
     : '';
+  const visited = tooltip.visits ?? (status === 'visited' ? tooltip.statusLabel : null);
   const facts = [
     fact('when', tooltip.when),
     fact('where', tooltip.where),
     fact('price', tooltip.price),
-    fact('visits', tooltip.visits),
+    fact('visits', visited),
   ].join('');
   const tags = tooltip.tags.length
     ? `<span class="rove-tip-tags">${tooltip.tags.map((tag) => `<span class="rove-tip-tag">${escapeHtml(tag)}</span>`).join('')}</span>`
     : '';
   const note = tooltip.note ? `<span class="rove-tip-note">${escapeHtml(tooltip.note)}</span>` : '';
-  return `<span class="rove-marker-tip" role="tooltip" data-kind="${tooltip.kind}"><span class="rove-tip-head">${cover}<span class="rove-tip-heading"><span class="rove-tip-chips">${chips}</span><span class="rove-tip-title">${escapeHtml(title)}</span>${stars}</span></span>${facts ? `<span class="rove-tip-facts">${facts}</span>` : ''}${tags}${note}</span>`;
+  return `<span class="rove-marker-tip" role="tooltip" data-kind="${tooltip.kind}">${cover}<span class="rove-tip-body"><span class="sr-only">${escapeHtml(tooltip.kindLabel)}</span><span class="rove-tip-title">${escapeHtml(title)}</span>${stars}${facts ? `<span class="rove-tip-facts">${facts}</span>` : ''}${tags}${note}</span></span>`;
 };
 
 const markerHtml = (marker: Marker, selected: boolean): string => {
