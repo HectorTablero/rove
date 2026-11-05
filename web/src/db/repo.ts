@@ -74,6 +74,10 @@ export const getReview = (itemId: string): Promise<ReviewDto | undefined> =>
 
 export const getSnapshot = (id: string): Promise<SnapshotDto | undefined> => db.snapshots.get(id);
 
+/** The posts an item came from, in the order it lists them; ones not on this device left out. */
+export const getSnapshots = async (ids: string[]): Promise<SnapshotDto[]> =>
+  (await db.snapshots.bulkGet(ids)).filter((s): s is SnapshotDto => s !== undefined);
+
 export const getSnapshotByUrl = (url: string): Promise<SnapshotDto | undefined> =>
   db.snapshots.where('url').equals(url).first();
 

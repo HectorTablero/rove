@@ -70,6 +70,9 @@ export default function AddPage() {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [candidate, setCandidate] = useState<GeocodeCandidate | null>(null);
+  /* The found place the name came from, if it came from one: its other names are kept on the
+     saved item, so searching for "Yunhai Park" finds what was saved as 盐田云海广场. */
+  const [picked, setPicked] = useState<MentionDto | null>(null);
   const [savedId, setSavedId] = useState<string | null>(null);
   const [pasted, setPasted] = useState('');
   const [pasteOpen, setPasteOpen] = useState(false);
@@ -156,6 +159,7 @@ export default function AddPage() {
      aliases, picked by hand, searched with the same location parts the main name carried. */
   const pickMention = (mention: MentionDto, alias?: string) => {
     const chosen = alias ?? mention.nameText;
+    setPicked(mention);
     setName(chosen);
     setQuery(mention.searchText ? mention.searchText.replace(mention.nameText, chosen) : chosen);
     setCandidate(null);
@@ -165,6 +169,12 @@ export default function AddPage() {
   const save = () => {
     if (!candidate) return;
     const title = name.trim() || candidate.name;
+    // The map's name for it and the post's other names for it, while the name is still the post's.
+    const fromPost =
+      picked && [picked.nameText, ...(picked.aliases ?? [])].includes(title)
+        ? [picked.nameText, ...(picked.aliases ?? [])]
+        : [];
+    const otherNames = [...new Set([candidate.name, ...fromPost])].filter((n) => n !== title);
     const canonicalUrl = snapshot?.canonicalUrl ?? snapshot?.url ?? null;
     const duplicate = findDuplicate({ title, location: candidate.location, canonicalUrl }, items);
     if (duplicate) {
@@ -179,10 +189,12 @@ export default function AddPage() {
             canonicalUrl && !duplicate.sourceUrls.includes(canonicalUrl)
               ? [...duplicate.sourceUrls, canonicalUrl]
               : undefined,
-          altTitles:
-            title !== duplicate.title && !duplicate.altTitles.includes(title)
-              ? [...duplicate.altTitles, title]
-              : undefined,
+          altTitles: (() => {
+            const added = [title, ...otherNames].filter(
+              (n) => n !== duplicate.title && !duplicate.altTitles.includes(n),
+            );
+            return added.length ? [...duplicate.altTitles, ...new Set(added)] : undefined;
+          })(),
         },
       });
       notifySuccess(t('add.merged', { title: duplicate.title }), { important: true });
@@ -194,7 +206,7 @@ export default function AddPage() {
         regionId: region.id,
         kind: 'place',
         title,
-        altTitles: candidate.name !== title ? [candidate.name] : [],
+        altTitles: otherNames,
         categories: [],
         status: 'saved',
         snapshotIds: snapshot ? [snapshot.id] : [],
@@ -223,6 +235,7 @@ export default function AddPage() {
     setName('');
     setQuery('');
     setCandidate(null);
+    setPicked(null);
     setSavedId(null);
     setPasted('');
     setPasteOpen(false);

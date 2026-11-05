@@ -26,6 +26,12 @@ export const useItem = (id: string) =>
     queryFn: () => repo.getItem(id),
   });
 
+export const useSnapshots = (ids: string[]) =>
+  useQuery({
+    queryKey: ['snapshots', ids],
+    queryFn: () => repo.getSnapshots(ids),
+  });
+
 export function useCreateItem() {
   const qc = useQueryClient();
   return useMutation({

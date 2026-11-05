@@ -3,7 +3,6 @@ import {
   BookmarkMinus,
   Check,
   Copy,
-  ExternalLink,
   MapPin,
   Navigation,
   Trash2,
@@ -14,6 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useUpdateItem, useUpsertReview } from '@/api/hooks';
 import { TranslatedText } from '@/components/common/TranslatedText';
+import { PostOrigin } from '@/components/items/PostOrigin';
 import { StarRating } from '@/components/items/StarRating';
 import { useItemActions } from '@/components/items/useItemActions';
 import { Badge } from '@/components/ui/badge';
@@ -290,26 +290,7 @@ function ItemSheetBody({ itemId, onClose }: { itemId: string; onClose: () => voi
           />
         </div>
 
-        {item.sourceUrls.length > 0 && (
-          <div className="flex flex-col gap-1">
-            <Label>{t('items.sources')}</Label>
-            <ul className="flex flex-col gap-1">
-              {item.sourceUrls.map((url) => (
-                <li key={url}>
-                  <a
-                    href={url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex max-w-full items-center gap-1 text-xs text-muted-foreground underline-offset-2 hover:underline"
-                  >
-                    <ExternalLink className="size-3 shrink-0" />
-                    <span className="truncate">{new URL(url).hostname.replace(/^www\./, '')}</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        <PostOrigin item={item} />
 
         {review?.visits.length ? (
           <p className="text-xs text-muted-foreground">
