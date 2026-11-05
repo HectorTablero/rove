@@ -7,7 +7,8 @@ import { formatPrice } from '@/lib/price';
 import { useRegion } from '@/lib/region';
 import { detectSource, useTranslatedText } from '@/lib/translate';
 import { cn } from '@/lib/utils';
-import { endsWithin, isMultiDay, otherYear, type Window } from '@/lib/when';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { endsWithin, formatWhen, isMultiDay, otherYear, type Window } from '@/lib/when';
 
 /* The list, one shape per kind rather than one card for everything.
  *
@@ -213,17 +214,6 @@ const ROW =
 const zoned = (iso: string, tz: string, lng: string, opts: Intl.DateTimeFormatOptions) =>
   new Intl.DateTimeFormat(lng, { timeZone: tz, ...opts }).format(new Date(iso));
 
-/** "Nov 5 – Feb 28, 2027": the year only when an end falls outside this year. */
-function rangeText(when: WhenDto, tz: string, lng: string): string {
-  const withYear = otherYear(when.start, tz) || otherYear(when.end!, tz);
-  return new Intl.DateTimeFormat(lng, {
-    timeZone: tz,
-    month: 'short',
-    day: 'numeric',
-    ...(withYear ? { year: 'numeric' } : {}),
-  }).formatRange(new Date(when.start), new Date(when.end!));
-}
-
 /** The stub's third line: the year, only when it is not this one. */
 function StubYear({ iso, tz }: { iso: string; tz: string }) {
   if (!otherYear(iso, tz)) return null;
@@ -235,7 +225,8 @@ function StubYear({ iso, tz }: { iso: string; tz: string }) {
 }
 
 /** The stub: day large and month small, or a run's two ends, in the region's clock. A dashed
-    edge tears it off the ticket. */
+    edge tears it off the ticket. Hovering it gives the date in full, weekday and times included;
+    screen readers get that instead of the stub's fragments. */
 function DateStub({ when, tz }: { when: WhenDto | null; tz: string }) {
   const { t, i18n } = useTranslation();
   const now = new Date().toISOString();
@@ -243,15 +234,20 @@ function DateStub({ when, tz }: { when: WhenDto | null; tz: string }) {
   // A run reads as three equal lines: its start ("Now" once it has begun — a start date from June
   // would only mislead), a lone dash, its end.
   const run = when !== null && isMultiDay(when);
-  return (
+  const full = when ? formatWhen(when, i18n.language) : null;
+  const stub = (
     <span
       className={cn(
         'flex w-14 shrink-0 flex-col items-center justify-center border-r border-dashed py-2',
         when ? 'text-primary' : 'text-muted-foreground',
       )}
     >
+      {full && <span className="sr-only">{full}</span>}
       {when && run ? (
-        <span className="flex flex-col items-center text-center text-[11px] leading-tight font-medium">
+        <span
+          aria-hidden
+          className="flex flex-col items-center text-center text-[11px] leading-tight font-medium"
+        >
           {when.start < now ? (
             <span>{t('list.now')}</span>
           ) : (
@@ -267,7 +263,7 @@ function DateStub({ when, tz }: { when: WhenDto | null; tz: string }) {
           <StubYear iso={when.end!} tz={tz} />
         </span>
       ) : when ? (
-        <>
+        <span aria-hidden className="contents">
           <span className="text-xl leading-none font-semibold tabular-nums">
             {zoned(when.start, tz, i18n.language, { day: 'numeric' })}
           </span>
@@ -275,11 +271,18 @@ function DateStub({ when, tz }: { when: WhenDto | null; tz: string }) {
             {zoned(when.start, tz, i18n.language, { month: 'short' })}
           </span>
           <StubYear iso={when.start} tz={tz} />
-        </>
+        </span>
       ) : (
         <span className="px-1 text-center text-[11px] leading-tight">{t('list.noDate')}</span>
       )}
     </span>
+  );
+  if (!full) return stub;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{stub}</TooltipTrigger>
+      <TooltipContent side="right">{full}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -296,20 +299,17 @@ function EventRow({
 }) {
   const { t, i18n } = useTranslation();
   const region = useRegion();
+  /* The stub already says the day; this line is only for what it cannot, the time. All-day
+     events and runs have none, and their full dates are on the stub's hover. */
   const time =
-    item.when && isMultiDay(item.when)
-      ? rangeText(item.when, tz, i18n.language)
-      : item.when && !item.when.allDay
-        ? // "Sat 19:30 – 21:30" when the source gave an end, else just the start.
-          new Intl.DateTimeFormat(i18n.language, {
-            timeZone: tz,
-            weekday: 'short',
-            hour: '2-digit',
-            minute: '2-digit',
-          }).formatRange(new Date(item.when.start), new Date(item.when.end ?? item.when.start))
-        : item.when
-          ? zoned(item.when.start, tz, i18n.language, { weekday: 'long' })
-          : null;
+    item.when && !item.when.allDay && !isMultiDay(item.when)
+      ? // "19:30 – 21:30" when the source gave an end, else just the start.
+        new Intl.DateTimeFormat(i18n.language, {
+          timeZone: tz,
+          hour: '2-digit',
+          minute: '2-digit',
+        }).formatRange(new Date(item.when.start), new Date(item.when.end ?? item.when.start))
+      : null;
   const where = item.venue ?? item.location?.address ?? null;
   const price = formatPrice(item.price, t, i18n.language, region.currency);
   return (
