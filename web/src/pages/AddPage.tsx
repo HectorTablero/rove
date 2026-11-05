@@ -469,7 +469,7 @@ export default function AddPage() {
 }
 
 /** Each found place's colour, cycled over the --mention-* tokens (index.css). */
-const mentionColor = (index: number) => `var(--mention-${(index % 5) + 1})`;
+const mentionColor = (index: number) => `var(--mention-${(index % 6) + 1})`;
 
 /* The caption, with each place the extractor found in its own colour: its name tinted, and the
    location parts it read for that place underlined in the same colour. The chips below carry a

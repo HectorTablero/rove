@@ -186,7 +186,7 @@ const defines = (locale: Record<string, string | string[]>, key: string): boolea
 
 // --- 1. keys referenced from code exist in every locale ---------------------------------------
 
-/* Dynamic keys (`t(err.code)`, `t(\`importance.${n}\`)`) can't be seen here, which is why this
+/* Dynamic keys (`t(err.code)`, `t(\`items.kind.${kind}\`)`) can't be seen here, which is why this
    only reports keys that are *used but undefined*, never the reverse.
 
    A Set of files per key, not one file: a key used in both core and a plugin has two homes, and

@@ -315,31 +315,23 @@
   }
 }
 
-/* Importance scale: 1 = life-changing (hot) … 5 = passing thought (muted). */
-@theme {
-  --color-importance-1: #e5484d;
-  --color-importance-2: #f76b15;
-  --color-importance-3: #ffb224;
-  --color-importance-4: #4c9e63;
-  --color-importance-5: #8ea6bd;
-}
-
 /* One colour per place the extractor found in a caption (AddPage), cycled. Categorical, so they
-   only need to be told apart — and kept off the importance hues above (red, orange, amber, green),
-   which already mean something here. Lighter in dark mode so a tint over the card still reads. */
+   only need to be told apart. Lighter in dark mode so a tint over the card still reads. */
 :root {
   --mention-1: oklch(0.6 0.17 255);
   --mention-2: oklch(0.58 0.2 305);
   --mention-3: oklch(0.6 0.11 190);
   --mention-4: oklch(0.62 0.2 350);
-  --mention-5: oklch(0.6 0.13 95);
+  --mention-5: oklch(0.6 0.15 150);
+  --mention-6: oklch(0.64 0.17 55);
 }
 .dark {
   --mention-1: oklch(0.74 0.14 255);
   --mention-2: oklch(0.74 0.16 305);
   --mention-3: oklch(0.76 0.1 190);
   --mention-4: oklch(0.76 0.15 350);
-  --mention-5: oklch(0.8 0.12 95);
+  --mention-5: oklch(0.76 0.14 150);
+  --mention-6: oklch(0.78 0.14 55);
 }
 
 html {

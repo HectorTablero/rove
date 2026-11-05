@@ -17,8 +17,8 @@ import { Label } from '@/components/ui/label';
  * Both states are deliberately the same shape — a field the width of the input, then its actions —
  * so the row never reflows and the difference is read from fill rather than from a colour. A
  * stored key is a filled, uneditable slot bearing a key glyph; no key is an empty one waiting to
- * be typed in. Colour stays out of it: in this app hue already means importance, and the ramp
- * (ImportanceDot) runs through green, so a green tick here would be borrowing a word that is taken.
+ * be typed in. Colour stays out of it: the rest of the page is achromatic, and a key is a fact
+ * about the settings rather than a success to celebrate.
  *
  * Unlike the rest of the page this does not autosave on blur. Half a pasted key committed by a
  * stray focus change would overwrite a working one with something that cannot authenticate, and
